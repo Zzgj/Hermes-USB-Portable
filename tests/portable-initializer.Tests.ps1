@@ -105,6 +105,21 @@ try {
 
     Write-Host "Portable initializer tests passed."
 }
+catch {
+    $failureText = @(
+        $_.Exception.Message
+        $_.InvocationInfo.PositionMessage
+        $_.ScriptStackTrace
+    ) -join [Environment]::NewLine
+    [Console]::Error.WriteLine("Portable initializer tests failed:{0}{1}", [Environment]::NewLine, $failureText)
+
+    # GitHub exposes annotations for public workflow runs even when full logs
+    # require authentication. Escape the workflow-command payload so Windows
+    # compatibility failures remain diagnosable without publishing artifacts.
+    $annotationText = $failureText.Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+    Write-Output "::error file=tests/portable-initializer.Tests.ps1,title=Portable initializer tests failed::$annotationText"
+    exit 1
+}
 finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
