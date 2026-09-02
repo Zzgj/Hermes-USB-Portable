@@ -17,13 +17,27 @@ function Assert-True {
     }
 }
 
+function ConvertTo-NativeArgument {
+    param([string]$Value)
+
+    if ($Value.Contains('"')) {
+        throw "The test harness does not support a double quote in a process argument."
+    }
+    if ($Value -notmatch '\s') {
+        return $Value
+    }
+    return '"{0}"' -f $Value
+}
+
 function Invoke-Initializer {
     param([string]$Target)
 
     $hostExecutable = (Get-Process -Id $PID).Path
+    $initializerArgument = ConvertTo-NativeArgument -Value $InitializerPath
+    $targetArgument = ConvertTo-NativeArgument -Value $Target
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $hostExecutable
-    $startInfo.Arguments = '-NoLogo -NoProfile -File "{0}" -TargetDirectory "{1}"' -f $InitializerPath, $Target
+    $startInfo.Arguments = "-NoLogo -NoProfile -File $initializerArgument -TargetDirectory $targetArgument"
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardOutput = $true
