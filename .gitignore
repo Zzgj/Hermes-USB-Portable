@@ -1,6 +1,51 @@
-# Ignore runtime cache and user data
-data/
-.cache/
-src/
+# Existing Hermes Portable runtime cache and user data
+/data/
+/.cache/
+/src/
 *.flag
 *.log
+
+# Credentials and private configuration
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+auth.json
+**/auth.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Portable AI generated runtime and private user state
+/runtime/
+/knowledge/
+/workspace/
+/logs/
+/updates/
+/proxy/mihomo/
+/proxy/profiles/
+/repository/drivers/
+/repository/tools/
+/repository/packages/
+/repository/quarantine/
+
+# Driver packages, runtime archives, and executable artifacts
+*.7z
+*.bin
+*.cab
+*.dll
+*.dmg
+*.exe
+*.gz
+*.iso
+*.msi
+*.msix
+*.pkg
+*.sys
+*.tar
+*.tgz
+*.xz
+*.zip

@@ -1,5 +1,21 @@
 # Hermes Portable — Command Reference
 
+## Portable AI Directory Initializer
+
+The initializer creates the standard Portable AI directory layout, a version manifest, and an environment report. It does not download runtimes, request administrator access, format storage, or install printers.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\initialize-portable.ps1 -TargetDirectory "D:\Portable AI Test"
+```
+
+Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell 7:
+
+```powershell
+.\tests\portable-initializer.Tests.ps1
+```
+
+See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
+
 ## Portable Launcher Commands
 
 These are the commands you type in your terminal / PowerShell.

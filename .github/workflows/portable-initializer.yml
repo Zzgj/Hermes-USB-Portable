@@ -1,0 +1,41 @@
+name: Portable initializer
+
+on:
+  push:
+    branches:
+      - main
+      - feat/portable-initializer
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-powershell:
+    name: Windows / PowerShell 5.1
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Test initializer
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\tests\portable-initializer.Tests.ps1
+
+  windows-pwsh:
+    name: Windows / PowerShell 7
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Test initializer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\tests\portable-initializer.Tests.ps1
