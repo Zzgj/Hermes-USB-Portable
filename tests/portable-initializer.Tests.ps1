@@ -20,12 +20,37 @@ function Assert-True {
 function Invoke-Initializer {
     param([string]$Target)
 
-    $processOutput = & (Get-Process -Id $PID).Path -NoLogo -NoProfile -File $InitializerPath -TargetDirectory $Target 2>&1
-    $exitCode = $LASTEXITCODE
-    foreach ($line in $processOutput) {
-        Write-Host $line
+    $hostExecutable = (Get-Process -Id $PID).Path
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $hostExecutable
+    $startInfo.Arguments = '-NoLogo -NoProfile -File "{0}" -TargetDirectory "{1}"' -f $InitializerPath, $Target
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    try {
+        $process.Start() | Out-Null
+        $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
+        $standardErrorTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $standardOutput = $standardOutputTask.Result
+        $standardError = $standardErrorTask.Result
+        $exitCode = $process.ExitCode
     }
-    return $exitCode
+    finally {
+        $process.Dispose()
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($standardOutput)) {
+        Write-Host $standardOutput.TrimEnd()
+    }
+    if (-not [string]::IsNullOrWhiteSpace($standardError)) {
+        Write-Host $standardError.TrimEnd()
+    }
+    return [int]$exitCode
 }
 
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("hermes-portable-initializer-tests-{0}" -f [Guid]::NewGuid().ToString("N"))
