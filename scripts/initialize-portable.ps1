@@ -2,13 +2,16 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [ValidateNotNullOrEmpty()]
-    [string]$TargetDirectory
+    [string]$TargetDirectory,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$ComponentLockPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "manifests/runtime-components.windows-x64.json")
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$InitializerVersion = "0.1.0"
+$InitializerVersion = "0.2.0"
 $LayoutVersion = "1"
 $ManifestName = "portable-ai.manifest.json"
 $MinimumFreeBytes = 2GB
@@ -158,6 +161,97 @@ function Get-DriveCheck {
     }
 
     return [pscustomobject]$result
+}
+
+function Read-ComponentLock {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Component lock file not found: $Path"
+    }
+
+    $lock = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    if ($lock.schema_version -ne 1) {
+        throw "Unsupported component lock schema: $($lock.schema_version)"
+    }
+    if ($lock.platform -ne "windows-x64") {
+        throw "Unsupported component lock platform: $($lock.platform)"
+    }
+
+    $requiredIds = @("python", "node", "uv", "ripgrep", "mingit", "hermes-agent")
+    $seenIds = @{}
+    foreach ($component in $lock.components) {
+        if ([string]::IsNullOrWhiteSpace([string]$component.id)) {
+            throw "A component lock entry is missing its id."
+        }
+        if ($seenIds.ContainsKey([string]$component.id)) {
+            throw "Duplicate component id in lock file: $($component.id)"
+        }
+        $seenIds[[string]$component.id] = $true
+
+        if ([string]::IsNullOrWhiteSpace([string]$component.version)) {
+            throw "Component '$($component.id)' is missing its version."
+        }
+        if ($component.source.type -eq "archive") {
+            if ([string]$component.source.url -notmatch '^https://') {
+                throw "Component '$($component.id)' must use an HTTPS archive URL."
+            }
+            if ([int64]$component.source.size_bytes -le 0) {
+                throw "Component '$($component.id)' has an invalid archive size."
+            }
+            if ([string]$component.integrity.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+                throw "Component '$($component.id)' has an invalid SHA-256."
+            }
+        }
+        elseif ($component.source.type -eq "git") {
+            if ([string]$component.source.url -notmatch '^https://') {
+                throw "Component '$($component.id)' must use an HTTPS Git URL."
+            }
+            if ([string]::IsNullOrWhiteSpace([string]$component.source.ref)) {
+                throw "Component '$($component.id)' is missing its Git ref."
+            }
+            if ([string]$component.source.commit -notmatch '^[0-9a-fA-F]{40}$') {
+                throw "Component '$($component.id)' has an invalid Git commit."
+            }
+        }
+        else {
+            throw "Component '$($component.id)' has an unsupported source type."
+        }
+    }
+
+    foreach ($requiredId in $requiredIds) {
+        if (-not $seenIds.ContainsKey($requiredId)) {
+            throw "Required component missing from lock file: $requiredId"
+        }
+    }
+    if ($seenIds.Count -ne $requiredIds.Count) {
+        throw "The component lock contains unsupported component entries."
+    }
+
+    $requirements = @($lock.supplemental_python_packages | ForEach-Object { [string]$_.requirement })
+    if ($requirements.Count -ne 2) {
+        throw "The component lock must contain exactly two supplemental Python package pins."
+    }
+    if (@($requirements | Where-Object { $_ -match '^anthropic==[^\s=]+$' }).Count -ne 1) {
+        throw "The component lock must contain one exact Anthropic package pin."
+    }
+    if (@($requirements | Where-Object { $_ -match '^python-telegram-bot\[webhooks\]==[^\s=]+$' }).Count -ne 1) {
+        throw "The component lock must contain one exact Telegram package pin."
+    }
+
+    return $lock
+}
+
+$componentLock = $null
+$componentLockHash = $null
+try {
+    $ComponentLockPath = Convert-ToAbsolutePath -Path $ComponentLockPath
+    $componentLock = Read-ComponentLock -Path $ComponentLockPath
+    $componentLockHash = (Get-FileHash -LiteralPath $ComponentLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+catch {
+    Write-ErrorMessage "The runtime component lock is invalid: $($_.Exception.Message)"
+    exit 3
 }
 
 $targetPath = $null
@@ -326,7 +420,11 @@ if ($null -ne $manifestLink) {
 elseif (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     $manifestAction = "preserved"
     try {
-        Get-Content -LiteralPath $manifestPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop | Out-Null
+        $existingManifest = Get-Content -LiteralPath $manifestPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $existingLockHashProperty = $existingManifest.PSObject.Properties["component_lock_sha256"]
+        if ($null -eq $existingLockHashProperty -or [string]$existingLockHashProperty.Value -ne $componentLockHash) {
+            $warnings.Add("The existing version manifest was preserved and does not match the current component lock.")
+        }
     }
     catch {
         $warnings.Add("The existing version manifest was preserved but is not valid JSON.")
@@ -349,7 +447,9 @@ else {
             created_at_utc = [DateTime]::UtcNow.ToString("o")
             source_repository = "https://github.com/Zzgj/Hermes-USB-Portable"
             upstream_repository = "https://github.com/techjarves/Hermes-USB-Portable"
-            components = @()
+            component_lock_sha256 = $componentLockHash
+            components = [object[]]$componentLock.components
+            supplemental_python_packages = [object[]]$componentLock.supplemental_python_packages
         }
         $manifestJson = $manifest | ConvertTo-Json -Depth 6
         Write-NewUtf8File -Path $manifestPath -Content ($manifestJson + [Environment]::NewLine)
@@ -379,6 +479,11 @@ $report = [ordered]@{
         contains_non_ascii = [regex]::IsMatch($targetPath, "[^\u0000-\u007F]")
     }
     drive = $driveCheck
+    component_lock = [ordered]@{
+        file = Split-Path -Leaf $ComponentLockPath
+        platform = $componentLock.platform
+        sha256 = $componentLockHash
+    }
     write_check = $writeCheck
     directories = [ordered]@{
         created = $createdDirectories.ToArray()

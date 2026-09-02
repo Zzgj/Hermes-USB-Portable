@@ -15,7 +15,7 @@ The target must be a dedicated directory, not a filesystem root such as `D:\`. A
 ## Outputs
 
 - The standard `runtime`, `data`, `knowledge`, `skills`, `repository`, `proxy`, `workspace`, `logs`, and `updates` directory tree.
-- `portable-ai.manifest.json`, created once and never overwritten by the initializer.
+- `portable-ai.manifest.json`, created once and never overwritten by the initializer. It records the pinned Windows runtime components and the exact SHA-256 of the component lock used.
 - A unique `logs/initializer/environment-check-*.json` report for each run.
 
 The report records the target path, filesystem and free-space information when available, write access, created and preserved directories, failures, warnings, and explicit safety flags.
@@ -27,6 +27,7 @@ The report records the target path, filesystem and free-space information when a
 | `0` | Initialization succeeded. Warnings may still be present in the report. |
 | `1` | An operation failed or the report could not be written. |
 | `2` | The target argument is invalid, is a file, or points to a filesystem root. |
+| `3` | The tracked runtime component lock is missing or invalid; the target is not modified. |
 
 ## Repeatability and data preservation
 
@@ -38,8 +39,9 @@ Run the dependency-free test script from PowerShell:
 
 ```powershell
 pwsh -NoProfile -File .\tests\portable-initializer.Tests.ps1
+pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
 ```
 
-The test covers creation of a missing target, a path containing spaces and non-ASCII characters, repeat execution, preservation of a sentinel user file and the manifest, file/directory and symbolic-link collisions, identifiable failure reports, and rejection of filesystem roots.
+The test covers component-lock validation, creation of a missing target, a path containing spaces and non-ASCII characters, repeat execution, preservation of a sentinel user file and the manifest, file/directory and symbolic-link collisions, identifiable failure reports, and rejection of filesystem roots.
 
 GitHub Actions runs the same parser and behavior tests on `windows-latest` with both Windows PowerShell and PowerShell 7. The workflow has read-only repository permissions and pins the checkout action to a reviewed commit.

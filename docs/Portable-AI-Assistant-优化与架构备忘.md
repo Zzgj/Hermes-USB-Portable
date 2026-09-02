@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |---|---|
 | 文档状态 | 活文档（持续维护） |
-| 当前版本 | v0.2 |
+| 当前版本 | v0.3 |
 | 建立日期 | 2026-09-02 |
 | 最近更新 | 2026-09-02 |
-| 当前阶段 | 需求收敛 / 技术预研 |
+| 当前阶段 | P0 基线实现中 |
 | 基础项目 | [techjarves/Hermes-USB-Portable](https://github.com/techjarves/Hermes-USB-Portable) |
 | 参考项目 | [techjarves/Local-Hermes-Portable](https://github.com/techjarves/Local-Hermes-Portable)、[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)、[yuluyangguang1/codex-portable](https://github.com/yuluyangguang1/codex-portable) |
 
@@ -45,7 +45,7 @@
 | 代理 | 先支持系统代理和自定义代理；便携 Mihomo 为可选组件；不默认捆绑完整 Clash Verge | 建议方案 |
 | 知识库 | 使用便携 Obsidian Vault（Markdown 文件夹） | 已决定 |
 | 经验沉淀 | Memory 存事实，Obsidian 存长期记录，Skill 存可重复流程 | 已决定 |
-| 环境初始化 | 提供可重复的目录/U 盘初始化器，但不自动格式化整块磁盘 | 已决定 |
+| 环境初始化 | 提供可重复的目录/U 盘初始化器，但不自动格式化整块磁盘 | In Progress：普通目录最小版已实现并通过 CI |
 | 本地资源仓库 | 在 U 盘建立带清单、哈希和适用条件的驱动/工具包仓库 | 已决定 |
 | 安全 | API Key、代理订阅、知识库和会话不得长期裸奔在易丢失 U 盘上 | 必须设计 |
 
@@ -463,14 +463,16 @@ repository/
 
 ### P0：基线与快速改进
 
-- [ ] 先实现目录模式的最小初始化器和标准目录结构。
-- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试。
-- [ ] 建立可重复测试的 Hermes-USB-Portable 分支。
-- [ ] 固定 Hermes 上游版本，记录依赖清单与哈希。
+- [x] 先实现目录模式的最小初始化器和标准目录结构。
+- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；修复/重建尚未实测）。
+- [x] 建立可重复测试的 `feat/portable-initializer` 分支。
+- [ ] 固定 Hermes 上游版本，记录依赖清单与哈希（Windows x64 Runtime 归档和 Hermes commit 已锁定；Python 传递依赖锁、许可证清单/SBOM 与完整 Windows 实机安装尚待完成）。
 - [ ] 移植 Desktop 菜单项。
 - [ ] 增加 CLI、TUI、Dashboard、Desktop 独立入口。
 - [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
 - [ ] 完成宿主机落地文件审计。
+
+P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；开发阶段没有执行磁盘格式化、真实打印机安装或凭据配置。
 
 ### P1：远程 API、代理与知识库
 
@@ -563,6 +565,13 @@ repository/
 6. 将讨论中的事实、建议和待验证推测明确分开。
 
 ## 11. 变更日志
+
+### v0.3 — 2026-09-02
+
+- 记录已确认的 Fork、`feat/portable-initializer` 开发分支和 P0 实现状态。
+- 记录普通目录最小初始化器、数据保留行为与 PowerShell 5.1/7 CI 验证。
+- 新增 Windows x64 Runtime 组件锁，固定归档哈希/大小和 Hermes Git commit，禁止生产式 Runtime 跟随浮动 `main`。
+- 明确当前限制：完整 Windows Runtime 安装、修复/重建和宿主落地审计尚待实机验证。
 
 ### v0.2 — 2026-09-02
 

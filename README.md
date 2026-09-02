@@ -1,4 +1,4 @@
-# <p align="center">🛸 Hermes Agent — Portable & Cross-Platform</p>
+# <p align="center">🛸 Hermes Portable AI Workbench</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Hermes_Agent-Portable-8A2BE2?style=for-the-badge&logo=ai" alt="Hermes Agent Portable">
@@ -9,8 +9,8 @@
 ---
 
 <p align="center">
-  <strong>Run a fully self-contained, self-improving AI agent from a single folder or USB drive.</strong><br>
-  No global installation. Zero host pollution. All conversations, configs, memories, and skills stay inside your folder.
+  <strong>A portable AI operations workbench powered by Hermes Agent and remote model APIs.</strong><br>
+  No local GGUF model runtime. Private data and generated state are kept outside Git in the selected portable workspace.
 </p>
 
 <p align="center">
@@ -30,6 +30,16 @@
 *    **True Privacy & Isolation**: Your API keys (`data/.env`), conversations (`data/sessions/`), persistent memory, and custom skills are kept strictly within the portable folder.
 *    **Interactive Console Launcher**: Includes a beautiful terminal UI dashboard with state-tracking for setup status, LLM providers, and background gateways.
 *    **Full Hermes Capabilities**: Retains all features of [Nous Research's Hermes Agent](https://github.com/NousResearch/hermes-agent), including memory storage and reusable skill generation.
+
+## 🚧 Current Development Status
+
+Development is on `feat/portable-initializer`. The verified P0 baseline currently includes:
+
+- A repeatable ordinary-directory initializer that preserves existing user data and never formats storage.
+- A tracked Windows x64 component lock with exact versions, archive sizes, SHA-256 values, and a pinned Hermes Git commit.
+- Dependency-free initializer and lock tests on Windows PowerShell 5.1 and PowerShell 7.
+
+The custom Stitch workbench UI, full CLI/TUI/Desktop/WebUI entry set, model/proxy manager, private Obsidian integration, driver repository workflow, and real printer installation are planned work and are not implemented yet. The inherited launchers remain available, but cross-platform portability and host-write behavior have not yet completed the new project audit.
 
 ---
 
@@ -60,10 +70,10 @@ Hermes Portable solves the host-dependency issue by establishing a sandboxed run
 graph TD
     A[User triggers launch script] --> B{Runtimes setup?}
     B -- No / First Run --> C[Download Portable Python 3.11 & Node.js 22]
-    C --> D[Clone Hermes Agent Source to src/]
+    C --> D[Fetch the locked Hermes tag and verify its commit]
     D --> E[Create isolated virtual env using uv]
     E --> F[Install Python & Node packages locally]
-    F --> G[Generate ready.flag]
+    F --> G[Write runtime manifest and lock-bound ready.flag]
     B -- Yes / Ready --> H[Configure environment variables]
     G --> H
     H --> I[Set HERMES_HOME = data/]
@@ -124,29 +134,9 @@ Alternatively, you can select option **`[2]` (Setup / Reconfigure)** in the Laun
 
 ---
 
-## 🧠 Using a Local Ollama Instance
+## 🧠 Model Runtime Policy
 
-Hermes Portable can use an Ollama server that is already running on the same computer. Start Ollama first, then pull a model:
-
-```bash
-ollama pull qwen3.6
-```
-
-Launch Hermes Portable and choose **`[2]` Setup / Reconfigure Hermes**. In the Hermes setup wizard:
-
-1. Choose **Quick setup**.
-2. Select **More providers**.
-3. Select **Custom endpoint (enter URL manually)**.
-4. Enter the local OpenAI-compatible Ollama endpoint:
-
-```text
-http://127.0.0.1:11434/v1
-```
-
-5. Leave the API key blank when prompted.
-6. Select the detected Ollama model and leave context length blank to auto-detect it.
-
-For a remote Ollama host, use the same `/v1` endpoint format, for example `http://192.168.1.20:11434/v1`. Make sure the Ollama host is reachable from the computer running Hermes Portable.
+This project targets remote model APIs. Local GGUF models, llama.cpp, and a bundled Ollama runtime are intentionally outside the main product scope. Provider credentials and model routing will be managed through Hermes-compatible configuration and the planned workbench UI.
 
 ---
 
@@ -154,11 +144,10 @@ For a remote Ollama host, use the same `/v1` endpoint format, for example `http:
 
 | Operating System | CPU Architecture | Setup Status | Notes |
 | :--- | :--- | :--- | :--- |
-| **Windows 10 / 11** | x86_64 | ✅ Supported | Default Powershell ExecutionPolicy bypassed for script |
-| **macOS 13+** | Apple Silicon (ARM64) | ✅ Supported | Native M1/M2/M3 execution |
-| **macOS 13+** | Intel (x86_64) | ✅ Supported | Legacy Intel Mac support |
-| **Linux (Ubuntu/Arch/Debian)** | x86_64 | ✅ Supported | Fully self-contained |
-| **Linux (Fedora/CentOS)** | ARM64 | ✅ Supported | Supports SBCs and ARM Servers |
+| **Windows 10 / 11** | x86_64 | 🚧 P0 in progress | Initializer and component-lock tests are verified; complete setup still needs a Windows installation test |
+| **macOS 13+** | Apple Silicon (ARM64) | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |
+| **macOS 13+** | Intel (x86_64) | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |
+| **Linux** | x86_64 / ARM64 | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |
 
 ---
 
@@ -189,14 +178,9 @@ Recommended USB / external drive free space:
 
 ## 🔄 Updating Hermes Agent
 
-Keep your agent up-to-date with the latest improvements from Nous Research:
+Production-style portable environments must use the reviewed component lock in `manifests/runtime-components.windows-x64.json`. Update the Hermes version, tag, commit, and compatible package pins together; review the diff; run the lock and initializer tests; then rebuild the managed Runtime.
 
-*   **Via Chat Command**: Within an active Hermes conversation, type:
-    ```text
-    /hermes update
-    ```
-*   **Via Launcher**: Navigate to `[4] Advanced Options` -> `[5] Update Hermes` in the Launcher terminal dashboard.
-*   **Manual Rebuild**: Delete `.cache/runtimes/<your-platform>` and the `src/hermes-agent` directory, then re-run the launcher to fetch the latest code from scratch.
+Do not use `/hermes update` or another floating update path for a lock-managed environment. Those paths bypass the reviewed version/commit relationship and make the resulting Runtime difficult to reproduce or audit.
 
 ---
 

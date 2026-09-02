@@ -12,9 +12,22 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 
 ```powershell
 .\tests\portable-initializer.Tests.ps1
+.\tests\runtime-component-lock.Tests.ps1
 ```
 
 See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
+
+## Windows Runtime Component Lock
+
+`manifests/runtime-components.windows-x64.json` is the reviewed source of truth for the Windows x64 Runtime. `scripts/setup-windows.ps1` verifies the exact byte size and SHA-256 of every downloaded archive, fetches Hermes by a pinned tag, verifies the exact Git commit, and only writes `ready.flag` after recording `runtime-manifest.json`.
+
+Run the static lock/setup contract test without downloading or installing anything:
+
+```powershell
+pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
+```
+
+Do not use `hermes update` on a lock-managed Runtime. Update and review the component lock, run both test scripts, and rebuild the managed Runtime instead.
 
 ## Portable Launcher Commands
 
@@ -37,7 +50,7 @@ These are the commands you type in your terminal / PowerShell.
 | `launch.bat hermes config` | View current config |
 | `launch.bat hermes config edit` | Edit config in default editor |
 | `launch.bat hermes chat` | Start chat mode |
-| `launch.bat hermes update` | Update Hermes to latest version |
+| `launch.bat hermes update` | Upstream floating update; do not use for a lock-managed Runtime |
 
 ### macOS / Linux (`launch.sh`)
 
@@ -49,7 +62,7 @@ These are the commands you type in your terminal / PowerShell.
 | `./launch.sh hermes doctor` | Check for issues |
 | `./launch.sh hermes status` | Show status |
 | `./launch.sh hermes config` | View config |
-| `./launch.sh hermes update` | Update Hermes |
+| `./launch.sh hermes update` | Upstream floating update; do not use for a lock-managed Runtime |
 
 ---
 

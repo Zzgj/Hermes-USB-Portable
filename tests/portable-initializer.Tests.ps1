@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$InitializerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/initialize-portable.ps1")
+    [string]$InitializerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/initialize-portable.ps1"),
+    [string]$ComponentLockPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "manifests/runtime-components.windows-x64.json")
 )
 
 Set-StrictMode -Version Latest
@@ -30,14 +31,18 @@ function ConvertTo-NativeArgument {
 }
 
 function Invoke-Initializer {
-    param([string]$Target)
+    param(
+        [string]$Target,
+        [string]$LockPath = $ComponentLockPath
+    )
 
     $hostExecutable = (Get-Process -Id $PID).Path
     $initializerArgument = ConvertTo-NativeArgument -Value $InitializerPath
     $targetArgument = ConvertTo-NativeArgument -Value $Target
+    $lockArgument = ConvertTo-NativeArgument -Value $LockPath
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $hostExecutable
-    $startInfo.Arguments = "-NoLogo -NoProfile -File $initializerArgument -TargetDirectory $targetArgument"
+    $startInfo.Arguments = "-NoLogo -NoProfile -File $initializerArgument -TargetDirectory $targetArgument -ComponentLockPath $lockArgument"
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardOutput = $true
@@ -92,10 +97,19 @@ try {
     $manifestPath = Join-Path $target "portable-ai.manifest.json"
     Assert-True (Test-Path -LiteralPath $manifestPath -PathType Leaf) "manifest should exist"
     $manifestBefore = Get-Content -LiteralPath $manifestPath -Raw
+    $manifest = $manifestBefore | ConvertFrom-Json
+    $expectedLockHash = (Get-FileHash -LiteralPath $ComponentLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Assert-True ($manifest.component_lock_sha256 -eq $expectedLockHash) "manifest should identify the exact component lock"
+    Assert-True (@($manifest.components).Count -eq 6) "manifest should contain every locked runtime component"
+    $hermesComponent = @($manifest.components | Where-Object { $_.id -eq "hermes-agent" })
+    Assert-True ($hermesComponent.Count -eq 1) "manifest should contain one Hermes component"
+    Assert-True ($hermesComponent[0].version -eq "0.21.0") "Hermes version should be pinned"
+    Assert-True ($hermesComponent[0].source.commit -eq "29112bef099274229cadff79cdff7bf7b99c4b77") "Hermes commit should be pinned"
     $reportsBefore = @(Get-ChildItem -LiteralPath (Join-Path $target "logs/initializer") -Filter "environment-check-*.json")
     Assert-True ($reportsBefore.Count -eq 1) "first run should create one environment report"
     $firstReport = $reportsBefore[0] | Get-Content -Raw | ConvertFrom-Json
     Assert-True ($firstReport.status -eq "succeeded") "first report should indicate success"
+    Assert-True ($firstReport.component_lock.sha256 -eq $expectedLockHash) "environment report should identify the exact component lock"
     Assert-True ($firstReport.safety.disk_formatting_performed -eq $false) "report should confirm no formatting"
     Assert-True ($firstReport.safety.symbolic_links_followed -eq $false) "report should confirm no linked paths were followed"
 
@@ -135,6 +149,22 @@ try {
         Assert-True (-not (Test-Path -LiteralPath (Join-Path $outsideRuntime "hermes"))) "initializer should not follow a linked directory"
     }
 
+    $missingLockTarget = Join-Path $testRoot "missing-lock-target"
+    $missingLockPath = Join-Path $testRoot "missing-components.json"
+    $missingLockExitCode = Invoke-Initializer -Target $missingLockTarget -LockPath $missingLockPath
+    Assert-True ($missingLockExitCode -eq 3) "a missing component lock should be a configuration failure"
+    Assert-True (-not (Test-Path -LiteralPath $missingLockTarget)) "an invalid component lock should fail before target mutation"
+
+    $malformedLockPath = Join-Path $testRoot "malformed-components.json"
+    $malformedLock = Get-Content -LiteralPath $ComponentLockPath -Raw | ConvertFrom-Json
+    $malformedLock.components[0].integrity.sha256 = "not-a-sha256"
+    $malformedLockJson = $malformedLock | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText($malformedLockPath, $malformedLockJson)
+    $malformedLockTarget = Join-Path $testRoot "malformed-lock-target"
+    $malformedLockExitCode = Invoke-Initializer -Target $malformedLockTarget -LockPath $malformedLockPath
+    Assert-True ($malformedLockExitCode -eq 3) "a malformed component lock should be a configuration failure"
+    Assert-True (-not (Test-Path -LiteralPath $malformedLockTarget)) "a malformed component lock should fail before target mutation"
+
     $filesystemRoot = [System.IO.Path]::GetPathRoot($testRoot)
     $rootExitCode = Invoke-Initializer -Target $filesystemRoot
     Assert-True ($rootExitCode -eq 2) "filesystem roots should be rejected"
@@ -164,8 +194,3 @@ finally {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }
 }
-
-# The test intentionally invokes child PowerShell processes that return non-zero
-# exit codes. Reset the host result so CI wrappers do not report an expected
-# negative test as the final script status.
-exit 0

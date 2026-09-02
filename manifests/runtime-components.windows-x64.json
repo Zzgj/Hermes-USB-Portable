@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "platform": "windows-x64",
+  "updated_at_utc": "2026-09-02T00:00:00Z",
+  "components": [
+    {
+      "id": "python",
+      "version": "3.11.15+20260602",
+      "source": {
+        "type": "archive",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/cpython-3.11.15%2B20260602-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "archive_type": "tar.gz",
+        "size_bytes": 48477564
+      },
+      "integrity": {
+        "sha256": "985169a3aab1413eddaccf417c0ce36671ada2bcb8fcc0852b29963c3cfa0146",
+        "source": "https://github.com/astral-sh/python-build-standalone/releases/download/20260602/SHA256SUMS"
+      }
+    },
+    {
+      "id": "node",
+      "version": "22.22.3",
+      "source": {
+        "type": "archive",
+        "url": "https://nodejs.org/dist/v22.22.3/node-v22.22.3-win-x64.zip",
+        "archive_type": "zip",
+        "size_bytes": 35674109
+      },
+      "integrity": {
+        "sha256": "6c8d54f635feff4df76c2ca80f45332eb2ff57d25226edce36592e51a177ee33",
+        "source": "https://nodejs.org/dist/v22.22.3/SHASUMS256.txt"
+      }
+    },
+    {
+      "id": "uv",
+      "version": "0.11.19",
+      "source": {
+        "type": "archive",
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.19/uv-x86_64-pc-windows-msvc.zip",
+        "archive_type": "zip",
+        "size_bytes": 23313765
+      },
+      "integrity": {
+        "sha256": "1665fc8e37b5d70a134820d6d7891747471a2ac8bc940ee7af0b69fd03b28d61",
+        "source": "https://github.com/astral-sh/uv/releases/download/0.11.19/uv-x86_64-pc-windows-msvc.zip.sha256"
+      }
+    },
+    {
+      "id": "ripgrep",
+      "version": "15.1.0",
+      "source": {
+        "type": "archive",
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep-15.1.0-x86_64-pc-windows-msvc.zip",
+        "archive_type": "zip",
+        "size_bytes": 1810687
+      },
+      "integrity": {
+        "sha256": "124510b94b6baa3380d051fdf4650eaa80a302c876d611e9dba0b2e18d87493a",
+        "source": "https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep-15.1.0-x86_64-pc-windows-msvc.zip.sha256"
+      }
+    },
+    {
+      "id": "mingit",
+      "version": "2.54.0.windows.1",
+      "source": {
+        "type": "archive",
+        "url": "https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/MinGit-2.54.0-64-bit.zip",
+        "archive_type": "zip",
+        "size_bytes": 39989839
+      },
+      "integrity": {
+        "sha256": "04f937e1f0918b17b9be6f2294cb2bb66e96e1d9832d1c298e2de088a1d0e668",
+        "source": "https://github.com/git-for-windows/git/releases/tag/v2.54.0.windows.1"
+      }
+    },
+    {
+      "id": "hermes-agent",
+      "version": "0.21.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/NousResearch/hermes-agent.git",
+        "ref": "v2026.8.31",
+        "commit": "29112bef099274229cadff79cdff7bf7b99c4b77"
+      }
+    }
+  ],
+  "supplemental_python_packages": [
+    {
+      "requirement": "anthropic==0.87.0",
+      "reason": "Hermes native Anthropic provider pin at commit 29112bef099274229cadff79cdff7bf7b99c4b77"
+    },
+    {
+      "requirement": "python-telegram-bot[webhooks]==22.8",
+      "reason": "Hermes messaging extra pin at commit 29112bef099274229cadff79cdff7bf7b99c4b77"
+    }
+  ]
+}
