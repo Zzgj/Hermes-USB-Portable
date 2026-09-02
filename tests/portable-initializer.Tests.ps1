@@ -110,3 +110,8 @@ finally {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }
 }
+
+# The test intentionally invokes child PowerShell processes that return non-zero
+# exit codes. Reset the host result so CI wrappers do not report an expected
+# negative test as the final script status.
+exit 0
