@@ -6,8 +6,8 @@
 |---|---|
 | 当前阶段 | **P0：保留原版能力并建立可验证基线** |
 | 当前分支 | `feat/portable-initializer` |
-| 已完成里程碑 | Fork/迁移确认、最小初始化器、Windows Runtime 组件校验基线、统一日志目录与来源目录 |
-| 当前任务 | **P0-07/P0-08/P0-12 Windows 更新、主流程、日志与路径实测** |
+| 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录与来源目录 |
+| 当前任务 | **P0-08/P0-09 Windows 首次 Runtime 安装、主流程与日志实测** |
 | 下一个验收门 | Windows 10/11 x64 普通目录完成首次启动、更新、中断重试和数据保留测试 |
 | 最近更新 | 2026-09-03 |
 
@@ -62,14 +62,14 @@
 - [x] **P0-02** 检查 `.gitignore` 和已跟踪文件，排除凭据、Runtime、日志、Sessions、私人知识库和驱动二进制。
 - [x] **P0-03** 恢复架构备忘、迁移交接指南和本计划清单。
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
-- [-] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 入口修复已通过 CI；第一次用户 Win10 重试发现简体中文系统的 UTF-8 无 BOM/ANSI 解码差异，已增加显式 UTF-8 读取和 Unicode 路径往返断言，GitHub Actions run `33729932116` 的 PowerShell 5.1/7 均通过，待用户再验证。
+- [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
 - [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
 - [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；仍需在 Windows 实测 `launch.bat`、Chat、Setup、Gateway、配置编辑和 Update。
 - [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；记录时间、空间、网络失败和不含凭据的诊断信息。
 - [!] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
-- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：已通过用户 F 盘实测发现 Windows PowerShell 5.1 中文路径 JSON 解码问题，修复和 CI 回归已通过，待用户再验证；其余盘符移动与 venv 仍未实测。
+- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘实测已验证脚本位于非系统盘且临时目标路径含空格/中文时，Windows PowerShell 5.1 与 UTF-8 JSON 正确工作；目标直接位于 U 盘、盘符移动与 venv 修复仍未实测。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。
 - [ ] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档。
 
@@ -190,9 +190,9 @@
 
 ## 当前立即执行顺序
 
-1. 完成 **P0-07**：实机验证 Hermes 官方更新流程和 Portable 数据边界；启动器只增加检查、计划与确认，不复制上游更新/回退实现。
-2. 完成 **P0-08**：使用统一日志目录记录原项目主流入口冒烟测试，验证日志完整性与敏感信息边界。
-3. 在专用 Windows 测试目录完成 **P0-09/P0-10**，不使用真实工作 U 盘。
+1. 在专用 Windows 测试目录完成 **P0-09** 首次 Runtime 安装，同时按 **P0-08** 核对 Setup 与 Launcher 日志；不使用存有重要资料的工作 U 盘。
+2. 完成 **P0-07**：实机验证 Hermes 官方更新流程和 Portable 数据边界；启动器只增加检查、计划与确认，不复制上游更新/回退实现。
+3. 完成 **P0-08/P0-10**：使用统一日志目录记录原项目主流入口冒烟测试，再验证中断重试、失败回退、日志完整性和敏感信息边界。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。
 5. P0 验收后才开始 P1；不跳过基线直接执行打印机安装。
 
