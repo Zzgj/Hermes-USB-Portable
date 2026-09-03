@@ -33,7 +33,7 @@
 - 用户在简体中文 Win10/F 盘实测时，证明 Runtime 组件锁、启动器和日志布局测试通过；同时发现并修复 Windows PowerShell 5.1 对 UTF-8 无 BOM 脚本字面量与 JSON 的 ANSI 误解码，测试现在通过 Unicode 码点生成中文路径并断言 JSON 往返不损坏。
 - 用户已在同一简体中文 Win10/Windows PowerShell 5.1 环境重试修复版：中文路径显示正确，初始化器的新建、幂等保留、冲突拒绝、无效锁拒绝和磁盘根目录拒绝全部通过；符号链接测试因普通用户缺少 Windows 创建链接权限而按设计跳过，无需提权。
 - 用户第一次从健康 exFAT U 盘运行完整 `launch.bat`：Python 的 curl 下载中断后由 PowerShell 备用通道完成并通过校验，Node/uv 归档也通过校验；随后 uv 暂存目录移动被 Windows 拒绝，`ready.flag` 未生成，因此该次运行没有被误判为成功。失败后的部分 `.cache` 由用户手动删除，不需要从回收站恢复。
-- 针对可移动盘暂存提交增加有限指数退避重试、记录异常类型/HRESULT、带文件数量/大小/SHA-256 校验的复制降级、旧 Runtime 备份/回滚和安装后 Python/uv/Git/Hermes 验证；新增强制移动失败的自动化测试。Linux 上的 PowerShell 7 本地回归已通过，Windows CI 和同一 exFAT U 盘复验待完成。
+- 针对可移动盘暂存提交增加有限指数退避重试、记录异常类型/HRESULT、带文件数量/大小/SHA-256 校验的复制降级、旧 Runtime 备份/回滚和安装后 Python/uv/Git/Hermes 验证；新增强制移动失败的自动化测试。Linux PowerShell 7 本地回归及 GitHub Actions run 33736153394 的 Windows PowerShell 5.1/7 均通过，同一 exFAT U 盘复验待完成。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
