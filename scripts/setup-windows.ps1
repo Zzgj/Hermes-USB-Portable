@@ -12,6 +12,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$RuntimeFilesystemScript = Join-Path $PSScriptRoot "runtime-filesystem.ps1"
+if (-not (Test-Path -LiteralPath $RuntimeFilesystemScript -PathType Leaf)) {
+    throw "Runtime filesystem helper not found: $RuntimeFilesystemScript"
+}
+. $RuntimeFilesystemScript
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -310,40 +316,6 @@ function Move-SubfolderContents($Source, $Dest) {
     }
 }
 
-function Install-StagedDirectory($Source, $Dest) {
-    if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
-        throw "Staged source directory not found: $Source"
-    }
-
-    if ((Test-Path -LiteralPath $Dest) -and -not (Test-Path -LiteralPath $Dest -PathType Container)) {
-        throw "Destination exists and is not a directory: $Dest"
-    }
-
-    $backup = $Dest + ".backup-" + [Guid]::NewGuid().ToString("N")
-    $hadExisting = Test-Path -LiteralPath $Dest -PathType Container
-    $installedNew = $false
-    if ($hadExisting) {
-        Move-Item -LiteralPath $Dest -Destination $backup
-    }
-
-    try {
-        Move-Item -LiteralPath $Source -Destination $Dest
-        $installedNew = $true
-        if ($hadExisting -and (Test-Path -LiteralPath $backup)) {
-            Remove-Item -LiteralPath $backup -Recurse -Force
-        }
-    }
-    catch {
-        if ($installedNew -and (Test-Path -LiteralPath $Dest)) {
-            Remove-Item -LiteralPath $Dest -Recurse -Force -ErrorAction SilentlyContinue
-        }
-        if ($hadExisting -and (Test-Path -LiteralPath $backup)) {
-            Move-Item -LiteralPath $backup -Destination $Dest
-        }
-        throw
-    }
-}
-
 # ---------------------------------------------------------------------------
 # Health check: if ready.flag exists but core files are missing, start fresh
 # ---------------------------------------------------------------------------
@@ -372,6 +344,9 @@ if (-not (Test-Path -LiteralPath $stagedPythonExe -PathType Leaf)) {
 & $stagedPythonExe --version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Portable Python verification failed" }
 Install-StagedDirectory $pythonTemp (Join-Path $RuntimeDir "python")
+$installedPythonExe = Join-Path $RuntimeDir "python\python.exe"
+& $installedPythonExe --version | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Installed portable Python verification failed" }
 Write-Done "Python ready"
 
 # ---------------------------------------------------------------------------
@@ -419,6 +394,9 @@ if ($stagedUvExe.DirectoryName -ne $uvTemp) {
 & $stagedUvExe.FullName --version | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "uv verification failed" }
 Install-StagedDirectory $uvTemp (Join-Path $RuntimeDir "uv")
+$installedUvExe = Join-Path $RuntimeDir "uv\uv.exe"
+& $installedUvExe --version | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Installed uv verification failed" }
 Write-Done "uv ready"
 
 # ---------------------------------------------------------------------------
@@ -455,6 +433,8 @@ if (-not (Test-Path -LiteralPath $stagedGitExe -PathType Leaf)) {
 if ($LASTEXITCODE -ne 0) { throw "Portable Git verification failed" }
 Install-StagedDirectory $gitTemp (Join-Path $RuntimeDir "git")
 $gitExe = Join-Path $RuntimeDir "git\cmd\git.exe"
+& $gitExe --version | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Installed portable Git verification failed" }
 Write-Done "Git ready"
 
 # ---------------------------------------------------------------------------
@@ -495,6 +475,10 @@ $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
 # is the reviewed bootstrap state, not a permanent update ceiling.
 $destSrc = Join-Path $SrcDir "hermes-agent"
 Install-StagedDirectory $srcTemp $destSrc
+$installedHermesCommit = (& $gitExe -C $destSrc rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $installedHermesCommit -ne $actualHermesCommit) {
+    throw "Installed Hermes source verification failed: expected $actualHermesCommit, got $installedHermesCommit"
+}
 Write-Done "Hermes $($HermesComponent.version) source ready at commit $actualHermesCommit"
 
 # ---------------------------------------------------------------------------

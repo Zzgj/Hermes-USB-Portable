@@ -28,6 +28,7 @@ jobs:
           $testScripts = @(
             ".\tests\portable-initializer.Tests.ps1",
             ".\tests\runtime-component-lock.Tests.ps1",
+            ".\tests\runtime-filesystem.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
@@ -54,6 +55,7 @@ jobs:
           $testScripts = @(
             ".\tests\portable-initializer.Tests.ps1",
             ".\tests\runtime-component-lock.Tests.ps1",
+            ".\tests\runtime-filesystem.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )

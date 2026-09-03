@@ -2,8 +2,8 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v1.7 |
-| 交接日期 | 2026-09-02 |
+| 文档版本 | v1.8 |
+| 交接日期 | 2026-09-03 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
 | 核心文档 | `docs/PROJECT-PLAN.md`、`docs/Portable-AI-Assistant-优化与架构备忘.md` |
@@ -32,11 +32,13 @@
 - 建立顶层 `logs/` 分类目录、结构化启动器事件、Setup/Doctor/更新观察记录及 `manifests/log-sources.json` 来源目录；原始日志仍不进入 Git。
 - 用户在简体中文 Win10/F 盘实测时，证明 Runtime 组件锁、启动器和日志布局测试通过；同时发现并修复 Windows PowerShell 5.1 对 UTF-8 无 BOM 脚本字面量与 JSON 的 ANSI 误解码，测试现在通过 Unicode 码点生成中文路径并断言 JSON 往返不损坏。
 - 用户已在同一简体中文 Win10/Windows PowerShell 5.1 环境重试修复版：中文路径显示正确，初始化器的新建、幂等保留、冲突拒绝、无效锁拒绝和磁盘根目录拒绝全部通过；符号链接测试因普通用户缺少 Windows 创建链接权限而按设计跳过，无需提权。
+- 用户第一次从健康 exFAT U 盘运行完整 `launch.bat`：Python 的 curl 下载中断后由 PowerShell 备用通道完成并通过校验，Node/uv 归档也通过校验；随后 uv 暂存目录移动被 Windows 拒绝，`ready.flag` 未生成，因此该次运行没有被误判为成功。失败后的部分 `.cache` 由用户手动删除，不需要从回收站恢复。
+- 针对可移动盘暂存提交增加有限指数退避重试、记录异常类型/HRESULT、带文件数量/大小/SHA-256 校验的复制降级、旧 Runtime 备份/回滚和安装后 Python/uv/Git/Hermes 验证；新增强制移动失败的自动化测试。Linux 上的 PowerShell 7 本地回归已通过，Windows CI 和同一 exFAT U 盘复验待完成。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
-- 尚未在 Windows 10/11 x64 实机执行完整 Runtime 下载、安装、失败恢复和重建测试。
+- Windows 10/exFAT 首次 Runtime 实测已进入安装阶段并验证失败可识别，但尚未完成修复版的完整安装、失败恢复和重建验收。
 - 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、回执、实际版本/commit、数据保留和失败回退验证。
 - 尚未在 Windows 实机验证 Setup transcript、Doctor/更新观察日志的内容完整性、编码和脱敏边界。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
@@ -290,4 +292,4 @@ git diff --cached
 
 ## 10. 当前最重要的下一步
 
-最小初始化器已完成。当前以 `docs/PROJECT-PLAN.md` 为实施顺序，先完成 P0-07：保留原 `Update Hermes` 能力，验证更新检查、用户数据保留、版本/commit 记录、更新后健康检查和失败回退。随后在专用 Windows 10/11 x64 测试目录验证完整 Runtime 和原启动器主流流程；仍不执行真实打印机安装。
+最小初始化器已完成。当前先在同一 Windows 10/exFAT 测试 U 盘的全新代码目录复验 Runtime 移动重试与校验复制降级，完成 P0-09 首次安装；随后完成 P0-07 的官方更新检查、数据保留、版本/commit、更新后健康检查和失败回退，再继续原启动器主流流程。仍不执行真实打印机安装。

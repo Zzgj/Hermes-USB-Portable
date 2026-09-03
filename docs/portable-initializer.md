@@ -40,10 +40,11 @@ Run the dependency-free test script from PowerShell:
 ```powershell
 pwsh -NoProfile -File .\tests\portable-initializer.Tests.ps1
 pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
+pwsh -NoProfile -File .\tests\runtime-filesystem.Tests.ps1
 pwsh -NoProfile -File .\tests\portable-launcher.Tests.ps1
 pwsh -NoProfile -File .\tests\log-layout.Tests.ps1
 ```
 
-The test covers component-lock validation, creation of a missing target, a path containing spaces and non-ASCII characters, repeat execution, preservation of a sentinel user file and the manifest, file/directory and symbolic-link collisions, identifiable failure reports, and rejection of filesystem roots.
+The tests cover component-lock validation, staged Runtime move retry and verified copy fallback, creation of a missing target, a path containing spaces and non-ASCII characters, repeat execution, preservation of a sentinel user file and the manifest, file/directory and symbolic-link collisions, identifiable failure reports, and rejection of filesystem roots.
 
 GitHub Actions runs the same parser and behavior tests on `windows-latest` with both Windows PowerShell and PowerShell 7. The workflow has read-only repository permissions and pins the checkout action to a reviewed commit.

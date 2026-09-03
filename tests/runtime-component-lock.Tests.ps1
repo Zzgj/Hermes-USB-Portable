@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$ComponentLockPath,
-    [string]$SetupScriptPath
+    [string]$SetupScriptPath,
+    [string]$RuntimeFilesystemPath
 )
 
 Set-StrictMode -Version Latest
@@ -17,6 +18,9 @@ if ([string]::IsNullOrWhiteSpace($ComponentLockPath)) {
 }
 if ([string]::IsNullOrWhiteSpace($SetupScriptPath)) {
     $SetupScriptPath = Join-Path $repositoryRoot "scripts/setup-windows.ps1"
+}
+if ([string]::IsNullOrWhiteSpace($RuntimeFilesystemPath)) {
+    $RuntimeFilesystemPath = Join-Path $repositoryRoot "scripts/runtime-filesystem.ps1"
 }
 
 function Assert-True {
@@ -80,7 +84,9 @@ try {
     Assert-True ($hermes.update_policy.rollback_required -eq $true) "Hermes update design should require rollback support"
 
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
+    $filesystemSource = Get-Content -LiteralPath $RuntimeFilesystemPath -Raw -Encoding UTF8
     Assert-True ($setupSource -match 'runtime-components\.windows-x64\.json') "setup should consume the component lock"
+    Assert-True ($setupSource -match 'runtime-filesystem\.ps1') "setup should consume the removable-drive-safe filesystem helper"
     Assert-True ($setupSource -match 'Assert-ArchiveIntegrity') "setup should verify downloaded archives"
     Assert-True ($setupSource -match 'HermesComponent\.source\.commit') "setup should verify the Hermes commit"
     Assert-True ($setupSource -match '\.portable-source\.json') "setup should record the installed Hermes source state"
@@ -90,6 +96,12 @@ try {
     Assert-True ($setupSource -match 'Get-ChildItem -Path \$CacheDir, \$SrcDir, \$TempDir') "metadata cleanup should stay inside setup-managed directories"
     Assert-True (-not ($setupSource -match 'Get-ChildItem -Path \$Root -Filter "\._\*"')) "setup should not recursively delete metadata files from user-owned root content"
     Assert-True (-not ($setupSource -match 'archive/refs/heads/main|anthropic>=0\.39\.0|telegram-bot\[webhooks\]==22\.6')) "setup should not use removed floating or stale pins"
+    Assert-True ($filesystemSource -match 'Invoke-DirectoryMoveWithRetry') "runtime installs should retry transient directory move failures"
+    Assert-True ($filesystemSource -match 'Copy-StagedDirectory') "runtime installs should have a copy fallback"
+    Assert-True ($filesystemSource -match 'Copy fallback file-count mismatch') "copy fallback should verify the installed file set"
+    Assert-True ($filesystemSource -match 'Copy fallback SHA-256 mismatch') "copy fallback should verify file content"
+    Assert-True ($filesystemSource -match 'HRESULT') "runtime move failures should report diagnostic exception details"
+    Assert-True ($setupSource -match 'Installed uv verification failed') "setup should verify uv after installing it into the runtime"
 
     Write-Host "Runtime component lock tests passed."
 }
