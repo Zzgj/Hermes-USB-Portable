@@ -481,13 +481,13 @@ repository/
 - [x] 先实现目录模式的最小初始化器和标准目录结构。
 - [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；修复/重建尚未实测）。
 - [x] 建立可重复测试的 `feat/portable-initializer` 分支。
-- [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit 和更新策略已记录；Hermes 更新/回退实测、Python 传递依赖锁、许可证/SBOM 和完整 Windows 安装尚待完成）。
+- [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit、完整 Win10/exFAT 首次安装和幂等启动已验证；Hermes 更新/回退实测、Python 传递依赖锁和许可证/SBOM 尚待完成）。
 - [ ] 移植 Desktop 菜单项。
 - [ ] 增加 CLI、TUI、Dashboard、Desktop 独立入口。
 - [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
 - [ ] 完成宿主机落地文件审计。
 
-P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；开发阶段没有执行磁盘格式化、真实打印机安装或凭据配置。
+P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。可选 Playwright 失败已隔离，仍待诊断；开发阶段没有执行磁盘格式化、真实打印机安装或凭据配置。
 
 ### P1：远程 API、代理与知识库
 
@@ -580,6 +580,12 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 6. 将讨论中的事实、建议和待验证推测明确分开。
 
 ## 11. 变更日志
+
+### v0.7 — 2026-09-03
+
+- 完成 P0-09 Win10/exFAT U 盘核心 Runtime 首次安装与幂等启动实机验收。
+- 验证 Runtime 归档缓存/完整性、目录移动重试、portable Git 精确信任、Hermes bootstrap commit、venv 和依赖安装。
+- 记录后续 P0-10 缺口：组件级续跑、Hermes 暂存恢复、取消/失败退出，以及 Playwright 可选安装的独立诊断日志。
 
 ### v0.6 — 2026-09-03
 

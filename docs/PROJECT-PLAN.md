@@ -6,9 +6,9 @@
 |---|---|
 | 当前阶段 | **P0：保留原版能力并建立可验证基线** |
 | 当前分支 | `feat/portable-initializer` |
-| 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录与来源目录、Runtime 移动重试与校验复制降级 |
-| 当前任务 | **P0-09 exFAT U 盘 portable Git 所有权兼容复验** |
-| 下一个验收门 | Windows 10 x64/exFAT 普通目录完成首次启动，再验证更新、中断重试和数据保留 |
+| 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动 |
+| 当前任务 | **P0-10 中断恢复、组件级续跑与可选 Playwright 诊断** |
+| 下一个验收门 | 修复弱网络失败后的重复解压/源码重取和误导提示，再验证官方更新与数据保留 |
 | 最近更新 | 2026-09-03 |
 
 ## 状态说明
@@ -65,11 +65,11 @@
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
 - [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
-- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；仍需在 Windows 实测 `launch.bat`、Chat、Setup、Gateway、配置编辑和 Update。
-- [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；第一次 exFAT 实测暴露 uv 校验后目录移动被拒绝，加入重试后第二次实测在第四次尝试成功并继续，证明修复有效。随后 MinGit 2.54 因 exFAT 不记录所有权而拒绝刚创建的 Hermes 暂存仓库；现改为只在启动器/Setup 子进程中精确信任受管的暂存与安装仓库，不写宿主全局 Git 配置、不使用通配信任。GitHub Actions run 33751910110 的 Windows PowerShell 5.1/7 已通过，待同一 exFAT 实机继续复验后完成此项。
-- [!] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；不开启 Full Reset。
+- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单，仍需实测 Chat、Setup、Gateway、配置编辑和 Update。
+- [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
+- [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；实机已证明下载缓存可复用、失败不生成虚假 `ready.flag`，也暴露了重新解压全部组件、跨运行不保留 Git fetch 进度、取消后退出状态和“删除 .cache”遗留提示问题；下一步修复这些恢复缺口，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
-- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘实测已验证脚本直接位于 exFAT U 盘，且临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确工作；首次 Runtime 安装已运行到 uv 暂存提交，修复后复验、盘符移动与 venv 修复仍未完成。
+- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确，portable Git 和重复启动可用；盘符移动与移动后 venv 修复仍未完成。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。
 - [ ] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档。
 
@@ -190,9 +190,9 @@
 
 ## 当前立即执行顺序
 
-1. 在同一 Windows 10/exFAT 测试 U 盘使用修复后的全新代码目录复验 **P0-09**，完成首次 Runtime 安装，同时按 **P0-08** 核对 Setup 与 Launcher 日志；不还原或混用之前手动删除的部分缓存。
+1. 完成 **P0-10**：增加可验证的组件级跳过/续跑，安全保留 Hermes 暂存获取状态，修正取消退出码和“删除 .cache”误导提示，并为可选 Playwright 失败保留诊断日志。
 2. 完成 **P0-07**：实机验证 Hermes 官方更新流程和 Portable 数据边界；启动器只增加检查、计划与确认，不复制上游更新/回退实现。
-3. 完成 **P0-08/P0-10**：使用统一日志目录记录原项目主流入口冒烟测试，再验证中断重试、失败回退、日志完整性和敏感信息边界。
+3. 完成 **P0-08**：在配置凭据的安全流程明确后，使用统一日志目录记录 Chat、Setup、Doctor、Gateway、配置编辑和 Update 冒烟测试。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。
 5. P0 验收后才开始 P1；不跳过基线直接执行打印机安装。
 
