@@ -7,7 +7,7 @@
 | 文档状态 | 活文档（持续维护） |
 | 当前版本 | v0.8 |
 | 建立日期 | 2026-09-02 |
-| 最近更新 | 2026-09-03 |
+| 最近更新 | 2026-09-04 |
 | 当前阶段 | P0 基线实现中 |
 | 进度清单 | [`docs/PROJECT-PLAN.md`](PROJECT-PLAN.md) |
 | 基础项目 | [techjarves/Hermes-USB-Portable](https://github.com/techjarves/Hermes-USB-Portable) |
@@ -487,7 +487,7 @@ repository/
 - [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
 - [ ] 完成宿主机落地文件审计。
 
-P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。P0-10 已增加原子组件回执、跳过前实时验证、Hermes 暂存续用、用户更新保护、失败后置条件和 Playwright 独立日志，并通过 PowerShell 7 本地 Parser/六组测试，尚待 Windows CI 与实机恢复矩阵；开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
+P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。P0-10 已增加原子组件回执、跳过前实时验证、Hermes 暂存续用、用户更新保护、失败后置条件和 Playwright 独立日志，并通过 PowerShell 7 本地 Parser/六组测试及 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7，尚待 Win10/exFAT 实机恢复矩阵；开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
 
 ### P1：远程 API、代理与知识库
 
@@ -581,12 +581,12 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 
 ## 11. 变更日志
 
-### v0.8 — 2026-09-03
+### v0.8 — 2026-09-04
 
 - 实现 P0-10 可验证组件回执与既有成功 Runtime 的无重装回执迁移；回执损坏、锁变化或真实安装验证失败时只重建对应步骤。
 - Hermes 受管暂存仓库可跨失败运行复用，修复流程保留用户通过官方来源主动更新后的 commit，不把 Hermes 永久锁死在 bootstrap 版本。
 - 启动器补充核心文件与 `ready.flag` 后置条件、正确失败提示和恢复指引；Playwright 可选安装获得独立诊断日志并登记到日志来源目录。
-- 新增恢复状态自动化测试并纳入 Windows PowerShell 5.1/7 CI；当前本地 PowerShell 7 验证通过，Windows 实机恢复/Soft Reset 仍待验收。
+- 新增恢复状态自动化测试并纳入 Windows PowerShell 5.1/7 CI；本地 PowerShell 7 及 GitHub Actions run `33775881283` 均通过，Windows 实机恢复/Soft Reset 仍待验收。
 
 ### v0.7 — 2026-09-03
 

@@ -3,7 +3,7 @@
 | 项目 | 内容 |
 |---|---|
 | 文档版本 | v2.1 |
-| 交接日期 | 2026-09-03 |
+| 交接日期 | 2026-09-04 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
 | 核心文档 | `docs/PROJECT-PLAN.md`、`docs/Portable-AI-Assistant-优化与架构备忘.md` |
@@ -43,7 +43,7 @@
 
 当前尚未完成：
 
-- Windows 10/exFAT 核心 Runtime 首次安装和幂等启动已通过；P0-10 自动化实现已在 Linux 上用 PowerShell 7 Parser 与六组测试验证，尚需 Windows PowerShell 5.1/7 CI 以及同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
+- Windows 10/exFAT 核心 Runtime 首次安装和幂等启动已通过；P0-10 自动化实现已通过 Linux PowerShell 7 Parser/六组测试及 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7，尚需同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
 - 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、回执、实际版本/commit、数据保留和失败回退验证。
 - 尚未在 Windows 实机验证 Setup transcript、Doctor/更新观察日志的内容完整性、编码和脱敏边界。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
