@@ -462,8 +462,21 @@ New-Item -ItemType Directory -Path $srcTemp | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Failed to initialize the Hermes source staging repository" }
 & $gitExe -C $srcTemp remote add origin $HermesComponent.source.url
 if ($LASTEXITCODE -ne 0) { throw "Failed to configure the Hermes source remote" }
-& $gitExe -C $srcTemp fetch --depth 1 origin ("refs/tags/" + $HermesComponent.source.ref)
-if ($LASTEXITCODE -ne 0) { throw "Failed to fetch Hermes ref $($HermesComponent.source.ref)" }
+$gitFetchSucceeded = $false
+$gitFetchAttempts = 4
+for ($gitFetchAttempt = 1; $gitFetchAttempt -le $gitFetchAttempts; $gitFetchAttempt++) {
+    & $gitExe -C $srcTemp fetch --depth 1 origin ("refs/tags/" + $HermesComponent.source.ref)
+    if ($LASTEXITCODE -eq 0) {
+        $gitFetchSucceeded = $true
+        break
+    }
+    if ($gitFetchAttempt -lt $gitFetchAttempts) {
+        $gitFetchDelaySeconds = [Math]::Pow(2, $gitFetchAttempt)
+        Write-Warn "Hermes source fetch attempt $gitFetchAttempt/$gitFetchAttempts failed; retrying in $gitFetchDelaySeconds seconds ..."
+        Start-Sleep -Seconds $gitFetchDelaySeconds
+    }
+}
+if (-not $gitFetchSucceeded) { throw "Failed to fetch Hermes ref $($HermesComponent.source.ref) after $gitFetchAttempts attempts" }
 & $gitExe -C $srcTemp checkout --quiet --detach FETCH_HEAD
 if ($LASTEXITCODE -ne 0) { throw "Failed to check out Hermes ref $($HermesComponent.source.ref)" }
 $actualHermesCommit = (& $gitExe -C $srcTemp rev-parse HEAD).Trim()

@@ -104,6 +104,8 @@ try {
     Assert-True ($setupSource -match 'Installed uv verification failed') "setup should verify uv after installing it into the runtime"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_KEY_0 = "safe\.directory"') "setup should declare Git safe directories through command-scope environment configuration"
     Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "setup should never trust all repositories or modify host-global Git configuration"
+    Assert-True ($setupSource -match '\$gitFetchAttempts = 4') "Hermes source fetch should retry bounded network failures"
+    Assert-True ($setupSource -match 'Failed to fetch Hermes ref .* after \$gitFetchAttempts attempts') "Hermes source fetch should expose exhausted retries"
 
     Write-Host "Runtime component lock tests passed."
 }
