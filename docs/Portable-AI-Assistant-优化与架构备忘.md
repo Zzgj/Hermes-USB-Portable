@@ -5,7 +5,7 @@
 | 项目 | 内容 |
 |---|---|
 | 文档状态 | 活文档（持续维护） |
-| 当前版本 | v0.6 |
+| 当前版本 | v0.8 |
 | 建立日期 | 2026-09-02 |
 | 最近更新 | 2026-09-03 |
 | 当前阶段 | P0 基线实现中 |
@@ -479,7 +479,7 @@ repository/
 ### P0：基线与快速改进
 
 - [x] 先实现目录模式的最小初始化器和标准目录结构。
-- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；修复/重建尚未实测）。
+- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；组件回执、暂存恢复和失败状态已实现并通过 PowerShell 7 本地测试，Windows 实机修复/重建尚待验收）。
 - [x] 建立可重复测试的 `feat/portable-initializer` 分支。
 - [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit、完整 Win10/exFAT 首次安装和幂等启动已验证；Hermes 更新/回退实测、Python 传递依赖锁和许可证/SBOM 尚待完成）。
 - [ ] 移植 Desktop 菜单项。
@@ -487,7 +487,7 @@ repository/
 - [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
 - [ ] 完成宿主机落地文件审计。
 
-P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。可选 Playwright 失败已隔离，仍待诊断；开发阶段没有执行磁盘格式化、真实打印机安装或凭据配置。
+P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。P0-10 已增加原子组件回执、跳过前实时验证、Hermes 暂存续用、用户更新保护、失败后置条件和 Playwright 独立日志，并通过 PowerShell 7 本地 Parser/六组测试，尚待 Windows CI 与实机恢复矩阵；开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
 
 ### P1：远程 API、代理与知识库
 
@@ -580,6 +580,13 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 6. 将讨论中的事实、建议和待验证推测明确分开。
 
 ## 11. 变更日志
+
+### v0.8 — 2026-09-03
+
+- 实现 P0-10 可验证组件回执与既有成功 Runtime 的无重装回执迁移；回执损坏、锁变化或真实安装验证失败时只重建对应步骤。
+- Hermes 受管暂存仓库可跨失败运行复用，修复流程保留用户通过官方来源主动更新后的 commit，不把 Hermes 永久锁死在 bootstrap 版本。
+- 启动器补充核心文件与 `ready.flag` 后置条件、正确失败提示和恢复指引；Playwright 可选安装获得独立诊断日志并登记到日志来源目录。
+- 新增恢复状态自动化测试并纳入 Windows PowerShell 5.1/7 CI；当前本地 PowerShell 7 验证通过，Windows 实机恢复/Soft Reset 仍待验收。
 
 ### v0.7 — 2026-09-03
 

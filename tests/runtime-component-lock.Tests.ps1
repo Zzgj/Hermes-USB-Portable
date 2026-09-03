@@ -101,7 +101,7 @@ try {
     Assert-True ($filesystemSource -match 'Copy fallback file-count mismatch') "copy fallback should verify the installed file set"
     Assert-True ($filesystemSource -match 'Copy fallback SHA-256 mismatch') "copy fallback should verify file content"
     Assert-True ($filesystemSource -match 'HRESULT') "runtime move failures should report diagnostic exception details"
-    Assert-True ($setupSource -match 'Installed uv verification failed') "setup should verify uv after installing it into the runtime"
+    Assert-True ($setupSource -match 'Complete-SetupStep "uv"') "setup should verify uv and write its success receipt after installation"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_KEY_0 = "safe\.directory"') "setup should declare Git safe directories through command-scope environment configuration"
     Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "setup should never trust all repositories or modify host-global Git configuration"
     Assert-True ($setupSource -match '\$gitFetchAttempts = 4') "Hermes source fetch should retry bounded network failures"

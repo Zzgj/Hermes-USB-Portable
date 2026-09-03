@@ -71,11 +71,13 @@ try {
         "initializer-reports",
         "launcher-events",
         "setup-transcripts",
+        "playwright-setup-transcripts",
         "doctor-transcripts",
         "update-observation-transcripts",
         "hermes-logs",
         "update-receipts",
         "runtime-manifest",
+        "runtime-setup-receipts",
         "hermes-source-state",
         "diagnostic-exports"
     )

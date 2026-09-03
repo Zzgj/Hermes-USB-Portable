@@ -18,6 +18,12 @@ if (-not (Test-Path -LiteralPath $RuntimeFilesystemScript -PathType Leaf)) {
 }
 . $RuntimeFilesystemScript
 
+$RuntimeSetupStateScript = Join-Path $PSScriptRoot "runtime-setup-state.ps1"
+if (-not (Test-Path -LiteralPath $RuntimeSetupStateScript -PathType Leaf)) {
+    throw "Runtime setup state helper not found: $RuntimeSetupStateScript"
+}
+. $RuntimeSetupStateScript
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -25,6 +31,7 @@ $CacheDir   = Join-Path $Root ".cache"
 $RuntimeDir = Join-Path $CacheDir "runtimes\windows-x64"
 $SrcDir     = Join-Path $Root "src"
 $BinDir     = Join-Path $RuntimeDir "bin"
+$StateDir   = Join-Path $RuntimeDir "state"
 $TempDir    = Join-Path $Root ".tmp"
 $SetupLogDir = Join-Path (Join-Path $Root "logs") "setup"
 
@@ -45,6 +52,8 @@ $setupLogStamp = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
 $setupLogSuffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)
 $SetupLogPath = Join-Path $SetupLogDir ("setup-{0}-{1}.log" -f $setupLogStamp, $setupLogSuffix)
 $SetupTranscriptStarted = $false
+$SetupSucceeded = $false
+$SetupFailure = $null
 try {
     Start-Transcript -LiteralPath $SetupLogPath -Force | Out-Null
     $SetupTranscriptStarted = $true
@@ -143,7 +152,7 @@ if ($AnthropicRequirement -notmatch '^anthropic==[^\s=]+$' -or $TelegramRequirem
     throw "Supplemental Python packages must use exact version pins in $ComponentLockPath"
 }
 
-New-Item -ItemType Directory -Force -Path $RuntimeDir, $SrcDir, $BinDir, $TempDir | Out-Null
+New-Item -ItemType Directory -Force -Path $RuntimeDir, $SrcDir, $BinDir, $StateDir, $TempDir | Out-Null
 
 # Clean up macOS metadata junk files (._*) only inside setup-managed directories.
 # User-owned data and knowledge directories are deliberately outside this scope.
@@ -163,6 +172,113 @@ function Write-Done($msg) {
 
 function Write-Warn($msg) {
     Write-Host "[WARN]  $msg" -ForegroundColor Yellow
+}
+
+function Write-Skip($msg) {
+    Write-Host "[SKIP]  $msg (receipt and installed files verified)" -ForegroundColor DarkGreen
+}
+
+function Test-NativeCommand($FilePath, $Arguments, $ExpectedPattern = "") {
+    if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $commandOutput = (& $FilePath @Arguments 2>&1 | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            return $false
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ExpectedPattern) -and $commandOutput -notmatch $ExpectedPattern) {
+            return $false
+        }
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-VerifiedSetupStep($StepId, $Fingerprint, [scriptblock]$Verification) {
+    if (-not (Test-SetupReceipt -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint)) {
+        return $false
+    }
+
+    try {
+        if ([bool](& $Verification)) {
+            return $true
+        }
+    }
+    catch {}
+
+    Write-Warn "The '$StepId' receipt exists, but installed verification failed; rebuilding this step."
+    Remove-SetupReceipt -StateDirectory $StateDir -StepId $StepId
+    return $false
+}
+
+function Complete-SetupStep($StepId, $Fingerprint, [scriptblock]$Verification, [hashtable]$Details = @{}) {
+    if (-not [bool](& $Verification)) {
+        throw "Installed verification failed for setup step '$StepId'"
+    }
+    Write-SetupReceipt -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint -Details $Details | Out-Null
+}
+
+function Test-HermesRepository($GitPath, $RepositoryPath, $ExpectedCommit) {
+    if (-not (Test-Path -LiteralPath (Join-Path $RepositoryPath ".git") -PathType Container)) {
+        return $false
+    }
+    try {
+        $actualCommit = (& $GitPath -C $RepositoryPath rev-parse HEAD 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $actualCommit -notmatch '^[0-9a-fA-F]{40}$') {
+            return $false
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$ExpectedCommit)) {
+            return $true
+        }
+        return ($actualCommit -eq $ExpectedCommit)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Invoke-LoggedPlaywrightInstall($PythonPath, $LogPath) {
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $PythonPath
+    $startInfo.Arguments = "-m playwright install chromium"
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) {
+        throw "Unable to start the Playwright browser installer"
+    }
+
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $stdout = $stdoutTask.Result
+    $stderr = $stderrTask.Result
+    $combinedOutput = @(
+        "Playwright Chromium installer"
+        "Completed at UTC: $([DateTime]::UtcNow.ToString('o'))"
+        "Exit code: $($process.ExitCode)"
+        ""
+        $stdout
+        $stderr
+    ) -join [Environment]::NewLine
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($LogPath, $combinedOutput, $utf8WithoutBom)
+
+    if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+        Write-Host $stdout.TrimEnd()
+    }
+    if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+        Write-Host $stderr.TrimEnd() -ForegroundColor Yellow
+    }
+    return $process.ExitCode
 }
 
 function Assert-ArchiveIntegrity($Path, $ExpectedSha256, $ExpectedSize) {
@@ -329,15 +445,76 @@ function Move-SubfolderContents($Source, $Dest) {
 }
 
 # ---------------------------------------------------------------------------
-# Health check: if ready.flag exists but core files are missing, start fresh
+# Health check: a matching ready flag is accepted only after live verification.
 # ---------------------------------------------------------------------------
 $readyFlag = Join-Path $RuntimeDir "ready.flag"
 if (Test-Path $readyFlag) {
-    $coreFiles = @("python\python.exe", "uv\uv.exe", "venv\Scripts\python.exe")
-    $missing = $coreFiles | Where-Object { -not (Test-Path (Join-Path $RuntimeDir $_)) }
-    if ($missing) {
-        Write-Warn "ready.flag exists but core files are missing - restarting setup ..."
+    $readyHash = (Get-Content -LiteralPath $readyFlag -Raw -ErrorAction SilentlyContinue).Trim()
+    $readyManifestPath = Join-Path $RuntimeDir "runtime-manifest.json"
+    $readyManifestValid = $false
+    if (Test-Path -LiteralPath $readyManifestPath -PathType Leaf) {
+        try {
+            $readyManifest = Get-Content -LiteralPath $readyManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $readyManifestValid = (
+                $readyManifest.schema_version -eq 1 -and
+                $readyManifest.platform -eq "windows-x64" -and
+                [string]$readyManifest.component_lock_sha256 -eq $ComponentLockHash
+            )
+        }
+        catch {}
     }
+    $readyPython = Join-Path $RuntimeDir "python\python.exe"
+    $readyVenvPython = Join-Path $RuntimeDir "venv\Scripts\python.exe"
+    $readyGit = Join-Path $RuntimeDir "git\cmd\git.exe"
+    $readySource = Join-Path $SrcDir "hermes-agent"
+    $readyChecksPassed = (
+        $readyHash -eq $ComponentLockHash -and
+        $readyManifestValid -and
+        (Test-NativeCommand $readyPython @("--version")) -and
+        (Test-NativeCommand (Join-Path $RuntimeDir "node\node.exe") @("--version")) -and
+        (Test-NativeCommand (Join-Path $RuntimeDir "uv\uv.exe") @("--version")) -and
+        (Test-NativeCommand (Join-Path $RuntimeDir "bin\rg.exe") @("--version")) -and
+        (Test-NativeCommand $readyGit @("--version")) -and
+        (Test-NativeCommand $readyVenvPython @("-c", "import hermes_cli.main")) -and
+        (Test-HermesRepository $readyGit $readySource "")
+    )
+    if ($readyChecksPassed) {
+        $readyHermesCommit = (& $readyGit -C $readySource rev-parse HEAD 2>$null | Out-String).Trim()
+        $adoptedDetails = @{ adopted_from_verified_runtime_manifest = $true }
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "python" -Fingerprint $PythonComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "node" -Fingerprint $NodeComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "uv" -Fingerprint $UvComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "ripgrep" -Fingerprint $RgComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "mingit" -Fingerprint $GitComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "hermes-source" -Fingerprint $readyHermesCommit -Details $adoptedDetails | Out-Null
+        $readyVenvFingerprint = "$($PythonComponent.integrity.sha256):$($UvComponent.integrity.sha256)"
+        $readyDependenciesFingerprint = "$ComponentLockHash`:$readyHermesCommit"
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "python-venv" -Fingerprint $readyVenvFingerprint -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "hermes-dependencies" -Fingerprint $readyDependenciesFingerprint -Details $adoptedDetails | Out-Null
+
+        $readyAnthropicVersion = $AnthropicRequirement.Substring($AnthropicRequirement.IndexOf("==") + 2)
+        $readyAnthropicCheck = "import importlib.metadata as m; assert m.version('anthropic') == '$readyAnthropicVersion'"
+        if (Test-NativeCommand $readyVenvPython @("-c", $readyAnthropicCheck)) {
+            Write-SetupReceipt -StateDirectory $StateDir -StepId "provider-anthropic" -Fingerprint $AnthropicRequirement -Details $adoptedDetails | Out-Null
+        }
+        $readyTelegramVersion = $TelegramRequirement.Substring($TelegramRequirement.IndexOf("==") + 2)
+        $readyTelegramCheck = "import importlib.metadata as m; assert m.version('python-telegram-bot') == '$readyTelegramVersion'"
+        if (Test-NativeCommand $readyVenvPython @("-c", $readyTelegramCheck)) {
+            Write-SetupReceipt -StateDirectory $StateDir -StepId "messaging-telegram" -Fingerprint $TelegramRequirement -Details $adoptedDetails | Out-Null
+        }
+        $readyPlaywrightPath = Join-Path $RuntimeDir "playwright"
+        if (
+            (Test-NativeCommand $readyVenvPython @("-c", "import playwright")) -and
+            (Test-Path -LiteralPath $readyPlaywrightPath -PathType Container) -and
+            (@(Get-ChildItem -LiteralPath $readyPlaywrightPath -Recurse -Filter "chrome.exe" -File -ErrorAction SilentlyContinue).Count -gt 0)
+        ) {
+            Write-SetupReceipt -StateDirectory $StateDir -StepId "playwright-chromium" -Fingerprint "$readyDependenciesFingerprint`:chromium" -Details $adoptedDetails | Out-Null
+        }
+        Write-Done "Runtime is already complete; no setup work is required"
+        $SetupSucceeded = $true
+        return
+    }
+    Write-Warn "ready.flag exists but its lock or installed verification failed; repairing only invalid steps."
     Remove-Item -LiteralPath $readyFlag -Force
 }
 
@@ -345,166 +522,260 @@ if (Test-Path $readyFlag) {
 # 1. Portable Python
 # ---------------------------------------------------------------------------
 Write-Step "Installing portable Python 3.11 ..."
-$pyArchive = Join-Path $RuntimeDir "python.tar.gz"
-Download-File $PythonComponent.source.url $pyArchive $PythonComponent.integrity.sha256 $PythonComponent.source.size_bytes
-$pythonTemp = Join-Path $TempDir "python"
-Extract-TarGz $pyArchive $pythonTemp
-$stagedPythonExe = Join-Path $pythonTemp "python.exe"
-if (-not (Test-Path -LiteralPath $stagedPythonExe -PathType Leaf)) {
-    throw "Portable Python executable not found after extraction: $stagedPythonExe"
-}
-& $stagedPythonExe --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Portable Python verification failed" }
-Install-StagedDirectory $pythonTemp (Join-Path $RuntimeDir "python")
 $installedPythonExe = Join-Path $RuntimeDir "python\python.exe"
-& $installedPythonExe --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Installed portable Python verification failed" }
-Write-Done "Python ready"
+$pythonVersionPattern = [regex]::Escape(([string]$PythonComponent.version).Split("+")[0])
+$pythonVerification = { Test-NativeCommand $installedPythonExe @("--version") $pythonVersionPattern }
+if (Test-VerifiedSetupStep "python" $PythonComponent.integrity.sha256 $pythonVerification) {
+    Write-Skip "Python $($PythonComponent.version)"
+}
+else {
+    $pyArchive = Join-Path $RuntimeDir "python.tar.gz"
+    Download-File $PythonComponent.source.url $pyArchive $PythonComponent.integrity.sha256 $PythonComponent.source.size_bytes
+    $pythonTemp = Join-Path $TempDir "python"
+    Extract-TarGz $pyArchive $pythonTemp
+    $stagedPythonExe = Join-Path $pythonTemp "python.exe"
+    if (-not (Test-NativeCommand $stagedPythonExe @("--version") $pythonVersionPattern)) {
+        throw "Portable Python verification failed after extraction: $stagedPythonExe"
+    }
+    Install-StagedDirectory $pythonTemp (Join-Path $RuntimeDir "python")
+    Complete-SetupStep "python" $PythonComponent.integrity.sha256 $pythonVerification @{ version = $PythonComponent.version }
+    Write-Done "Python ready"
+}
 
 # ---------------------------------------------------------------------------
 # 2. Node.js
 # ---------------------------------------------------------------------------
 Write-Step "Installing Node.js 22 LTS ..."
-$nodeArchive = Join-Path $RuntimeDir "node.zip"
-Download-File $NodeComponent.source.url $nodeArchive $NodeComponent.integrity.sha256 $NodeComponent.source.size_bytes
-$nodeTemp = Join-Path $TempDir "node"
-Extract-Zip $nodeArchive $nodeTemp
-Move-SubfolderContents $nodeTemp (Join-Path $RuntimeDir "node")
-& (Join-Path $RuntimeDir "node\node.exe") --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Node.js verification failed" }
-& (Join-Path $RuntimeDir "node\npm.cmd") --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "npm verification failed" }
-Write-Done "Node.js ready"
+$installedNodeExe = Join-Path $RuntimeDir "node\node.exe"
+$installedNpmCmd = Join-Path $RuntimeDir "node\npm.cmd"
+$nodeVersionPattern = "v" + [regex]::Escape([string]$NodeComponent.version)
+$nodeVerification = {
+    (Test-NativeCommand $installedNodeExe @("--version") $nodeVersionPattern) -and
+    (Test-NativeCommand $installedNpmCmd @("--version"))
+}
+if (Test-VerifiedSetupStep "node" $NodeComponent.integrity.sha256 $nodeVerification) {
+    Write-Skip "Node.js $($NodeComponent.version)"
+}
+else {
+    $nodeArchive = Join-Path $RuntimeDir "node.zip"
+    Download-File $NodeComponent.source.url $nodeArchive $NodeComponent.integrity.sha256 $NodeComponent.source.size_bytes
+    $nodeTemp = Join-Path $TempDir "node"
+    Extract-Zip $nodeArchive $nodeTemp
+    Move-SubfolderContents $nodeTemp (Join-Path $RuntimeDir "node")
+    Complete-SetupStep "node" $NodeComponent.integrity.sha256 $nodeVerification @{ version = $NodeComponent.version }
+    Write-Done "Node.js ready"
+}
 
 # ---------------------------------------------------------------------------
 # 3. uv (Python package manager)
 # ---------------------------------------------------------------------------
 Write-Step "Installing uv ..."
-$uvArchive = Join-Path $RuntimeDir "uv.zip"
-Download-File $UvComponent.source.url $uvArchive $UvComponent.integrity.sha256 $UvComponent.source.size_bytes
-$uvTemp = Join-Path $TempDir "uv"
-Extract-Zip $uvArchive $uvTemp
-$stagedUvExe = Get-ChildItem -LiteralPath $uvTemp -Recurse -Filter "uv.exe" | Select-Object -First 1
-if (-not $stagedUvExe) {
-    throw "uv executable not found after extraction"
-}
-if ($stagedUvExe.DirectoryName -ne $uvTemp) {
-    $uvFlatTemp = Join-Path $TempDir "uv-flat"
-    if (Test-Path -LiteralPath $uvFlatTemp) {
-        Remove-Item -LiteralPath $uvFlatTemp -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $uvFlatTemp | Out-Null
-    Copy-Item -LiteralPath $stagedUvExe.FullName -Destination (Join-Path $uvFlatTemp "uv.exe")
-    $uvxExe = Get-ChildItem -LiteralPath $uvTemp -Recurse -Filter "uvx.exe" | Select-Object -First 1
-    if ($uvxExe) {
-        Copy-Item -LiteralPath $uvxExe.FullName -Destination (Join-Path $uvFlatTemp "uvx.exe")
-    }
-    Remove-Item -LiteralPath $uvTemp -Recurse -Force
-    $uvTemp = $uvFlatTemp
-    $stagedUvExe = Get-Item -LiteralPath (Join-Path $uvTemp "uv.exe")
-}
-& $stagedUvExe.FullName --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "uv verification failed" }
-Install-StagedDirectory $uvTemp (Join-Path $RuntimeDir "uv")
 $installedUvExe = Join-Path $RuntimeDir "uv\uv.exe"
-& $installedUvExe --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Installed uv verification failed" }
-Write-Done "uv ready"
+$uvVersionPattern = [regex]::Escape([string]$UvComponent.version)
+$uvVerification = { Test-NativeCommand $installedUvExe @("--version") $uvVersionPattern }
+if (Test-VerifiedSetupStep "uv" $UvComponent.integrity.sha256 $uvVerification) {
+    Write-Skip "uv $($UvComponent.version)"
+}
+else {
+    $uvArchive = Join-Path $RuntimeDir "uv.zip"
+    Download-File $UvComponent.source.url $uvArchive $UvComponent.integrity.sha256 $UvComponent.source.size_bytes
+    $uvTemp = Join-Path $TempDir "uv"
+    Extract-Zip $uvArchive $uvTemp
+    $stagedUvExe = Get-ChildItem -LiteralPath $uvTemp -Recurse -Filter "uv.exe" | Select-Object -First 1
+    if (-not $stagedUvExe) {
+        throw "uv executable not found after extraction"
+    }
+    if ($stagedUvExe.DirectoryName -ne $uvTemp) {
+        $uvFlatTemp = Join-Path $TempDir "uv-flat"
+        if (Test-Path -LiteralPath $uvFlatTemp) {
+            Remove-Item -LiteralPath $uvFlatTemp -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $uvFlatTemp | Out-Null
+        Copy-Item -LiteralPath $stagedUvExe.FullName -Destination (Join-Path $uvFlatTemp "uv.exe")
+        $uvxExe = Get-ChildItem -LiteralPath $uvTemp -Recurse -Filter "uvx.exe" | Select-Object -First 1
+        if ($uvxExe) {
+            Copy-Item -LiteralPath $uvxExe.FullName -Destination (Join-Path $uvFlatTemp "uvx.exe")
+        }
+        Remove-Item -LiteralPath $uvTemp -Recurse -Force
+        $uvTemp = $uvFlatTemp
+        $stagedUvExe = Get-Item -LiteralPath (Join-Path $uvTemp "uv.exe")
+    }
+    if (-not (Test-NativeCommand $stagedUvExe.FullName @("--version") $uvVersionPattern)) {
+        throw "uv verification failed after extraction"
+    }
+    Install-StagedDirectory $uvTemp (Join-Path $RuntimeDir "uv")
+    Complete-SetupStep "uv" $UvComponent.integrity.sha256 $uvVerification @{ version = $UvComponent.version }
+    Write-Done "uv ready"
+}
 
 # ---------------------------------------------------------------------------
 # 4. ripgrep
 # ---------------------------------------------------------------------------
 Write-Step "Installing ripgrep ..."
-$rgArchive = Join-Path $RuntimeDir "rg.zip"
-Download-File $RgComponent.source.url $rgArchive $RgComponent.integrity.sha256 $RgComponent.source.size_bytes
-$rgTemp = Join-Path $TempDir "rg"
-Extract-Zip $rgArchive $rgTemp
-$rgExe = Get-ChildItem $rgTemp -Recurse -Filter "rg.exe" | Select-Object -First 1
-if ($rgExe) {
-    Copy-Item $rgExe.FullName (Join-Path $BinDir "rg.exe") -Force
-    & (Join-Path $BinDir "rg.exe") --version | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "ripgrep verification failed" }
+$installedRgExe = Join-Path $BinDir "rg.exe"
+$rgVersionPattern = [regex]::Escape([string]$RgComponent.version)
+$rgVerification = { Test-NativeCommand $installedRgExe @("--version") $rgVersionPattern }
+if (Test-VerifiedSetupStep "ripgrep" $RgComponent.integrity.sha256 $rgVerification) {
+    Write-Skip "ripgrep $($RgComponent.version)"
+}
+else {
+    $rgArchive = Join-Path $RuntimeDir "rg.zip"
+    Download-File $RgComponent.source.url $rgArchive $RgComponent.integrity.sha256 $RgComponent.source.size_bytes
+    $rgTemp = Join-Path $TempDir "rg"
+    Extract-Zip $rgArchive $rgTemp
+    $rgExe = Get-ChildItem $rgTemp -Recurse -Filter "rg.exe" | Select-Object -First 1
+    if (-not $rgExe) {
+        throw "ripgrep executable not found after extraction"
+    }
+    Copy-Item $rgExe.FullName $installedRgExe -Force
+    Complete-SetupStep "ripgrep" $RgComponent.integrity.sha256 $rgVerification @{ version = $RgComponent.version }
     Write-Done "ripgrep ready"
-} else {
-    throw "ripgrep executable not found after extraction"
 }
 
 # ---------------------------------------------------------------------------
 # 5. Git (MinGit)
 # ---------------------------------------------------------------------------
 Write-Step "Installing portable Git ..."
-$gitArchive = Join-Path $RuntimeDir "git.zip"
-Download-File $GitComponent.source.url $gitArchive $GitComponent.integrity.sha256 $GitComponent.source.size_bytes
-$gitTemp = Join-Path $TempDir "git"
-Extract-Zip $gitArchive $gitTemp
-$stagedGitExe = Join-Path $gitTemp "cmd\git.exe"
-if (-not (Test-Path -LiteralPath $stagedGitExe -PathType Leaf)) {
-    throw "Portable Git executable not found after extraction: $stagedGitExe"
-}
-& $stagedGitExe --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Portable Git verification failed" }
-Install-StagedDirectory $gitTemp (Join-Path $RuntimeDir "git")
 $gitExe = Join-Path $RuntimeDir "git\cmd\git.exe"
-& $gitExe --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Installed portable Git verification failed" }
-Write-Done "Git ready"
+$gitVersionPattern = [regex]::Escape([string]$GitComponent.version)
+$gitVerification = { Test-NativeCommand $gitExe @("--version") $gitVersionPattern }
+if (Test-VerifiedSetupStep "mingit" $GitComponent.integrity.sha256 $gitVerification) {
+    Write-Skip "Git $($GitComponent.version)"
+}
+else {
+    $gitArchive = Join-Path $RuntimeDir "git.zip"
+    Download-File $GitComponent.source.url $gitArchive $GitComponent.integrity.sha256 $GitComponent.source.size_bytes
+    $gitTemp = Join-Path $TempDir "git"
+    Extract-Zip $gitArchive $gitTemp
+    $stagedGitExe = Join-Path $gitTemp "cmd\git.exe"
+    if (-not (Test-NativeCommand $stagedGitExe @("--version") $gitVersionPattern)) {
+        throw "Portable Git verification failed after extraction: $stagedGitExe"
+    }
+    Install-StagedDirectory $gitTemp (Join-Path $RuntimeDir "git")
+    Complete-SetupStep "mingit" $GitComponent.integrity.sha256 $gitVerification @{ version = $GitComponent.version }
+    Write-Done "Git ready"
+}
 
 # ---------------------------------------------------------------------------
 # 6. Hermes source code
 # ---------------------------------------------------------------------------
 Write-Step "Fetching pinned Hermes Agent source code ..."
 $srcTemp = Join-Path $TempDir "hermes-agent-source"
-if (Test-Path -LiteralPath $srcTemp) {
-    Remove-Item -LiteralPath $srcTemp -Recurse -Force
-}
-New-Item -ItemType Directory -Path $srcTemp | Out-Null
-& $gitExe -C $srcTemp init --quiet
-if ($LASTEXITCODE -ne 0) { throw "Failed to initialize the Hermes source staging repository" }
-& $gitExe -C $srcTemp remote add origin $HermesComponent.source.url
-if ($LASTEXITCODE -ne 0) { throw "Failed to configure the Hermes source remote" }
-$gitFetchSucceeded = $false
-$gitFetchAttempts = 4
-for ($gitFetchAttempt = 1; $gitFetchAttempt -le $gitFetchAttempts; $gitFetchAttempt++) {
-    & $gitExe -C $srcTemp fetch --depth 1 origin ("refs/tags/" + $HermesComponent.source.ref)
-    if ($LASTEXITCODE -eq 0) {
-        $gitFetchSucceeded = $true
-        break
-    }
-    if ($gitFetchAttempt -lt $gitFetchAttempts) {
-        $gitFetchDelaySeconds = [Math]::Pow(2, $gitFetchAttempt)
-        Write-Warn "Hermes source fetch attempt $gitFetchAttempt/$gitFetchAttempts failed; retrying in $gitFetchDelaySeconds seconds ..."
-        Start-Sleep -Seconds $gitFetchDelaySeconds
-    }
-}
-if (-not $gitFetchSucceeded) { throw "Failed to fetch Hermes ref $($HermesComponent.source.ref) after $gitFetchAttempts attempts" }
-& $gitExe -C $srcTemp checkout --quiet --detach FETCH_HEAD
-if ($LASTEXITCODE -ne 0) { throw "Failed to check out Hermes ref $($HermesComponent.source.ref)" }
-$actualHermesCommit = (& $gitExe -C $srcTemp rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $actualHermesCommit -ne $HermesComponent.source.commit) {
-    throw "Hermes commit mismatch: expected $($HermesComponent.source.commit), got $actualHermesCommit"
-}
-$sourceState = [ordered]@{
-    schema_version = 1
-    version = $HermesComponent.version
-    version_role = $HermesComponent.version_role
-    ref = $HermesComponent.source.ref
-    commit = $actualHermesCommit
-    update_policy = $HermesComponent.update_policy
-    component_lock_sha256 = $ComponentLockHash
-}
-$sourceStatePath = Join-Path $srcTemp ".portable-source.json"
-$utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText($sourceStatePath, (($sourceState | ConvertTo-Json -Depth 6) + [Environment]::NewLine), $utf8WithoutBom)
-# Keep the shallow Git metadata and official origin so the inherited
-# `hermes update` command can fetch newer upstream versions. The commit above
-# is the reviewed bootstrap state, not a permanent update ceiling.
 $destSrc = Join-Path $SrcDir "hermes-agent"
-Install-StagedDirectory $srcTemp $destSrc
-$installedHermesCommit = (& $gitExe -C $destSrc rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $installedHermesCommit -ne $actualHermesCommit) {
-    throw "Installed Hermes source verification failed: expected $actualHermesCommit, got $installedHermesCommit"
+$hermesFingerprint = [string]$HermesComponent.source.commit
+$hermesVerification = { Test-HermesRepository $gitExe $destSrc $HermesComponent.source.commit }
+if (Test-VerifiedSetupStep "hermes-source" $hermesFingerprint $hermesVerification) {
+    $actualHermesCommit = [string]$HermesComponent.source.commit
+    Write-Skip "Hermes $($HermesComponent.version) source"
 }
-Write-Done "Hermes $($HermesComponent.version) source ready at commit $actualHermesCommit"
+else {
+    $preserveInstalledHermes = $false
+    $installedSourceStatePath = Join-Path $destSrc ".portable-source.json"
+    if (Test-Path -LiteralPath $installedSourceStatePath -PathType Leaf) {
+        try {
+            $installedSourceState = Get-Content -LiteralPath $installedSourceStatePath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $installedOrigin = (& $gitExe -C $destSrc remote get-url origin 2>$null | Out-String).Trim()
+            $installedCommit = (& $gitExe -C $destSrc rev-parse HEAD 2>$null | Out-String).Trim()
+            if (
+                $LASTEXITCODE -eq 0 -and
+                $installedOrigin -eq [string]$HermesComponent.source.url -and
+                $installedCommit -match '^[0-9a-fA-F]{40}$' -and
+                [string]$installedSourceState.component_lock_sha256 -eq $ComponentLockHash -and
+                $installedSourceState.update_policy.allow_newer_than_bootstrap -eq $true
+            ) {
+                $preserveInstalledHermes = $true
+                $actualHermesCommit = $installedCommit
+                Write-SetupReceipt -StateDirectory $StateDir -StepId "hermes-source" -Fingerprint $actualHermesCommit -Details @{
+                    version = $HermesComponent.version
+                    commit = $actualHermesCommit
+                    preserved_user_update = ($actualHermesCommit -ne [string]$HermesComponent.source.commit)
+                } | Out-Null
+                if ($actualHermesCommit -ne [string]$HermesComponent.source.commit) {
+                    Write-Warn "Preserving user-updated Hermes source at commit $actualHermesCommit instead of restoring the older bootstrap commit."
+                }
+                Write-Skip "Existing Hermes source"
+            }
+        }
+        catch {}
+    }
+
+    if (-not $preserveInstalledHermes) {
+    $reuseStaging = $false
+    if (Test-Path -LiteralPath $srcTemp -PathType Container) {
+        if (Test-Path -LiteralPath (Join-Path $srcTemp ".git") -PathType Container) {
+            try {
+                $stagedOrigin = (& $gitExe -C $srcTemp remote get-url origin 2>$null | Out-String).Trim()
+                if ($LASTEXITCODE -eq 0 -and $stagedOrigin -eq [string]$HermesComponent.source.url) {
+                    $reuseStaging = $true
+                    Write-Host "        Reusing the managed Hermes staging repository from the previous attempt."
+                }
+            }
+            catch {}
+        }
+        if (-not $reuseStaging) {
+            Write-Warn "The managed Hermes staging directory is incomplete or belongs to another source; rebuilding staging only."
+            Remove-Item -LiteralPath $srcTemp -Recurse -Force
+        }
+    }
+
+    if (-not $reuseStaging) {
+        New-Item -ItemType Directory -Path $srcTemp -Force | Out-Null
+        & $gitExe -C $srcTemp init --quiet
+        if ($LASTEXITCODE -ne 0) { throw "Failed to initialize the Hermes source staging repository" }
+        & $gitExe -C $srcTemp remote add origin $HermesComponent.source.url
+        if ($LASTEXITCODE -ne 0) { throw "Failed to configure the Hermes source remote" }
+    }
+    else {
+        & $gitExe -C $srcTemp remote set-url origin $HermesComponent.source.url
+        if ($LASTEXITCODE -ne 0) { throw "Failed to refresh the Hermes source remote" }
+    }
+
+    $gitFetchSucceeded = $false
+    $gitFetchAttempts = 4
+    for ($gitFetchAttempt = 1; $gitFetchAttempt -le $gitFetchAttempts; $gitFetchAttempt++) {
+        & $gitExe -C $srcTemp fetch --depth 1 origin ("refs/tags/" + $HermesComponent.source.ref)
+        if ($LASTEXITCODE -eq 0) {
+            $gitFetchSucceeded = $true
+            break
+        }
+        if ($gitFetchAttempt -lt $gitFetchAttempts) {
+            $gitFetchDelaySeconds = [Math]::Pow(2, $gitFetchAttempt)
+            Write-Warn "Hermes source fetch attempt $gitFetchAttempt/$gitFetchAttempts failed; retrying in $gitFetchDelaySeconds seconds ..."
+            Start-Sleep -Seconds $gitFetchDelaySeconds
+        }
+    }
+    if (-not $gitFetchSucceeded) {
+        throw "Failed to fetch Hermes ref $($HermesComponent.source.ref) after $gitFetchAttempts attempts; the managed staging repository was retained for retry"
+    }
+    & $gitExe -C $srcTemp checkout --quiet --detach FETCH_HEAD
+    if ($LASTEXITCODE -ne 0) { throw "Failed to check out Hermes ref $($HermesComponent.source.ref)" }
+    $actualHermesCommit = (& $gitExe -C $srcTemp rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or $actualHermesCommit -ne $HermesComponent.source.commit) {
+        throw "Hermes commit mismatch: expected $($HermesComponent.source.commit), got $actualHermesCommit"
+    }
+    $sourceState = [ordered]@{
+        schema_version = 1
+        version = $HermesComponent.version
+        version_role = $HermesComponent.version_role
+        ref = $HermesComponent.source.ref
+        commit = $actualHermesCommit
+        update_policy = $HermesComponent.update_policy
+        component_lock_sha256 = $ComponentLockHash
+    }
+    $sourceStatePath = Join-Path $srcTemp ".portable-source.json"
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($sourceStatePath, (($sourceState | ConvertTo-Json -Depth 6) + [Environment]::NewLine), $utf8WithoutBom)
+    # Keep the shallow Git metadata and official origin so the inherited
+    # `hermes update` command can fetch newer upstream versions. The commit above
+    # is the reviewed bootstrap state, not a permanent update ceiling.
+    Install-StagedDirectory $srcTemp $destSrc
+    Complete-SetupStep "hermes-source" $hermesFingerprint $hermesVerification @{
+        version = $HermesComponent.version
+        commit = $actualHermesCommit
+    }
+    Write-Done "Hermes $($HermesComponent.version) source ready at commit $actualHermesCommit"
+    }
+}
 
 # ---------------------------------------------------------------------------
 # 7. Create virtual environment
@@ -513,17 +784,26 @@ Write-Step "Creating Python virtual environment ..."
 $pythonExe = Join-Path $RuntimeDir "python\python.exe"
 $venvDir   = Join-Path $RuntimeDir "venv"
 $uvExe     = Join-Path $RuntimeDir "uv\uv.exe"
-
-& $uvExe venv $venvDir --python $pythonExe
-if ($LASTEXITCODE -ne 0) {
-    Write-Warn "uv venv failed - falling back to Python venv with copied files ..."
-    Remove-Item $venvDir -Recurse -Force -ErrorAction SilentlyContinue
-    & $pythonExe -m venv $venvDir --copies
-    if ($LASTEXITCODE -ne 0) { throw "Failed to create venv" }
+$venvPython = Join-Path $venvDir "Scripts\python.exe"
+$venvFingerprint = "$($PythonComponent.integrity.sha256):$($UvComponent.integrity.sha256)"
+$venvVerification = { Test-NativeCommand $venvPython @("--version") $pythonVersionPattern }
+if (Test-VerifiedSetupStep "python-venv" $venvFingerprint $venvVerification) {
+    Write-Skip "Python virtual environment"
 }
-& (Join-Path $venvDir "Scripts\python.exe") --version | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Virtual environment verification failed" }
-Write-Done "Virtual environment ready"
+else {
+    if (Test-Path -LiteralPath $venvDir) {
+        Remove-Item -LiteralPath $venvDir -Recurse -Force
+    }
+    & $uvExe venv $venvDir --python $pythonExe
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "uv venv failed - falling back to Python venv with copied files ..."
+        Remove-Item $venvDir -Recurse -Force -ErrorAction SilentlyContinue
+        & $pythonExe -m venv $venvDir --copies
+        if ($LASTEXITCODE -ne 0) { throw "Failed to create venv" }
+    }
+    Complete-SetupStep "python-venv" $venvFingerprint $venvVerification @{ python_version = $PythonComponent.version }
+    Write-Done "Virtual environment ready"
+}
 
 # ---------------------------------------------------------------------------
 # 8. Install Hermes dependencies
@@ -531,35 +811,52 @@ Write-Done "Virtual environment ready"
 $ErrorActionPreference = "Continue"
 Write-Step "Installing Hermes Python dependencies ..."
 Write-Host "        This may take 3-10 minutes depending on your connection."
-$venvPython = Join-Path $venvDir "Scripts\python.exe"
-
-# Try uv first (faster), fall back to pip on unsupported filesystem (e.g. ExFAT)
-& $uvExe pip install --python $venvPython --link-mode=copy -e "$destSrc[all]"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "        uv install failed - falling back to pip ..."
-    & $venvPython -m ensurepip --upgrade | Out-Null
-    & $venvPython -m pip install -e "$destSrc[all]"
-    if ($LASTEXITCODE -ne 0) { throw "Failed to install Hermes dependencies" }
+$dependenciesFingerprint = "$ComponentLockHash`:$actualHermesCommit"
+$dependenciesVerification = { Test-NativeCommand $venvPython @("-c", "import hermes_cli.main") }
+if (Test-VerifiedSetupStep "hermes-dependencies" $dependenciesFingerprint $dependenciesVerification) {
+    Write-Skip "Hermes Python dependencies"
 }
-Write-Done "Dependencies installed"
+else {
+    # Copy mode avoids hard-link failures and performance cliffs on exFAT.
+    & $uvExe pip install --python $venvPython --link-mode=copy -e "$destSrc[all]"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "        uv install failed - falling back to pip ..."
+        & $venvPython -m ensurepip --upgrade | Out-Null
+        & $venvPython -m pip install -e "$destSrc[all]"
+        if ($LASTEXITCODE -ne 0) { throw "Failed to install Hermes dependencies" }
+    }
+    Complete-SetupStep "hermes-dependencies" $dependenciesFingerprint $dependenciesVerification @{
+        hermes_commit = $actualHermesCommit
+    }
+    Write-Done "Dependencies installed"
+}
 
 # ---------------------------------------------------------------------------
 # 9. Install provider dependencies
 # ---------------------------------------------------------------------------
 Write-Step "Installing provider dependencies ..."
 $AnthropicInstalled = $false
-& $uvExe pip install --python $venvPython --link-mode=copy $AnthropicRequirement
-if ($LASTEXITCODE -ne 0) {
-    & $venvPython -m pip install $AnthropicRequirement >$null 2>$null
-    if ($LASTEXITCODE -eq 0) {
+$AnthropicVersion = $AnthropicRequirement.Substring($AnthropicRequirement.IndexOf("==") + 2)
+$anthropicVerificationCode = "import importlib.metadata as m; assert m.version('anthropic') == '$AnthropicVersion'"
+$anthropicVerification = { Test-NativeCommand $venvPython @("-c", $anthropicVerificationCode) }
+if (Test-VerifiedSetupStep "provider-anthropic" $AnthropicRequirement $anthropicVerification) {
+    $AnthropicInstalled = $true
+    Write-Skip "Anthropic provider dependency"
+}
+else {
+    & $uvExe pip install --python $venvPython --link-mode=copy $AnthropicRequirement
+    if ($LASTEXITCODE -ne 0) {
+        & $venvPython -m pip install $AnthropicRequirement >$null 2>$null
+    }
+    if ([bool](& $anthropicVerification)) {
         $AnthropicInstalled = $true
+        Complete-SetupStep "provider-anthropic" $AnthropicRequirement $anthropicVerification @{ version = $AnthropicVersion }
         Write-Done "Provider dependencies ready"
-    } else {
+    }
+    else {
+        Remove-SetupReceipt -StateDirectory $StateDir -StepId "provider-anthropic"
         Write-Warn "Anthropic provider install failed - will retry on first use"
     }
-} else {
-    $AnthropicInstalled = $true
-    Write-Done "Provider dependencies ready"
 }
 
 # ---------------------------------------------------------------------------
@@ -572,18 +869,27 @@ if ($LASTEXITCODE -ne 0) {
 # ---------------------------------------------------------------------------
 Write-Step "Installing messaging dependencies (Telegram) ..."
 $TelegramInstalled = $false
-& $uvExe pip install --python $venvPython --link-mode=copy $TelegramRequirement
-if ($LASTEXITCODE -ne 0) {
-    & $venvPython -m pip install $TelegramRequirement >$null 2>$null
-    if ($LASTEXITCODE -eq 0) {
+$TelegramVersion = $TelegramRequirement.Substring($TelegramRequirement.IndexOf("==") + 2)
+$telegramVerificationCode = "import importlib.metadata as m; assert m.version('python-telegram-bot') == '$TelegramVersion'"
+$telegramVerification = { Test-NativeCommand $venvPython @("-c", $telegramVerificationCode) }
+if (Test-VerifiedSetupStep "messaging-telegram" $TelegramRequirement $telegramVerification) {
+    $TelegramInstalled = $true
+    Write-Skip "python-telegram-bot dependency"
+}
+else {
+    & $uvExe pip install --python $venvPython --link-mode=copy $TelegramRequirement
+    if ($LASTEXITCODE -ne 0) {
+        & $venvPython -m pip install $TelegramRequirement >$null 2>$null
+    }
+    if ([bool](& $telegramVerification)) {
         $TelegramInstalled = $true
+        Complete-SetupStep "messaging-telegram" $TelegramRequirement $telegramVerification @{ version = $TelegramVersion }
         Write-Done "python-telegram-bot ready"
-    } else {
+    }
+    else {
+        Remove-SetupReceipt -StateDirectory $StateDir -StepId "messaging-telegram"
         Write-Warn "python-telegram-bot install failed - will retry on first use"
     }
-} else {
-    $TelegramInstalled = $true
-    Write-Done "python-telegram-bot ready"
 }
 
 # ---------------------------------------------------------------------------
@@ -592,12 +898,36 @@ if ($LASTEXITCODE -ne 0) {
 Write-Step "Installing Playwright browsers (optional) ..."
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $RuntimeDir "playwright"
 $PlaywrightInstalled = $false
-& $venvPython -m playwright install chromium 2>$null
-if ($LASTEXITCODE -eq 0) {
+$playwrightFingerprint = "$dependenciesFingerprint`:chromium"
+$playwrightVerification = {
+    (Test-NativeCommand $venvPython @("-c", "import playwright")) -and
+    (Test-Path -LiteralPath $env:PLAYWRIGHT_BROWSERS_PATH -PathType Container) -and
+    (@(Get-ChildItem -LiteralPath $env:PLAYWRIGHT_BROWSERS_PATH -Recurse -Filter "chrome.exe" -File -ErrorAction SilentlyContinue).Count -gt 0)
+}
+if (Test-VerifiedSetupStep "playwright-chromium" $playwrightFingerprint $playwrightVerification) {
     $PlaywrightInstalled = $true
-    Write-Done "Playwright browsers ready"
-} else {
-    Write-Warn "Playwright browser install failed (web tools may be limited)"
+    Write-Skip "Playwright Chromium browser"
+}
+else {
+    $playwrightLogStamp = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
+    $playwrightLogSuffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)
+    $PlaywrightLogPath = Join-Path $SetupLogDir ("playwright-{0}-{1}.log" -f $playwrightLogStamp, $playwrightLogSuffix)
+    try {
+        $playwrightExitCode = Invoke-LoggedPlaywrightInstall $venvPython $PlaywrightLogPath
+    }
+    catch {
+        $playwrightExitCode = 1
+        [System.IO.File]::WriteAllText($PlaywrightLogPath, $_.Exception.Message, (New-Object System.Text.UTF8Encoding($false)))
+    }
+    if ($playwrightExitCode -eq 0 -and [bool](& $playwrightVerification)) {
+        $PlaywrightInstalled = $true
+        Complete-SetupStep "playwright-chromium" $playwrightFingerprint $playwrightVerification @{ log = (Split-Path $PlaywrightLogPath -Leaf) }
+        Write-Done "Playwright browsers ready"
+    }
+    else {
+        Remove-SetupReceipt -StateDirectory $StateDir -StepId "playwright-chromium"
+        Write-Warn "Playwright browser install failed (web tools may be limited). Diagnostic log: $PlaywrightLogPath"
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -643,6 +973,7 @@ finally {
     }
 }
 [System.IO.File]::WriteAllText($readyFlag, ($ComponentLockHash + [Environment]::NewLine), $utf8WithoutBom)
+$SetupSucceeded = $true
 
 # Cleanup temp
 Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -652,6 +983,10 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Setup Complete! Launching Hermes..." -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Start-Sleep -Seconds 1
+}
+catch {
+    $SetupFailure = $_
+    [Console]::Error.WriteLine("[ERROR] Runtime setup did not complete: {0}", $_.Exception.Message)
 }
 finally {
     if ($SetupTranscriptStarted) {
@@ -663,4 +998,8 @@ finally {
         }
     }
     Write-Host "[portable-log] Setup transcript: $SetupLogPath"
+}
+
+if (-not $SetupSucceeded) {
+    exit 1
 }

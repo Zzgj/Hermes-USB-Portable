@@ -44,6 +44,15 @@
       "may_contain_sensitive_data": true
     },
     {
+      "id": "playwright-setup-transcripts",
+      "category": "setup",
+      "owner": "portable-workbench",
+      "format": "text",
+      "path": "logs/setup/playwright-*.log",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
       "id": "doctor-transcripts",
       "category": "doctor",
       "owner": "portable-workbench",
@@ -85,6 +94,15 @@
       "owner": "portable-runtime",
       "format": "json",
       "path": ".cache/runtimes/{platform}-{arch}/runtime-manifest.json",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
+      "id": "runtime-setup-receipts",
+      "category": "runtime-state",
+      "owner": "portable-runtime",
+      "format": "json",
+      "path": ".cache/runtimes/{platform}-{arch}/state/*.json",
       "canonical": true,
       "may_contain_sensitive_data": false
     },

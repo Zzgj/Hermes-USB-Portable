@@ -27,23 +27,40 @@ set "GIT_CONFIG_VALUE_1=%PORTABLE_ROOT_GIT%/src/hermes-agent"
 call :write_portable_event launcher launcher-start started
 
 REM ---------------------------------------------------------------------------
-REM First-run setup
+REM First-run setup and repair detection
 REM ---------------------------------------------------------------------------
-if not exist "%RUNTIME_DIR%\ready.flag" (
+set "NEED_RUNTIME_SETUP=0"
+if not exist "%RUNTIME_DIR%\ready.flag" set "NEED_RUNTIME_SETUP=1"
+if not exist "%RUNTIME_DIR%\python\python.exe" set "NEED_RUNTIME_SETUP=1"
+if not exist "%RUNTIME_DIR%\node\node.exe" set "NEED_RUNTIME_SETUP=1"
+if not exist "%RUNTIME_DIR%\uv\uv.exe" set "NEED_RUNTIME_SETUP=1"
+if not exist "%RUNTIME_DIR%\venv\Scripts\python.exe" set "NEED_RUNTIME_SETUP=1"
+if not exist "%SRC_DIR%\hermes-agent\.git" set "NEED_RUNTIME_SETUP=1"
+if "!NEED_RUNTIME_SETUP!"=="1" (
     echo.
     echo ============================================
-    echo    Hermes Portable - First Run Setup
+    echo    Hermes Portable - Runtime Setup / Repair
     echo ============================================
     echo  This will download ~600MB of runtime files
     echo  for Windows x64. Please be patient.
     echo ============================================
     echo.
     call :write_portable_event setup runtime-setup started
-    powershell -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\setup-windows.ps1" -Root "%PORTABLE_ROOT%"
-    if errorlevel 1 (
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\setup-windows.ps1" -Root "%PORTABLE_ROOT%"
+    set "SETUP_EXIT=!errorlevel!"
+    if not "!SETUP_EXIT!"=="0" (
         call :write_portable_event setup runtime-setup failed
         echo.
-        echo [ERROR] Setup failed. Please check your internet connection and try again.
+        echo [ERROR] Setup did not complete. Verified downloads and completed steps were preserved.
+        echo [ERROR] Review logs\setup, then run launch.bat again to resume.
+        pause
+        exit /b !SETUP_EXIT!
+    )
+    if not exist "%RUNTIME_DIR%\ready.flag" (
+        call :write_portable_event setup runtime-setup failed
+        echo.
+        echo [ERROR] Setup returned without a ready flag. It may have been cancelled.
+        echo [ERROR] Review logs\setup, then run launch.bat again to resume.
         pause
         exit /b 1
     )
@@ -85,7 +102,9 @@ REM ---------------------------------------------------------------------------
 REM Launch Hermes
 REM ---------------------------------------------------------------------------
 if not exist "%SRC_DIR%\hermes-agent" (
-    echo [ERROR] Hermes source not found. Please delete .cache and try again.
+    echo [ERROR] Hermes source is missing although setup reported ready.
+    echo [ERROR] Remove only .cache\runtimes\windows-x64\ready.flag and run launch.bat again.
+    echo [ERROR] Do not delete .cache; verified downloads and user data can be reused.
     pause
     exit /b 1
 )
