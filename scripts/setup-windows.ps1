@@ -28,6 +28,18 @@ $BinDir     = Join-Path $RuntimeDir "bin"
 $TempDir    = Join-Path $Root ".tmp"
 $SetupLogDir = Join-Path (Join-Path $Root "logs") "setup"
 
+# Git 2.35.2+ rejects repositories on filesystems such as exFAT that cannot
+# report ownership. Trust only the two repositories managed by this setup,
+# and only in this process and its child processes. Do not modify host-global
+# Git configuration and do not use an unrestricted wildcard trust value.
+$GitSafeStagingDirectory = [System.IO.Path]::GetFullPath((Join-Path $TempDir "hermes-agent-source")).Replace("\", "/")
+$GitSafeInstalledDirectory = [System.IO.Path]::GetFullPath((Join-Path $SrcDir "hermes-agent")).Replace("\", "/")
+$env:GIT_CONFIG_COUNT = "2"
+$env:GIT_CONFIG_KEY_0 = "safe.directory"
+$env:GIT_CONFIG_VALUE_0 = $GitSafeStagingDirectory
+$env:GIT_CONFIG_KEY_1 = "safe.directory"
+$env:GIT_CONFIG_VALUE_1 = $GitSafeInstalledDirectory
+
 New-Item -ItemType Directory -Force -Path $SetupLogDir | Out-Null
 $setupLogStamp = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
 $setupLogSuffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)

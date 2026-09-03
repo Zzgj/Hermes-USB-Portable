@@ -18,6 +18,12 @@ set "CACHE_DIR=%PORTABLE_ROOT%\.cache"
 set "RUNTIME_DIR=%CACHE_DIR%\runtimes\windows-x64"
 set "SRC_DIR=%PORTABLE_ROOT%\src"
 set "LOG_ROOT=%PORTABLE_ROOT%\logs"
+set "PORTABLE_ROOT_GIT=%PORTABLE_ROOT:\=/%"
+set "GIT_CONFIG_COUNT=2"
+set "GIT_CONFIG_KEY_0=safe.directory"
+set "GIT_CONFIG_VALUE_0=%PORTABLE_ROOT_GIT%/.tmp/hermes-agent-source"
+set "GIT_CONFIG_KEY_1=safe.directory"
+set "GIT_CONFIG_VALUE_1=%PORTABLE_ROOT_GIT%/src/hermes-agent"
 call :write_portable_event launcher launcher-start started
 
 REM ---------------------------------------------------------------------------

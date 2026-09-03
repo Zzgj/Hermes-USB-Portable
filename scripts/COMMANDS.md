@@ -35,6 +35,8 @@ pwsh -NoProfile -File .\tests\runtime-filesystem.Tests.ps1
 
 On removable filesystems, staged Runtime directory moves use bounded retries. If Windows continues to deny a move, setup copies the staged directory, verifies file count, size, and SHA-256, and then verifies the installed executable. Existing Runtime directories are preserved for rollback until the replacement is verified.
 
+Git repositories on ownership-less filesystems such as exFAT are trusted only through process-scoped configuration for the exact managed staging and installed Hermes paths. Setup does not change the host global Git configuration and never uses an unrestricted safe-directory wildcard.
+
 The Hermes version is not permanently locked. The recorded stable Release is a known first-install baseline; later user-initiated updates reuse the official `hermes update`, which currently tracks `origin/main`. The inherited updater already handles quick state snapshots, dependency/config migration, validation, rollback, and receipts. Portable P0 work adds visible check/plan/confirmation steps and verifies that the upstream safeguards stay inside the portable data boundary.
 
 ## Portable Launcher Commands

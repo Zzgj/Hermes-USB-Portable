@@ -58,6 +58,10 @@ try {
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
+    Assert-True ($windowsSource -match 'set "GIT_CONFIG_COUNT=2"') "Windows launcher should provide two command-scope Git safe-directory entries"
+    Assert-True ($windowsSource -match 'set "GIT_CONFIG_VALUE_0=%PORTABLE_ROOT_GIT%/\.tmp/hermes-agent-source"') "Windows launcher should trust only its managed staging repository"
+    Assert-True ($windowsSource -match 'set "GIT_CONFIG_VALUE_1=%PORTABLE_ROOT_GIT%/src/hermes-agent"') "Windows launcher should trust only its managed installed repository"
+    Assert-True (-not ($windowsSource -match 'safe\.directory=\*|config\s+--global')) "Windows launcher should not disable Git ownership protection or mutate host-global config"
 
     $windowsCheck = Get-SourceSection $windowsSource '(?ms)^:adv_update_check\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows read-only update-check action"
     Assert-True ($windowsCheck -match '-Operation update-check') "Windows update-check action should select the logged read-only check"
@@ -88,6 +92,10 @@ try {
     Assert-True ($setupSource -match 'remote add origin \$HermesComponent\.source\.url') "Windows setup should retain the manifest-declared official Hermes origin"
     Assert-True ($setupSource -match '\.portable-source\.json') "Windows setup should record the bootstrap source state"
     Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "Windows setup should retain Git metadata required by the official updater"
+    Assert-True ($setupSource -match '\$env:GIT_CONFIG_COUNT = "2"') "Windows setup should use protected command-scope Git configuration on ownership-less filesystems"
+    Assert-True ($setupSource -match '\$env:GIT_CONFIG_VALUE_0 = \$GitSafeStagingDirectory') "Windows setup should trust its exact staging repository"
+    Assert-True ($setupSource -match '\$env:GIT_CONFIG_VALUE_1 = \$GitSafeInstalledDirectory') "Windows setup should trust its exact installed repository"
+    Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "Windows setup should not disable Git ownership protection or mutate host-global config"
 
     Write-Host "Portable launcher tests passed."
 }
