@@ -66,7 +66,7 @@
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
 - [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
 - [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；仍需在 Windows 实测 `launch.bat`、Chat、Setup、Gateway、配置编辑和 Update。
-- [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；第一次 exFAT 实测暴露 uv 校验后目录移动被拒绝，加入重试后第二次实测在第四次尝试成功并继续，证明修复有效。随后 MinGit 2.54 因 exFAT 不记录所有权而拒绝刚创建的 Hermes 暂存仓库；现改为只在启动器/Setup 子进程中精确信任受管的暂存与安装仓库，不写宿主全局 Git 配置、不使用通配信任。自动回归和同一 exFAT 实机继续复验后完成此项。
+- [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；第一次 exFAT 实测暴露 uv 校验后目录移动被拒绝，加入重试后第二次实测在第四次尝试成功并继续，证明修复有效。随后 MinGit 2.54 因 exFAT 不记录所有权而拒绝刚创建的 Hermes 暂存仓库；现改为只在启动器/Setup 子进程中精确信任受管的暂存与安装仓库，不写宿主全局 Git 配置、不使用通配信任。GitHub Actions run 33751910110 的 Windows PowerShell 5.1/7 已通过，待同一 exFAT 实机继续复验后完成此项。
 - [!] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
 - [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘实测已验证脚本直接位于 exFAT U 盘，且临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确工作；首次 Runtime 安装已运行到 uv 暂存提交，修复后复验、盘符移动与 venv 修复仍未完成。
