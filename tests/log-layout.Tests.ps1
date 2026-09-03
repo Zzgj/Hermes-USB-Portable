@@ -94,8 +94,8 @@ try {
     Assert-True ($observationSource -match 'ValidateSet\("doctor", "update-check", "update-plan"\)') "observation runner should be restricted to read-only operations"
     Assert-True (-not ($observationSource -match 'update-apply')) "observation runner should not wrap the interactive update apply operation"
     Assert-True ($eventWriterSource -match 'ConvertTo-Json -Compress') "event writer should emit structured JSONL"
-    Assert-True ($gitIgnoreSource -match '(?m)^/logs/$') "generated central logs should remain excluded from Git"
-    Assert-True ($gitIgnoreSource -match '(?m)^/data/$') "Hermes private logs and state should remain excluded from Git"
+    Assert-True ($gitIgnoreSource -match '(?m)^/logs/\r?$') "generated central logs should remain excluded from Git"
+    Assert-True ($gitIgnoreSource -match '(?m)^/data/\r?$') "Hermes private logs and state should remain excluded from Git"
 
     New-Item -ItemType Directory -Path $testRoot | Out-Null
     & $EventWriterPath -Root $testRoot -Component launcher -Event test-event -Status started
