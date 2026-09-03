@@ -3,7 +3,8 @@ param(
     [string]$WindowsLauncherPath,
     [string]$UnixLauncherPath,
     [string]$SetupScriptPath,
-    [string]$ObservationRunnerPath
+    [string]$ObservationRunnerPath,
+    [string]$UpdateWrapperPath
 )
 
 Set-StrictMode -Version Latest
@@ -25,6 +26,9 @@ if ([string]::IsNullOrWhiteSpace($SetupScriptPath)) {
 }
 if ([string]::IsNullOrWhiteSpace($ObservationRunnerPath)) {
     $ObservationRunnerPath = Join-Path $repositoryRoot "scripts/invoke-hermes-observation.ps1"
+}
+if ([string]::IsNullOrWhiteSpace($UpdateWrapperPath)) {
+    $UpdateWrapperPath = Join-Path $repositoryRoot "scripts/invoke-hermes-update.ps1"
 }
 
 function Assert-True {
@@ -55,6 +59,7 @@ try {
     $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw -Encoding UTF8
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
     $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw -Encoding UTF8
+    $updateWrapperSource = Get-Content -LiteralPath $UpdateWrapperPath -Raw -Encoding UTF8
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
@@ -74,7 +79,8 @@ try {
     Assert-True ($windowsPlan -match 'No update was applied') "Windows update action should identify a preflight failure as non-mutating"
 
     $windowsApply = Get-SourceSection $windowsSource '(?ms)^:adv_update_apply\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows update-apply action"
-    Assert-True ($windowsApply -match 'main\(\)" update(?:\s|\r|\n)') "Windows update action should delegate application to the official updater"
+    Assert-True ($windowsApply -match 'invoke-hermes-update\.ps1') "Windows update action should use the structured portable wrapper"
+    Assert-True ($updateWrapperSource -match 'main\(\)" update(?:\s|\r|\n)') "Windows update wrapper should delegate application to the official updater"
     Assert-True ($windowsApply -match 'if errorlevel 1') "Windows update action should expose an official updater failure"
 
     $unixCheck = Get-SourceSection $unixSource '(?ms)^adv_update_check\(\) \{.*?^\}' "Unix read-only update-check action"
@@ -83,10 +89,10 @@ try {
     $unixUpdate = Get-SourceSection $unixSource '(?ms)^adv_update\(\) \{.*?^\}' "Unix update action"
     Assert-True ($unixUpdate -match 'hermes update --plan') "Unix update action should show the official read-only plan"
     Assert-True ($unixUpdate -match 'read -r -p .*origin/main') "Unix update action should require an explicit confirmation"
-    Assert-True ($unixUpdate -match 'if hermes update; then') "Unix update action should delegate application to the official updater and inspect its result"
+    Assert-True ($unixUpdate -match 'run_observation diagnostics update-apply hermes update') "Unix update action should log the official updater and inspect its result"
 
-    foreach ($launcher in @($windowsSource, $unixSource)) {
-        Assert-True (-not ($launcher -match '(?:--no-backup|--yes|--force|--force-venv)')) "portable launchers should not bypass official update safety controls"
+    foreach ($updateEntryPoint in @($windowsSource, $unixSource, $updateWrapperSource)) {
+        Assert-True (-not ($updateEntryPoint -match '(?:--no-backup|--yes|--force|--force-venv)')) "portable update entrypoints should not bypass official update safety controls"
     }
 
     Assert-True ($setupSource -match 'remote add origin \$HermesComponent\.source\.url') "Windows setup should retain the manifest-declared official Hermes origin"

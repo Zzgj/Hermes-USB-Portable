@@ -26,7 +26,7 @@
 ## ✨ Key Features
 
 *    **Zero Host Dependencies**: No pre-installed Python, Node.js, or package managers required on the computer. All runtimes are downloaded locally.
-*    **100% Portable**: Copy the entire directory to a USB flash drive or external SSD. Run it on any Windows, macOS, or Linux computer instantly.
+*    **Portable-first Runtime**: Keep the project, generated Runtime, and private Hermes home on a USB drive or external SSD. Windows 10/exFAT is verified; the broader host-write and cross-platform audit is still in progress.
 *    **True Privacy & Isolation**: Your API keys (`data/.env`), conversations (`data/sessions/`), persistent memory, and custom skills are kept strictly within the portable folder.
 *    **Interactive Console Launcher**: Includes a beautiful terminal UI dashboard with state-tracking for setup status, LLM providers, and background gateways.
 *    **Full Hermes Capabilities**: Retains all features of [Nous Research's Hermes Agent](https://github.com/NousResearch/hermes-agent), including memory storage and reusable skill generation.
@@ -37,11 +37,12 @@ Development is on `feat/portable-initializer`. The verified P0 baseline currentl
 
 - A repeatable ordinary-directory initializer that preserves existing user data and never formats storage.
 - A tracked Windows x64 component lock with exact versions, archive sizes and SHA-256 values, plus an auditable Hermes bootstrap commit that does not block later updates.
-- Dependency-free initializer and lock tests on Windows PowerShell 5.1 and PowerShell 7.
+- A completed Windows 10/exFAT first install and repeat-launch baseline, plus component receipts for resumable repair.
+- Dependency-free initializer, Runtime state, update state, launcher, and log tests on Windows PowerShell 5.1 and PowerShell 7.
 
 The custom Stitch workbench UI, full CLI/TUI/Desktop/WebUI entry set, model/proxy manager, private Obsidian integration, driver repository workflow, and real printer installation are planned work and are not implemented yet. The inherited launchers remain available, but cross-platform portability and host-write behavior have not yet completed the new project audit.
 
-See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order.
+See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order. The current USB acceptance sequence is in the [Windows 10/exFAT P0 test guide](docs/WINDOWS-P0-TEST-GUIDE.md).
 
 ---
 
@@ -87,7 +88,7 @@ graph TD
 ### The Isolation Design
 1. **Custom Data Directory**: The launcher overrides `HERMES_HOME` to the local `data/` folder, forcing Hermes to write configuration and data locally rather than in `~/.hermes/`.
 2. **Local Path Sandboxing**: The scripts download self-contained Python and Node.js binaries into `.cache/runtimes/` and prepend them directly to the active process `PATH`.
-3. **No Registry/Host Pollution**: System configurations, environment variables, or packages on the host machine are left untouched.
+3. **Process-scoped Isolation**: Runtime paths and environment overrides are applied to launcher processes rather than installed system-wide. The P0 audit of AppData, Temp, services, registry, browser caches, and other possible host writes is not yet complete.
 
 ---
 
@@ -109,7 +110,7 @@ hermes-portable/
 │   ├── launcher/               # Structured launcher events
 │   ├── setup/                  # First-run setup transcripts
 │   ├── doctor/                 # Doctor transcripts
-│   ├── diagnostics/            # Update check/plan transcripts
+│   ├── diagnostics/            # Update check/plan/apply transcripts and safe summaries
 │   └── exports/                # Future redacted evidence bundles
 ├── data/                      # ⚠️ [BACKUP THIS] All your private files
 │   ├── config.yaml            # Hermes LLM provider configurations
@@ -157,7 +158,7 @@ This project targets remote model APIs. Local GGUF models, llama.cpp, and a bund
 
 | Operating System | CPU Architecture | Setup Status | Notes |
 | :--- | :--- | :--- | :--- |
-| **Windows 10 / 11** | x86_64 | 🚧 P0 in progress | Initializer and component-lock tests are verified; complete setup still needs a Windows installation test |
+| **Windows 10 / 11** | x86_64 | 🚧 P0 in progress | Win10/exFAT first install and repeat launch verified; update/recovery matrix is the current acceptance gate |
 | **macOS 13+** | Apple Silicon (ARM64) | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |
 | **macOS 13+** | Intel (x86_64) | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |
 | **Linux** | x86_64 / ARM64 | ⚠️ Inherited / unverified | Upstream launcher exists; new portability audit not complete |

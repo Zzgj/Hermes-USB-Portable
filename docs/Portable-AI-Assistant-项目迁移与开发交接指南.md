@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v2.1 |
+| 文档版本 | v2.2 |
 | 交接日期 | 2026-09-04 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
@@ -38,13 +38,14 @@
 - 用户最终在同一 Win10/exFAT U 盘完成首次 Runtime：Hermes 0.21.0 源码 commit 为 `29112bef099274229cadff79cdff7bf7b99c4b77`，venv、104 个核心依赖、Provider 和 Telegram 依赖安装成功，`ready.flag=True`，runtime manifest 与 commit 一致；退出后再次运行 `launch.bat` 直接进入菜单，没有重复 Setup。P0-09 据此完成。
 - 可选 Playwright Chromium 在 P0-09 实机安装中失败，manifest 正确记录为 `false`，未阻止核心 Runtime 成功；当时脚本隐藏 stderr，P0-10 已补充独立诊断日志，根因需在更新后的 Win10 重试中依据该日志确认。
 - P0-10 已进入实现验收：Runtime 现在为 Python、Node、uv、ripgrep、Git、Hermes 源码、venv、核心依赖及可选依赖写入原子完成回执，跳过前同时校验锁指纹与真实安装；既有成功 manifest 可无重装迁移回执，损坏回执只触发对应步骤重建。Hermes 失败暂存不再在下一次启动前删除，且修复流程不会把用户主动更新的官方 Hermes checkout 静默降级到 bootstrap commit。
+- P0-07 更新观察层已实现：Windows 菜单在计划和确认后使用 portable venv 调用官方 updater，先验证 `origin` 与组件锁中的官方地址一致；官方 transcript、官方 `data/logs/update_receipts/` 回执和脱敏 Portable JSON 摘要分别保留。成功更新会把实际版本、commit、`origin/main`、时间和摘要路径写入 Runtime manifest，并刷新源码/依赖回执。Unix apply 也写入统一 transcript；真实更新和失败回退仍待 Win10/exFAT 验收。
 - 启动器现在同时检查核心文件和 `ready.flag`，Setup 返回后再次检查 `ready.flag`，取消或异常不再进入错误的成功路径；原“删除 `.cache`”提示已替换为保留缓存并从 `logs/setup` 诊断/续跑。Playwright stdout/stderr 独立写入 `logs/setup/playwright-*.log`，仍保持可选失败不阻塞核心 Runtime。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
 - Windows 10/exFAT 核心 Runtime 首次安装和幂等启动已通过；P0-10 自动化实现已通过 Linux PowerShell 7 Parser/六组测试及 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7，尚需同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
-- 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、回执、实际版本/commit、数据保留和失败回退验证。
+- 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、三层证据（transcript/官方回执/Portable 摘要）、Runtime manifest 刷新、数据保留和失败回退验证。
 - 尚未在 Windows 实机验证 Setup transcript、Doctor/更新观察日志的内容完整性、编码和脱敏边界。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
 - 尚未验证 `hermes desktop` 和 `hermes serve` 的完整便携性。
@@ -297,4 +298,4 @@ git diff --cached
 
 ## 10. 当前最重要的下一步
 
-最小初始化器和 P0-09 Win10/exFAT 核心 Runtime 首次安装、manifest/ready 状态及幂等启动已经完成。P0-10 的组件回执、Hermes 暂存恢复、取消/失败状态和 Playwright 诊断代码已经实现，当前先完成 Windows CI 与同一 Win10/exFAT 实机验收，再完成 P0-07 官方更新验证；之后才进入需要 API 凭据的 Setup/Chat 测试。仍不执行 Full Reset 或真实打印机安装。
+最小初始化器和 P0-09 Win10/exFAT 核心 Runtime 首次安装、manifest/ready 状态及幂等启动已经完成。P0-10 的组件回执、Hermes 暂存恢复、取消/失败状态和 Playwright 诊断代码已经实现；P0-07 的结构化更新观察层也已进入自动化验收。当前先确认 Windows CI，再在同一 Win10/exFAT 副本依次验证 P0-10 恢复矩阵和 P0-07 官方更新证据链；之后才进入需要 API 凭据的 Setup/Chat 测试。仍不执行 Full Reset 或真实打印机安装。

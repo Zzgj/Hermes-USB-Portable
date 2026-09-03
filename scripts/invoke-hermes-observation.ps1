@@ -12,7 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $rootPath = [System.IO.Path]::GetFullPath($Root)
-$pythonExecutable = Join-Path $rootPath ".cache\runtimes\windows-x64\python\python.exe"
+$pythonExecutable = Join-Path $rootPath ".cache\runtimes\windows-x64\venv\Scripts\python.exe"
 $sourceDirectory = Join-Path $rootPath "src\hermes-agent"
 if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
     throw "Portable Python executable not found: $pythonExecutable"

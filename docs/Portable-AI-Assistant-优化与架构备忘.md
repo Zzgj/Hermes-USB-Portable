@@ -467,7 +467,7 @@ repository/
 - 首次安装使用经审计的官方稳定 Release；后续更新复用官方 `hermes update` 并保持其默认 `origin/main` 行为。官方当前没有按“最新稳定 Release tag”自动推进的独立通道，P0 不自造一个不受上游支持的通道。
 - Portable 启动器在应用前依次暴露官方 `--check`、`--plan` 和明确确认，不传入 `--yes`、`--no-backup`、`--force` 等绕过安全控制的参数。
 - 官方更新器负责 quick 状态快照、依赖更新、配置迁移、关键文件语法验证、代码自动回退和更新回执；项目不重复维护自有 Git 更新器。回执位于便携 `HERMES_HOME/logs/update_receipts/`。
-- 每次 Hermes 更新的实际版本、commit、通道和结果用于诊断和回滚，不用于阻止新版本；仍需通过 Windows 实机验证数据保留和便携边界。
+- 每次 Hermes 更新的实际版本、commit、通道和结果用于诊断和回滚，不用于阻止新版本。Windows Portable 包装器校验 origin、保留官方交互、记录 transcript 与脱敏摘要，并在成功后刷新 Runtime manifest/组件回执；仍需通过 Windows 实机验证数据保留和便携边界。
 - 保存第三方组件来源、版本、许可证和哈希清单（SBOM/manifest）。
 
 ### 6.4 “零宿主污染”的真实定义
@@ -488,6 +488,12 @@ repository/
 - [ ] 完成宿主机落地文件审计。
 
 P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。P0-10 已增加原子组件回执、跳过前实时验证、Hermes 暂存续用、用户更新保护、失败后置条件和 Playwright 独立日志，并通过 PowerShell 7 本地 Parser/六组测试及 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7，尚待 Win10/exFAT 实机恢复矩阵；开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
+
+### v0.8 — 2026-09-04
+
+- 为 Windows 官方 Hermes update 增加 Portable 观察层：校验受审计 origin、使用 portable venv、保留交互式安全控制并记录完整 transcript。
+- 增加不复制官方 argv/步骤详情/配置的更新摘要，记录前后版本和 commit、通道、结果及官方回执关联；成功后刷新 Runtime manifest 与源码/依赖回执。
+- Unix 更新应用纳入统一 transcript；Doctor/检查/计划修正为使用安装了 Hermes 依赖的 portable venv。
 
 ### P1：远程 API、代理与知识库
 

@@ -92,6 +92,8 @@ try {
     Assert-True ($setupSource -match '\.portable-source\.json') "setup should record the installed Hermes source state"
     Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "setup should keep Git metadata required by the inherited Hermes updater"
     Assert-True ($setupSource -match 'runtime-manifest\.json') "setup should record the installed runtime state"
+    Assert-True ($setupSource -match 'hermes_version\s*=\s*\$actualHermesVersion') "runtime state should include the actual installed Hermes version"
+    Assert-True ($setupSource -match 'hermes_update_channel\s*=\s*"origin/\{0\}"') "runtime state should include the configured Hermes update channel"
     Assert-True ($setupSource -match '\[System\.IO\.File\]::WriteAllText\(\$readyFlag, \(\$ComponentLockHash') "ready state should identify the installed component lock"
     Assert-True ($setupSource -match 'Get-ChildItem -Path \$CacheDir, \$SrcDir, \$TempDir') "metadata cleanup should stay inside setup-managed directories"
     Assert-True (-not ($setupSource -match 'Get-ChildItem -Path \$Root -Filter "\._\*"')) "setup should not recursively delete metadata files from user-owned root content"

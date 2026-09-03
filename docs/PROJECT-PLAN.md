@@ -7,8 +7,8 @@
 | 当前阶段 | **P0：保留原版能力并建立可验证基线** |
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动 |
-| 当前任务 | **P0-10 中断恢复、组件级续跑与可选 Playwright 诊断** |
-| 下一个验收门 | Win10/exFAT 实机验证组件续跑、取消状态、损坏回执、Soft Reset 数据保留和 Playwright 诊断 |
+| 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
+| 下一个验收门 | Windows CI 通过新增更新状态测试；Win10/exFAT 实测更新回执、Runtime 实际版本、组件续跑和数据保留 |
 | 最近更新 | 2026-09-04 |
 
 ## 状态说明
@@ -35,7 +35,7 @@
 - **首次安装与后续更新分开处理**：首次安装使用经审计的官方稳定 Release；后续更新复用官方 `hermes update`，其默认目标是 `origin/main`。当前官方更新器没有“自动跟随最新 Release tag”的独立稳定通道，因此项目不虚构该能力。
 - **更新入口**：启动器提供独立的只读 `hermes update --check`，应用更新前先运行只读 `hermes update --plan` 并要求用户确认，最终仍由官方更新器执行。
 - **不重复实现上游能力**：官方更新器已经提供默认 quick 状态快照、可选完整备份、依赖更新、配置迁移、关键文件语法验证、代码自动回退和更新回执；Portable 层只负责暴露这些能力并验证便携边界。
-- **记录而非阻止**：官方更新回执保存到便携 `HERMES_HOME/logs/update_receipts/`；后续诊断还需汇总实际版本、commit、通道、时间和结果，不因为 bootstrap manifest 中的旧版本而拒绝启动。
+- **记录而非阻止**：官方更新回执保存到便携 `HERMES_HOME/logs/update_receipts/`；Portable 更新包装器另外生成不复制参数、配置或步骤详情的安全摘要，并刷新 Runtime 的实际版本、commit、通道、时间和结果，不因为 bootstrap manifest 中的旧版本而拒绝启动。
 - **数据边界**：更新可以迁移 Hermes 配置和依赖，但不得把 `data/`、Profiles、Sessions、Memory、Skills 或 Obsidian Vault 移出便携目录，也不得静默丢失用户数据。
 
 截至 2026-09-03，官方最新稳定 Release 是 [Hermes Agent `v0.21.0` / tag `v2026.8.31`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.8.31)；当前 bootstrap 基线已是该版本。因此当前不需要把版本号改成另一个值，需要完成的是“以后可以安全更新”的流程。
@@ -64,10 +64,10 @@
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
-- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
+- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。仍需 Win10/exFAT 实测官方更新、数据保留和失败回退，不重复实现上游更新器。
 - [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单，仍需实测 Chat、Setup、Gateway、配置编辑和 Update。
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
-- [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。PowerShell 7 本地 Parser/六组测试与 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7 均通过；Win10/exFAT 中断/损坏/软重建实测完成前保持进行中，不开启 Full Reset。
+- [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。PowerShell 7 本地 Parser/六组测试与 GitHub Actions run `33776790273` 的 Windows PowerShell 5.1/7 均通过；Win10/exFAT 中断/损坏/软重建实测完成前保持进行中，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
 - [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确，portable Git 和重复启动可用；盘符移动与移动后 venv 修复仍未完成。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。

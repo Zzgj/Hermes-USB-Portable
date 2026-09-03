@@ -74,6 +74,7 @@ try {
         "playwright-setup-transcripts",
         "doctor-transcripts",
         "update-observation-transcripts",
+        "portable-update-receipts",
         "hermes-logs",
         "update-receipts",
         "runtime-manifest",
@@ -115,6 +116,7 @@ try {
     Assert-True ($setupSource -match 'Start-Transcript -LiteralPath \$SetupLogPath') "Windows setup should persist a transcript"
     Assert-True ($setupSource -match 'Stop-Transcript') "Windows setup should close its transcript"
     Assert-True ($observationSource -match 'ValidateSet\("doctor", "update-check", "update-plan"\)') "observation runner should be restricted to read-only operations"
+    Assert-True ($observationSource -match 'venv\\Scripts\\python\.exe') "observation runner should use the configured portable environment"
     Assert-True (-not ($observationSource -match 'update-apply')) "observation runner should not wrap the interactive update apply operation"
     Assert-True ($eventWriterSource -match 'ConvertTo-Json -Compress') "event writer should emit structured JSONL"
     Assert-True ($gitIgnoreSource -match '(?m)^/logs/\r?$') "generated central logs should remain excluded from Git"

@@ -399,11 +399,12 @@ goto :show_advanced
 :adv_update_apply
 echo.
 call :write_portable_event diagnostics update-apply started
-python -c "from hermes_cli.main import main; main()" update
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-update.ps1" -Root "%PORTABLE_ROOT%"
 if errorlevel 1 (
     call :write_portable_event diagnostics update-apply failed
     echo.
-    echo %BRIGHT_RED%[ERROR] Hermes update failed. Review the updater output and portable logs.%RESET%
+    echo %BRIGHT_RED%[ERROR] Hermes update or portable state recording did not complete.%RESET%
+    echo %BRIGHT_RED%[ERROR] Review logs\diagnostics and data\logs\update_receipts.%RESET%
     pause
     goto :show_advanced
 )

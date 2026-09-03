@@ -930,12 +930,26 @@ else {
 # 12. Record installed state and mark ready
 # ---------------------------------------------------------------------------
 $ErrorActionPreference = "Stop"
+$hermesVersionCode = "import pathlib,tomllib; print(tomllib.loads((pathlib.Path.cwd()/'pyproject.toml').read_text(encoding='utf-8'))['project']['version'])"
+Push-Location $destSrc
+try {
+    $hermesVersionOutput = @(& $pythonExe -c $hermesVersionCode 2>$null)
+}
+finally {
+    Pop-Location
+}
+if ($LASTEXITCODE -ne 0 -or $hermesVersionOutput.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$hermesVersionOutput[0])) {
+    throw "Unable to record the installed Hermes version."
+}
+$actualHermesVersion = ([string]$hermesVersionOutput[0]).Trim()
 $runtimeManifest = [ordered]@{
     schema_version = 1
     platform = "windows-x64"
     installed_at_utc = [DateTime]::UtcNow.ToString("o")
     component_lock_sha256 = $ComponentLockHash
     hermes_commit = $actualHermesCommit
+    hermes_version = $actualHermesVersion
+    hermes_update_channel = "origin/{0}" -f [string]$HermesComponent.update_policy.default_channel
     components = @($ComponentLock.components | ForEach-Object {
         [ordered]@{
             id = $_.id

@@ -71,6 +71,15 @@
       "may_contain_sensitive_data": true
     },
     {
+      "id": "portable-update-receipts",
+      "category": "update",
+      "owner": "portable-workbench",
+      "format": "json",
+      "path": "logs/diagnostics/update-apply-*.json",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
       "id": "hermes-logs",
       "category": "hermes",
       "owner": "hermes-agent",

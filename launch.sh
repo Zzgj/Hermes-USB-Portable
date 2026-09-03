@@ -469,7 +469,7 @@ adv_update() {
     case "$confirm_update" in
         y|Y|yes|YES)
             log_event diagnostics update-apply started
-            if hermes update; then
+            if run_observation diagnostics update-apply hermes update; then
                 log_event diagnostics update-apply succeeded
                 echo ""
                 echo -e "${BRIGHT_GREEN}Hermes update completed. The displayed version will be refreshed.${RESET}"

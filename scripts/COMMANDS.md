@@ -14,11 +14,15 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 .\tests\portable-initializer.Tests.ps1
 .\tests\runtime-component-lock.Tests.ps1
 .\tests\runtime-filesystem.Tests.ps1
+.\tests\runtime-setup-state.Tests.ps1
+.\tests\portable-update-state.Tests.ps1
 .\tests\portable-launcher.Tests.ps1
 .\tests\log-layout.Tests.ps1
 ```
 
 See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
+
+For the current Windows 10/exFAT regression, receipt migration, and official update acceptance sequence, use [`docs/WINDOWS-P0-TEST-GUIDE.md`](../docs/WINDOWS-P0-TEST-GUIDE.md). It keeps Runtime/user state in place and separates non-destructive checks from later disposable-copy recovery tests.
 
 Generated Workbench logs are grouped under `logs/`. Hermes-owned logs/receipts and component state remain at their canonical portable paths and are listed in `manifests/log-sources.json`. See [`docs/log-layout.md`](../docs/log-layout.md) for the complete mapping and sharing precautions.
 
@@ -39,7 +43,7 @@ Git repositories on ownership-less filesystems such as exFAT are trusted only th
 
 The shallow Hermes source fetch retries bounded transient network failures four times with increasing delays. Exhausted retries remain a visible setup failure and do not create the ready flag.
 
-The Hermes version is not permanently locked. The recorded stable Release is a known first-install baseline; later user-initiated updates reuse the official `hermes update`, which currently tracks `origin/main`. The inherited updater already handles quick state snapshots, dependency/config migration, validation, rollback, and receipts. Portable P0 work adds visible check/plan/confirmation steps and verifies that the upstream safeguards stay inside the portable data boundary.
+The Hermes version is not permanently locked. The recorded stable Release is a known first-install baseline; later user-initiated updates reuse the official `hermes update`, which currently tracks `origin/main`. The inherited updater handles quick state snapshots, dependency/config migration, validation, rollback, and receipts. The interactive Windows menu verifies the reviewed origin, invokes the updater through the portable venv, records a transcript and safe summary, and refreshes `runtime-manifest.json` with the actual installed version and commit. It never forwards `--yes`, `--no-backup`, `--force`, or related bypass flags.
 
 ## Portable Launcher Commands
 
