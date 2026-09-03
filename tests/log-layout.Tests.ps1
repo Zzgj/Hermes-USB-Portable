@@ -1,17 +1,38 @@
 [CmdletBinding()]
 param(
-    [string]$LogSourcesPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "manifests/log-sources.json"),
-    [string]$InitializerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/initialize-portable.ps1"),
-    [string]$WindowsLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.bat"),
-    [string]$UnixLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.sh"),
-    [string]$SetupScriptPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/setup-windows.ps1"),
-    [string]$EventWriterPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/write-portable-log-event.ps1"),
-    [string]$ObservationRunnerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/invoke-hermes-observation.ps1"),
-    [string]$GitIgnorePath = (Join-Path (Split-Path -Parent $PSScriptRoot) ".gitignore")
+    [string]$LogSourcesPath,
+    [string]$InitializerPath,
+    [string]$WindowsLauncherPath,
+    [string]$UnixLauncherPath,
+    [string]$SetupScriptPath,
+    [string]$EventWriterPath,
+    [string]$ObservationRunnerPath,
+    [string]$GitIgnorePath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$testScriptPath = $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($testScriptPath)) {
+    throw "Unable to determine the test script path."
+}
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $testScriptPath)
+$defaultPaths = @{
+    LogSourcesPath = "manifests/log-sources.json"
+    InitializerPath = "scripts/initialize-portable.ps1"
+    WindowsLauncherPath = "launch.bat"
+    UnixLauncherPath = "launch.sh"
+    SetupScriptPath = "scripts/setup-windows.ps1"
+    EventWriterPath = "scripts/write-portable-log-event.ps1"
+    ObservationRunnerPath = "scripts/invoke-hermes-observation.ps1"
+    GitIgnorePath = ".gitignore"
+}
+foreach ($pathName in $defaultPaths.Keys) {
+    if ([string]::IsNullOrWhiteSpace((Get-Variable -Name $pathName -ValueOnly))) {
+        Set-Variable -Name $pathName -Value (Join-Path $repositoryRoot $defaultPaths[$pathName])
+    }
+}
 
 function Assert-True {
     param(

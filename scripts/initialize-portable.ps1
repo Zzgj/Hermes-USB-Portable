@@ -5,11 +5,20 @@ param(
     [string]$TargetDirectory,
 
     [ValidateNotNullOrEmpty()]
-    [string]$ComponentLockPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "manifests/runtime-components.windows-x64.json")
+    [string]$ComponentLockPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$scriptFilePath = $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($scriptFilePath)) {
+    throw "Unable to determine the initializer script path."
+}
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $scriptFilePath)
+if ([string]::IsNullOrWhiteSpace($ComponentLockPath)) {
+    $ComponentLockPath = Join-Path $repositoryRoot "manifests/runtime-components.windows-x64.json"
+}
 
 $InitializerVersion = "0.2.0"
 $LayoutVersion = "1"

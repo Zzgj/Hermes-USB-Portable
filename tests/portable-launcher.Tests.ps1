@@ -1,13 +1,31 @@
 [CmdletBinding()]
 param(
-    [string]$WindowsLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.bat"),
-    [string]$UnixLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.sh"),
-    [string]$SetupScriptPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/setup-windows.ps1"),
-    [string]$ObservationRunnerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/invoke-hermes-observation.ps1")
+    [string]$WindowsLauncherPath,
+    [string]$UnixLauncherPath,
+    [string]$SetupScriptPath,
+    [string]$ObservationRunnerPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$testScriptPath = $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($testScriptPath)) {
+    throw "Unable to determine the test script path."
+}
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $testScriptPath)
+if ([string]::IsNullOrWhiteSpace($WindowsLauncherPath)) {
+    $WindowsLauncherPath = Join-Path $repositoryRoot "launch.bat"
+}
+if ([string]::IsNullOrWhiteSpace($UnixLauncherPath)) {
+    $UnixLauncherPath = Join-Path $repositoryRoot "launch.sh"
+}
+if ([string]::IsNullOrWhiteSpace($SetupScriptPath)) {
+    $SetupScriptPath = Join-Path $repositoryRoot "scripts/setup-windows.ps1"
+}
+if ([string]::IsNullOrWhiteSpace($ObservationRunnerPath)) {
+    $ObservationRunnerPath = Join-Path $repositoryRoot "scripts/invoke-hermes-observation.ps1"
+}
 
 function Assert-True {
     param(

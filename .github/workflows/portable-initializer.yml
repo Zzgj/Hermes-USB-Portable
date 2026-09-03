@@ -20,14 +20,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Test initializer
+      - name: Test PowerShell file entrypoints
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          & .\tests\portable-initializer.Tests.ps1
-          & .\tests\runtime-component-lock.Tests.ps1
-          & .\tests\portable-launcher.Tests.ps1
-          & .\tests\log-layout.Tests.ps1
+          $hostExecutable = (Get-Process -Id $PID).Path
+          $testScripts = @(
+            ".\tests\portable-initializer.Tests.ps1",
+            ".\tests\runtime-component-lock.Tests.ps1",
+            ".\tests\portable-launcher.Tests.ps1",
+            ".\tests\log-layout.Tests.ps1"
+          )
+          foreach ($testScript in $testScripts) {
+            & $hostExecutable -NoLogo -NoProfile -ExecutionPolicy Bypass -File $testScript
+            if ($LASTEXITCODE -ne 0) {
+              throw "Test entrypoint failed with exit code $LASTEXITCODE`: $testScript"
+            }
+          }
 
   windows-pwsh:
     name: Windows / PowerShell 7
@@ -37,11 +46,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Test initializer
+      - name: Test PowerShell file entrypoints
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          & .\tests\portable-initializer.Tests.ps1
-          & .\tests\runtime-component-lock.Tests.ps1
-          & .\tests\portable-launcher.Tests.ps1
-          & .\tests\log-layout.Tests.ps1
+          $hostExecutable = (Get-Process -Id $PID).Path
+          $testScripts = @(
+            ".\tests\portable-initializer.Tests.ps1",
+            ".\tests\runtime-component-lock.Tests.ps1",
+            ".\tests\portable-launcher.Tests.ps1",
+            ".\tests\log-layout.Tests.ps1"
+          )
+          foreach ($testScript in $testScripts) {
+            & $hostExecutable -NoLogo -NoProfile -ExecutionPolicy Bypass -File $testScript
+            if ($LASTEXITCODE -ne 0) {
+              throw "Test entrypoint failed with exit code $LASTEXITCODE`: $testScript"
+            }
+          }

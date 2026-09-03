@@ -1,11 +1,23 @@
 [CmdletBinding()]
 param(
-    [string]$InitializerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/initialize-portable.ps1"),
-    [string]$ComponentLockPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "manifests/runtime-components.windows-x64.json")
+    [string]$InitializerPath,
+    [string]$ComponentLockPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$testScriptPath = $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($testScriptPath)) {
+    throw "Unable to determine the test script path."
+}
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $testScriptPath)
+if ([string]::IsNullOrWhiteSpace($InitializerPath)) {
+    $InitializerPath = Join-Path $repositoryRoot "scripts/initialize-portable.ps1"
+}
+if ([string]::IsNullOrWhiteSpace($ComponentLockPath)) {
+    $ComponentLockPath = Join-Path $repositoryRoot "manifests/runtime-components.windows-x64.json"
+}
 
 function Assert-True {
     param(

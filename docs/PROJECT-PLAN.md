@@ -62,10 +62,10 @@
 - [x] **P0-02** 检查 `.gitignore` 和已跟踪文件，排除凭据、Runtime、日志、Sessions、私人知识库和驱动二进制。
 - [x] **P0-03** 恢复架构备忘、迁移交接指南和本计划清单。
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
-- [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器。
+- [-] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：已修复用户实际 `powershell.exe -File` 入口中 `$PSScriptRoot` 为空的兼容问题，CI 已改为外部 `-File` 子进程调用，待 Windows CI 与用户 Win10 重试确认。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
 - [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
-- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试；仍需在 Windows 实测 `launch.bat`、Chat、Setup、Gateway、配置编辑和 Update。
+- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；仍需在 Windows 实测 `launch.bat`、Chat、Setup、Gateway、配置编辑和 Update。
 - [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；记录时间、空间、网络失败和不含凭据的诊断信息。
 - [!] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
