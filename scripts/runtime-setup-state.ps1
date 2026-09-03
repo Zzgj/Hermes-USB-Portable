@@ -45,6 +45,54 @@ function Test-SetupReceipt {
     }
 }
 
+function Test-SetupVerification {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Verification
+    )
+
+    try {
+        $verificationOutput = @(& $Verification)
+        return (
+            $verificationOutput.Count -eq 1 -and
+            $verificationOutput[0] -is [bool] -and
+            $verificationOutput[0] -eq $true
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-SetupStepReady {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StateDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[a-z0-9][a-z0-9-]*$')]
+        [string]$StepId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Fingerprint,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Verification
+    )
+
+    if (-not (Test-SetupReceipt -StateDirectory $StateDirectory -StepId $StepId -Fingerprint $Fingerprint)) {
+        return $false
+    }
+    if (Test-SetupVerification -Verification $Verification) {
+        return $true
+    }
+
+    Remove-SetupReceipt -StateDirectory $StateDirectory -StepId $StepId
+    return $false
+}
+
 function Write-SetupReceipt {
     [CmdletBinding()]
     param(

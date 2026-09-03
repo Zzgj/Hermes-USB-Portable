@@ -199,24 +199,20 @@ function Test-NativeCommand($FilePath, $Arguments, $ExpectedPattern = "") {
 }
 
 function Test-VerifiedSetupStep($StepId, $Fingerprint, [scriptblock]$Verification) {
-    if (-not (Test-SetupReceipt -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint)) {
-        return $false
+    $receiptPath = Get-SetupReceiptPath -StateDirectory $StateDir -StepId $StepId
+    $hadMatchingReceipt = Test-SetupReceipt -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint
+    $stepReady = Test-SetupStepReady -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint -Verification $Verification
+    if ($stepReady) {
+        return $true
     }
-
-    try {
-        if ([bool](& $Verification)) {
-            return $true
-        }
+    if ($hadMatchingReceipt -and -not (Test-Path -LiteralPath $receiptPath)) {
+        Write-Warn "The '$StepId' receipt matched, but installed verification failed; rebuilding this step."
     }
-    catch {}
-
-    Write-Warn "The '$StepId' receipt exists, but installed verification failed; rebuilding this step."
-    Remove-SetupReceipt -StateDirectory $StateDir -StepId $StepId
     return $false
 }
 
 function Complete-SetupStep($StepId, $Fingerprint, [scriptblock]$Verification, [hashtable]$Details = @{}) {
-    if (-not [bool](& $Verification)) {
+    if (-not (Test-SetupVerification -Verification $Verification)) {
         throw "Installed verification failed for setup step '$StepId'"
     }
     Write-SetupReceipt -StateDirectory $StateDir -StepId $StepId -Fingerprint $Fingerprint -Details $Details | Out-Null
@@ -848,7 +844,7 @@ else {
     if ($LASTEXITCODE -ne 0) {
         & $venvPython -m pip install $AnthropicRequirement >$null 2>$null
     }
-    if ([bool](& $anthropicVerification)) {
+    if (Test-SetupVerification -Verification $anthropicVerification) {
         $AnthropicInstalled = $true
         Complete-SetupStep "provider-anthropic" $AnthropicRequirement $anthropicVerification @{ version = $AnthropicVersion }
         Write-Done "Provider dependencies ready"
@@ -881,7 +877,7 @@ else {
     if ($LASTEXITCODE -ne 0) {
         & $venvPython -m pip install $TelegramRequirement >$null 2>$null
     }
-    if ([bool](& $telegramVerification)) {
+    if (Test-SetupVerification -Verification $telegramVerification) {
         $TelegramInstalled = $true
         Complete-SetupStep "messaging-telegram" $TelegramRequirement $telegramVerification @{ version = $TelegramVersion }
         Write-Done "python-telegram-bot ready"
@@ -919,7 +915,7 @@ else {
         $playwrightExitCode = 1
         [System.IO.File]::WriteAllText($PlaywrightLogPath, $_.Exception.Message, (New-Object System.Text.UTF8Encoding($false)))
     }
-    if ($playwrightExitCode -eq 0 -and [bool](& $playwrightVerification)) {
+    if ($playwrightExitCode -eq 0 -and (Test-SetupVerification -Verification $playwrightVerification)) {
         $PlaywrightInstalled = $true
         Complete-SetupStep "playwright-chromium" $playwrightFingerprint $playwrightVerification @{ log = (Split-Path $PlaywrightLogPath -Leaf) }
         Write-Done "Playwright browsers ready"

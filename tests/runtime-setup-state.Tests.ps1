@@ -57,6 +57,29 @@ try {
     Assert-True (-not (Test-SetupReceipt -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-b")) "changed lock fingerprint should invalidate a receipt"
     Assert-True (@(Get-ChildItem -LiteralPath $stateDirectory -Filter ".*.tmp-*" -Force).Count -eq 0) "atomic receipt writes should not leave temporary files"
 
+    $script:SetupVerificationCalls = 0
+    $healthyVerification = {
+        $script:SetupVerificationCalls++
+        return $true
+    }
+    Assert-True (Test-SetupStepReady -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-a" -Verification $healthyVerification) "matching receipt and live verification should skip the step"
+    Assert-True ($script:SetupVerificationCalls -eq 1) "live verification should run exactly once for a matching receipt"
+    Assert-True (-not (Test-SetupStepReady -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-b" -Verification $healthyVerification)) "a fingerprint mismatch should not skip"
+    Assert-True ($script:SetupVerificationCalls -eq 1) "a fingerprint mismatch should not execute the installed component"
+
+    $failedVerification = { return $false }
+    Assert-True (-not (Test-SetupStepReady -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-a" -Verification $failedVerification)) "failed installed verification should rebuild the step"
+    Assert-True (-not (Test-Path -LiteralPath $receiptPath)) "failed installed verification should invalidate its stale receipt"
+
+    Write-SetupReceipt -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-noisy" | Out-Null
+    $noisyVerification = {
+        Write-Output "unexpected diagnostic output"
+        return $true
+    }
+    Assert-True (-not (Test-SetupStepReady -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-noisy" -Verification $noisyVerification)) "ambiguous verification output should fail closed"
+    Assert-True (-not (Test-Path -LiteralPath $receiptPath)) "ambiguous verification should invalidate its receipt"
+
+    Write-SetupReceipt -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-a" | Out-Null
     [System.IO.File]::WriteAllText($receiptPath, '{"schema_version":1,"step_id":"python"')
     Assert-True (-not (Test-SetupReceipt -StateDirectory $stateDirectory -StepId "python" -Fingerprint "sha-a")) "corrupt receipt JSON should trigger rebuild"
 
