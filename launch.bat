@@ -6,7 +6,7 @@ REM Hermes Agent - Portable Launcher (Windows)
 REM ============================================================================
 REM Double-click this file to launch Hermes.
 REM On first run, it downloads ~600MB of runtime files automatically.
-REM All data stays in the "data\" folder - nothing touches the host computer.
+REM Generated state and logs stay inside this portable folder.
 REM ============================================================================
 
 REM Resolve portable root (directory containing this script)
@@ -17,6 +17,8 @@ set "HERMES_HOME=%PORTABLE_ROOT%\data"
 set "CACHE_DIR=%PORTABLE_ROOT%\.cache"
 set "RUNTIME_DIR=%CACHE_DIR%\runtimes\windows-x64"
 set "SRC_DIR=%PORTABLE_ROOT%\src"
+set "LOG_ROOT=%PORTABLE_ROOT%\logs"
+call :write_portable_event launcher launcher-start started
 
 REM ---------------------------------------------------------------------------
 REM First-run setup
@@ -30,13 +32,16 @@ if not exist "%RUNTIME_DIR%\ready.flag" (
     echo  for Windows x64. Please be patient.
     echo ============================================
     echo.
+    call :write_portable_event setup runtime-setup started
     powershell -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\setup-windows.ps1" -Root "%PORTABLE_ROOT%"
     if errorlevel 1 (
+        call :write_portable_event setup runtime-setup failed
         echo.
         echo [ERROR] Setup failed. Please check your internet connection and try again.
         pause
         exit /b 1
     )
+    call :write_portable_event setup runtime-setup succeeded
 )
 
 REM ---------------------------------------------------------------------------
@@ -89,8 +94,15 @@ if /I "%~1"=="hermes" (
 
 REM If explicit arguments were passed, run Hermes directly (skip menu)
 if not "%ARGS%"=="" (
+    call :write_portable_event launcher direct-command started
     python -c "from hermes_cli.main import main; main()" %ARGS%
-    exit /b
+    set "DIRECT_EXIT=!errorlevel!"
+    if not "!DIRECT_EXIT!"=="0" (
+        call :write_portable_event launcher direct-command failed
+        exit /b !DIRECT_EXIT!
+    )
+    call :write_portable_event launcher direct-command succeeded
+    exit /b 0
 )
 
 REM ---------------------------------------------------------------------------
@@ -217,29 +229,50 @@ REM Menu Actions
 REM ---------------------------------------------------------------------------
 :menu_chat
 echo.
+call :write_portable_event launcher chat started
 python -c "from hermes_cli.main import main; main()"
+if errorlevel 1 (
+    call :write_portable_event launcher chat failed
+) else (
+    call :write_portable_event launcher chat succeeded
+)
 goto :show_menu
 
 :menu_setup
 echo.
+call :write_portable_event launcher hermes-setup started
 python -c "from hermes_cli.main import main; main()" setup
+if errorlevel 1 (
+    call :write_portable_event launcher hermes-setup failed
+) else (
+    call :write_portable_event launcher hermes-setup succeeded
+)
 goto :detect_status
 
 :menu_gateway
 if "!GATEWAY_STATUS!"=="Running (PID !GATEWAY_PID!)" (
+    call :write_portable_event launcher gateway-stop started
     python -c "from hermes_cli.main import main; main()" gateway stop
+    if errorlevel 1 (
+        call :write_portable_event launcher gateway-stop failed
+    ) else (
+        call :write_portable_event launcher gateway-stop succeeded
+    )
     echo.
     echo %BRIGHT_GREEN%Gateway stopped.%RESET%
 ) else (
     echo.
     echo %CYAN%Starting gateway in background ...%RESET%
+    call :write_portable_event launcher gateway-start started
     start "" python -c "from hermes_cli.main import main; main()" gateway
+    call :write_portable_event launcher gateway-start observed
     timeout /t 2 /nobreak >nul
 )
 pause
 goto :detect_status
 
 :menu_exit
+call :write_portable_event launcher launcher-exit observed
 echo.
 echo.
 echo %GRAY%Goodbye!%RESET%
@@ -257,7 +290,7 @@ echo %BOLD%%BRIGHT_WHITE%                       Advanced Options%RESET%
 echo %BRIGHT_CYAN%----------------------------------------------------------------%RESET%
 echo.
 echo  %BRIGHT_YELLOW%[1]%RESET%  %WHITE%Run Doctor%RESET%            %GRAY%- check for issues%RESET%
-echo  %BRIGHT_YELLOW%[2]%RESET%  %WHITE%View Logs%RESET%             %GRAY%- last 20 lines%RESET%
+echo  %BRIGHT_YELLOW%[2]%RESET%  %WHITE%View Logs%RESET%             %GRAY%- central paths + gateway tail%RESET%
 echo  %BRIGHT_YELLOW%[3]%RESET%  %WHITE%Edit Config%RESET%           %GRAY%- open in editor%RESET%
 echo  %BRIGHT_YELLOW%[4]%RESET%  %WHITE%Restart Gateway%RESET%       %GRAY%- stop + start%RESET%
 echo  %BRIGHT_YELLOW%[5]%RESET%  %WHITE%Check for Updates%RESET%      %GRAY%- read-only%RESET%
@@ -279,11 +312,21 @@ goto :show_advanced
 
 :adv_doctor
 echo.
-python -c "from hermes_cli.main import main; main()" doctor
+call :write_portable_event doctor doctor started
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation doctor
+if errorlevel 1 (
+    call :write_portable_event doctor doctor failed
+) else (
+    call :write_portable_event doctor doctor succeeded
+)
 pause
 goto :show_advanced
 
 :adv_logs
+echo.
+echo %CYAN%Workbench logs:%RESET% %LOG_ROOT%
+echo %CYAN%Hermes logs:%RESET%    %HERMES_HOME%\logs
+echo %CYAN%Log catalog:%RESET%    %PORTABLE_ROOT%\manifests\log-sources.json
 echo.
 if exist "%HERMES_HOME%\logs\gateway.log" (
     echo %CYAN%=== Gateway Log (last 20 lines) ===%RESET%
@@ -310,28 +353,36 @@ goto :detect_status
 :adv_update
 echo.
 echo %CYAN%Reviewing the official Hermes update plan...%RESET%
-python -c "from hermes_cli.main import main; main()" update --plan
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation update-plan
 if errorlevel 1 (
+    call :write_portable_event diagnostics update-plan failed
     echo.
     echo %BRIGHT_RED%[ERROR] Update plan failed. No update was applied.%RESET%
     pause
     goto :show_advanced
 )
+call :write_portable_event diagnostics update-plan succeeded
 echo.
 choice /C YN /N /M "Continue with the official Hermes update from origin/main? [Y/N] "
-if errorlevel 2 goto :show_advanced
+if errorlevel 2 (
+    call :write_portable_event diagnostics update-apply cancelled
+    goto :show_advanced
+)
 if errorlevel 1 goto :adv_update_apply
 goto :show_advanced
 
 :adv_update_apply
 echo.
+call :write_portable_event diagnostics update-apply started
 python -c "from hermes_cli.main import main; main()" update
 if errorlevel 1 (
+    call :write_portable_event diagnostics update-apply failed
     echo.
     echo %BRIGHT_RED%[ERROR] Hermes update failed. Review the updater output and portable logs.%RESET%
     pause
     goto :show_advanced
 )
+call :write_portable_event diagnostics update-apply succeeded
 echo.
 echo %BRIGHT_GREEN%Hermes update completed. The displayed version will be refreshed.%RESET%
 pause
@@ -339,7 +390,17 @@ goto :detect_status
 
 :adv_update_check
 echo.
-python -c "from hermes_cli.main import main; main()" update --check
-if errorlevel 1 echo %BRIGHT_RED%[ERROR] Hermes update check failed. No update was applied.%RESET%
+call :write_portable_event diagnostics update-check started
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation update-check
+if errorlevel 1 (
+    call :write_portable_event diagnostics update-check failed
+    echo %BRIGHT_RED%[ERROR] Hermes update check failed. No update was applied.%RESET%
+) else (
+    call :write_portable_event diagnostics update-check succeeded
+)
 pause
 goto :show_advanced
+
+:write_portable_event
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\write-portable-log-event.ps1" -Root "%PORTABLE_ROOT%" -Component "%~1" -Event "%~2" -Status "%~3" >nul 2>&1
+exit /b 0

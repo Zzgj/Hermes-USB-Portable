@@ -20,6 +20,22 @@ $RuntimeDir = Join-Path $CacheDir "runtimes\windows-x64"
 $SrcDir     = Join-Path $Root "src"
 $BinDir     = Join-Path $RuntimeDir "bin"
 $TempDir    = Join-Path $Root ".tmp"
+$SetupLogDir = Join-Path (Join-Path $Root "logs") "setup"
+
+New-Item -ItemType Directory -Force -Path $SetupLogDir | Out-Null
+$setupLogStamp = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
+$setupLogSuffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)
+$SetupLogPath = Join-Path $SetupLogDir ("setup-{0}-{1}.log" -f $setupLogStamp, $setupLogSuffix)
+$SetupTranscriptStarted = $false
+try {
+    Start-Transcript -LiteralPath $SetupLogPath -Force | Out-Null
+    $SetupTranscriptStarted = $true
+}
+catch {
+    Write-Warning "Unable to start the setup transcript: $($_.Exception.Message)"
+}
+
+try {
 
 # ---------------------------------------------------------------------------
 # Locked runtime components
@@ -627,3 +643,15 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Setup Complete! Launching Hermes..." -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Start-Sleep -Seconds 1
+}
+finally {
+    if ($SetupTranscriptStarted) {
+        try {
+            Stop-Transcript | Out-Null
+        }
+        catch {
+            Write-Warning "Unable to close the setup transcript: $($_.Exception.Message)"
+        }
+    }
+    Write-Host "[portable-log] Setup transcript: $SetupLogPath"
+}

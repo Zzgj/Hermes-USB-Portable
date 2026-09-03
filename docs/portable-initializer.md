@@ -14,7 +14,7 @@ The target must be a dedicated directory, not a filesystem root such as `D:\`. A
 
 ## Outputs
 
-- The standard `runtime`, `data`, `knowledge`, `skills`, `repository`, `proxy`, `workspace`, `logs`, and `updates` directory tree.
+- The standard `runtime`, `data`, `knowledge`, `skills`, `repository`, `proxy`, `workspace`, `logs`, and `updates` directory tree. The log tree includes dedicated `initializer`, `launcher`, `setup`, `doctor`, `diagnostics`, and `exports` directories.
 - `portable-ai.manifest.json`, created once and never overwritten by the initializer. It records the Windows Runtime bootstrap components, the exact SHA-256 of the component lock used, and the policy allowing explicit Hermes updates beyond the recorded bootstrap version.
 - A unique `logs/initializer/environment-check-*.json` report for each run.
 
@@ -40,6 +40,8 @@ Run the dependency-free test script from PowerShell:
 ```powershell
 pwsh -NoProfile -File .\tests\portable-initializer.Tests.ps1
 pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
+pwsh -NoProfile -File .\tests\portable-launcher.Tests.ps1
+pwsh -NoProfile -File .\tests\log-layout.Tests.ps1
 ```
 
 The test covers component-lock validation, creation of a missing target, a path containing spaces and non-ASCII characters, repeat execution, preservation of a sentinel user file and the manifest, file/directory and symbolic-link collisions, identifiable failure reports, and rejection of filesystem roots.

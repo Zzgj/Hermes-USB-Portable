@@ -361,6 +361,11 @@ $standardDirectories = @(
     "workspace",
     "logs",
     "logs/initializer",
+    "logs/launcher",
+    "logs/setup",
+    "logs/doctor",
+    "logs/diagnostics",
+    "logs/exports",
     "updates"
 )
 

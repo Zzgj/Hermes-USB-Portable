@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "log_root": "logs",
+  "policy": {
+    "generated_data_tracked_by_git": false,
+    "raw_logs_safe_to_share": false,
+    "ui_must_resolve_portable_relative_paths": true,
+    "ui_must_not_follow_unlisted_external_paths": true
+  },
+  "workbench_directories": [
+    "logs/initializer",
+    "logs/launcher",
+    "logs/setup",
+    "logs/doctor",
+    "logs/diagnostics",
+    "logs/exports"
+  ],
+  "sources": [
+    {
+      "id": "initializer-reports",
+      "category": "initializer",
+      "owner": "portable-workbench",
+      "format": "json",
+      "path": "logs/initializer/environment-check-*.json",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "launcher-events",
+      "category": "launcher",
+      "owner": "portable-workbench",
+      "format": "jsonl",
+      "path": "logs/launcher/events.jsonl",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
+      "id": "setup-transcripts",
+      "category": "setup",
+      "owner": "portable-workbench",
+      "format": "text",
+      "path": "logs/setup/setup-*.log",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "doctor-transcripts",
+      "category": "doctor",
+      "owner": "portable-workbench",
+      "format": "text",
+      "path": "logs/doctor/doctor-*.log",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "update-observation-transcripts",
+      "category": "update",
+      "owner": "portable-workbench",
+      "format": "text",
+      "path": "logs/diagnostics/update-*.log",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "hermes-logs",
+      "category": "hermes",
+      "owner": "hermes-agent",
+      "format": "text-or-jsonl",
+      "path": "data/logs",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "update-receipts",
+      "category": "update",
+      "owner": "hermes-agent",
+      "format": "json",
+      "path": "data/logs/update_receipts/*.json",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "runtime-manifest",
+      "category": "runtime-state",
+      "owner": "portable-runtime",
+      "format": "json",
+      "path": ".cache/runtimes/{platform}-{arch}/runtime-manifest.json",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
+      "id": "hermes-source-state",
+      "category": "runtime-state",
+      "owner": "portable-runtime",
+      "format": "json",
+      "path": "src/hermes-agent/.portable-source.json",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
+      "id": "diagnostic-exports",
+      "category": "diagnostics",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "logs/exports",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    }
+  ]
+}

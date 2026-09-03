@@ -92,6 +92,11 @@ try {
     Assert-True (Test-Path -LiteralPath (Join-Path $target "runtime/hermes") -PathType Container) "runtime/hermes should exist"
     Assert-True (Test-Path -LiteralPath (Join-Path $target "knowledge/ObsidianVault/90-Templates") -PathType Container) "Vault template directory should exist"
     Assert-True (Test-Path -LiteralPath (Join-Path $target "repository/manifests") -PathType Container) "repository/manifests should exist"
+    Assert-True (Test-Path -LiteralPath (Join-Path $target "logs/launcher") -PathType Container) "logs/launcher should exist"
+    Assert-True (Test-Path -LiteralPath (Join-Path $target "logs/setup") -PathType Container) "logs/setup should exist"
+    Assert-True (Test-Path -LiteralPath (Join-Path $target "logs/doctor") -PathType Container) "logs/doctor should exist"
+    Assert-True (Test-Path -LiteralPath (Join-Path $target "logs/diagnostics") -PathType Container) "logs/diagnostics should exist"
+    Assert-True (Test-Path -LiteralPath (Join-Path $target "logs/exports") -PathType Container) "logs/exports should exist"
     Assert-True ((Get-Content -LiteralPath $sentinel -Raw) -eq "user-data-must-survive") "existing user data should be unchanged"
 
     $manifestPath = Join-Path $target "portable-ai.manifest.json"

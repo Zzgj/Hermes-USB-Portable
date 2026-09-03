@@ -2,7 +2,8 @@
 param(
     [string]$WindowsLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.bat"),
     [string]$UnixLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.sh"),
-    [string]$SetupScriptPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/setup-windows.ps1")
+    [string]$SetupScriptPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/setup-windows.ps1"),
+    [string]$ObservationRunnerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/invoke-hermes-observation.ps1")
 )
 
 Set-StrictMode -Version Latest
@@ -35,15 +36,18 @@ try {
     $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw
     $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
+    $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
 
     $windowsCheck = Get-SourceSection $windowsSource '(?ms)^:adv_update_check\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows read-only update-check action"
-    Assert-True ($windowsCheck -match 'update --check') "Windows update-check action should call the official read-only check"
+    Assert-True ($windowsCheck -match '-Operation update-check') "Windows update-check action should select the logged read-only check"
+    Assert-True ($observationSource -match '@\("update", "--check"\)') "Windows observation runner should map update-check to the official read-only check"
 
     $windowsPlan = Get-SourceSection $windowsSource '(?ms)^:adv_update\s*$.*?(?=^:adv_update_apply\s*$)' "Windows update-plan action"
-    Assert-True ($windowsPlan -match 'update --plan') "Windows update action should show the official read-only plan"
+    Assert-True ($windowsPlan -match '-Operation update-plan') "Windows update action should select the logged read-only plan"
+    Assert-True ($observationSource -match '@\("update", "--plan"\)') "Windows observation runner should map update-plan to the official read-only plan"
     Assert-True ($windowsPlan -match 'choice /C YN') "Windows update action should require an explicit confirmation"
     Assert-True ($windowsPlan -match 'No update was applied') "Windows update action should identify a preflight failure as non-mutating"
 

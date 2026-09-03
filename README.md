@@ -102,6 +102,15 @@ hermes-portable/
 ├── scripts/
 │   ├── setup-windows.ps1      # Windows first-run configuration script
 │   └── setup-unix.sh          # Unix (macOS/Linux) first-run configuration script
+├── manifests/
+│   └── log-sources.json        # Machine-readable catalog for the future log UI
+├── logs/                       # Workbench logs (generated, never committed)
+│   ├── initializer/            # Structured environment reports
+│   ├── launcher/               # Structured launcher events
+│   ├── setup/                  # First-run setup transcripts
+│   ├── doctor/                 # Doctor transcripts
+│   ├── diagnostics/            # Update check/plan transcripts
+│   └── exports/                # Future redacted evidence bundles
 ├── data/                      # ⚠️ [BACKUP THIS] All your private files
 │   ├── config.yaml            # Hermes LLM provider configurations
 │   ├── .env                   # API Keys and active credentials
@@ -118,6 +127,8 @@ hermes-portable/
         ├── linux-x64/
         └── linux-arm64/
 ```
+
+Hermes-owned logs and update receipts remain under `data/logs/`, while Runtime and source-state manifests remain next to the components they describe. The [portable log layout](docs/log-layout.md) and its catalog expose all of these locations as one logical source set without breaking upstream paths.
 
 ---
 

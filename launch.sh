@@ -5,7 +5,7 @@
 # Terminal:   ./launch.sh
 # macOS Finder: rename this file to "launch.command" for double-click support.
 # On first run, it downloads ~600MB of runtime files automatically.
-# All data stays in the "data/" folder — nothing touches the host computer.
+# Generated state and logs stay inside this portable folder.
 # ============================================================================
 
 set -e
@@ -15,6 +15,7 @@ PORTABLE_ROOT="$(cd "$(dirname "$0")" && pwd)"
 HERMES_HOME="$PORTABLE_ROOT/data"
 CACHE_DIR="$PORTABLE_ROOT/.cache"
 SRC_DIR="$PORTABLE_ROOT/src"
+LOG_ROOT="$PORTABLE_ROOT/logs"
 
 # ---------------------------------------------------------------------------
 # Detect OS and architecture
@@ -53,6 +54,41 @@ portable_id() {
     fi
 }
 
+log_event() {
+    local component="$1"
+    local event_name="$2"
+    local event_status="$3"
+    local event_dir="$LOG_ROOT/$component"
+    local event_time
+    mkdir -p "$event_dir"
+    event_time="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf '{"schema_version":1,"at_utc":"%s","component":"%s","event":"%s","status":"%s"}\n' \
+        "$event_time" "$component" "$event_name" "$event_status" >> "$event_dir/events.jsonl"
+}
+
+run_observation() {
+    local category="$1"
+    local file_prefix="$2"
+    shift 2
+    local log_dir="$LOG_ROOT/$category"
+    local stamp
+    local log_path
+    local command_status
+    mkdir -p "$log_dir"
+    stamp="$(date -u '+%Y%m%dT%H%M%SZ')"
+    log_path="$log_dir/${file_prefix}-${stamp}-$$-${RANDOM}.log"
+    set +e
+    "$@" 2>&1 | tee "$log_path"
+    command_status=${PIPESTATUS[0]}
+    set -e
+    echo "[portable-log] Transcript: $log_path"
+    return "$command_status"
+}
+
+mkdir -p "$LOG_ROOT/launcher" "$LOG_ROOT/setup" "$LOG_ROOT/doctor" \
+    "$LOG_ROOT/diagnostics" "$LOG_ROOT/exports"
+log_event launcher launcher-start started
+
 # ---------------------------------------------------------------------------
 # First-run setup
 # ---------------------------------------------------------------------------
@@ -66,12 +102,14 @@ if [ ! -f "$RUNTIME_DIR/ready.flag" ]; then
     echo "  Please be patient."
     echo "============================================"
     echo ""
-    bash "$PORTABLE_ROOT/scripts/setup-unix.sh" "$PORTABLE_ROOT"
-    if [ $? -ne 0 ]; then
+    log_event setup runtime-setup started
+    if ! run_observation setup setup bash "$PORTABLE_ROOT/scripts/setup-unix.sh" "$PORTABLE_ROOT"; then
+        log_event setup runtime-setup failed
         echo ""
         echo "[ERROR] Setup failed. Please check your internet connection and try again."
         exit 1
     fi
+    log_event setup runtime-setup succeeded
 fi
 
 # ---------------------------------------------------------------------------
@@ -159,8 +197,15 @@ fi
 
 # If explicit arguments were passed, run Hermes directly (skip menu)
 if [ $# -gt 0 ]; then
-    hermes "$@"
-    exit 0
+    log_event launcher direct-command started
+    if hermes "$@"; then
+        log_event launcher direct-command succeeded
+        exit 0
+    else
+        direct_status=$?
+        log_event launcher direct-command failed
+        exit "$direct_status"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -275,26 +320,43 @@ show_menu() {
 
 menu_chat() {
     clear
-    hermes
+    log_event launcher chat started
+    if hermes; then
+        log_event launcher chat succeeded
+    else
+        log_event launcher chat failed
+    fi
     show_menu
 }
 
 menu_setup() {
     clear
-    hermes setup
+    log_event launcher hermes-setup started
+    if hermes setup; then
+        log_event launcher hermes-setup succeeded
+    else
+        log_event launcher hermes-setup failed
+    fi
     detect_status
     show_menu
 }
 
 menu_gateway() {
     if [ "$GATEWAY_STATUS" = "Running (PID $GATEWAY_PID)" ]; then
-        hermes gateway stop
+        log_event launcher gateway-stop started
+        if hermes gateway stop; then
+            log_event launcher gateway-stop succeeded
+        else
+            log_event launcher gateway-stop failed
+        fi
         echo ""
         echo -e "${BRIGHT_GREEN}Gateway stopped.${RESET}"
     else
         echo ""
         echo -e "${CYAN}Starting gateway in background ...${RESET}"
+        log_event launcher gateway-start started
         hermes gateway &
+        log_event launcher gateway-start observed
         sleep 2
     fi
     read -p "Press Enter to continue ..."
@@ -303,6 +365,7 @@ menu_gateway() {
 }
 
 menu_exit() {
+    log_event launcher launcher-exit observed
     clear
     echo ""
     echo -e "${GRAY}Goodbye!${RESET}"
@@ -321,7 +384,7 @@ show_advanced() {
     echo -e "${BRIGHT_CYAN}----------------------------------------------------------------${RESET}"
     echo ""
     echo -e "  ${BRIGHT_YELLOW}[1]${RESET}  ${WHITE}Run Doctor${RESET}            ${GRAY}- check for issues${RESET}"
-    echo -e "  ${BRIGHT_YELLOW}[2]${RESET}  ${WHITE}View Logs${RESET}             ${GRAY}- last 20 lines${RESET}"
+    echo -e "  ${BRIGHT_YELLOW}[2]${RESET}  ${WHITE}View Logs${RESET}             ${GRAY}- central paths + gateway tail${RESET}"
     echo -e "  ${BRIGHT_YELLOW}[3]${RESET}  ${WHITE}Edit Config${RESET}           ${GRAY}- open in editor${RESET}"
     echo -e "  ${BRIGHT_YELLOW}[4]${RESET}  ${WHITE}Restart Gateway${RESET}       ${GRAY}- stop + start${RESET}"
     echo -e "  ${BRIGHT_YELLOW}[5]${RESET}  ${WHITE}Check for Updates${RESET}      ${GRAY}- read-only${RESET}"
@@ -346,13 +409,22 @@ show_advanced() {
 
 adv_doctor() {
     clear
-    hermes doctor
+    log_event doctor doctor started
+    if run_observation doctor doctor hermes doctor; then
+        log_event doctor doctor succeeded
+    else
+        log_event doctor doctor failed
+    fi
     read -p "Press Enter to continue ..."
     show_advanced
 }
 
 adv_logs() {
     clear
+    echo -e "${CYAN}Workbench logs:${RESET} $LOG_ROOT"
+    echo -e "${CYAN}Hermes logs:${RESET}    $HERMES_HOME/logs"
+    echo -e "${CYAN}Log catalog:${RESET}    $PORTABLE_ROOT/manifests/log-sources.json"
+    echo ""
     if [ -f "$HERMES_HOME/logs/gateway.log" ]; then
         echo -e "${CYAN}=== Gateway Log (last 20 lines) ===${RESET}"
         tail -n 20 "$HERMES_HOME/logs/gateway.log"
@@ -382,25 +454,30 @@ adv_restart() {
 adv_update() {
     clear
     echo -e "${CYAN}Reviewing the official Hermes update plan...${RESET}"
-    if ! hermes update --plan; then
+    if ! run_observation diagnostics update-plan hermes update --plan; then
+        log_event diagnostics update-plan failed
         echo ""
         echo -e "${BRIGHT_RED}[ERROR] Update plan failed. No update was applied.${RESET}"
         read -r -p "Press Enter to continue ..."
         show_advanced
         return
     fi
+    log_event diagnostics update-plan succeeded
 
     echo ""
     read -r -p "Continue with the official Hermes update from origin/main? [y/N] " confirm_update
     case "$confirm_update" in
         y|Y|yes|YES)
+            log_event diagnostics update-apply started
             if hermes update; then
+                log_event diagnostics update-apply succeeded
                 echo ""
                 echo -e "${BRIGHT_GREEN}Hermes update completed. The displayed version will be refreshed.${RESET}"
                 read -r -p "Press Enter to continue ..."
                 detect_status
                 show_menu
             else
+                log_event diagnostics update-apply failed
                 echo ""
                 echo -e "${BRIGHT_RED}[ERROR] Hermes update failed. Review the updater output and portable logs.${RESET}"
                 read -r -p "Press Enter to continue ..."
@@ -408,6 +485,7 @@ adv_update() {
             fi
             ;;
         *)
+            log_event diagnostics update-apply cancelled
             echo "Update cancelled. No update was applied."
             read -r -p "Press Enter to continue ..."
             show_advanced
@@ -417,9 +495,13 @@ adv_update() {
 
 adv_update_check() {
     clear
-    if ! hermes update --check; then
+    log_event diagnostics update-check started
+    if ! run_observation diagnostics update-check hermes update --check; then
+        log_event diagnostics update-check failed
         echo ""
         echo -e "${BRIGHT_RED}[ERROR] Hermes update check failed. No update was applied.${RESET}"
+    else
+        log_event diagnostics update-check succeeded
     fi
     read -p "Press Enter to continue ..."
     show_advanced

@@ -14,9 +14,12 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 .\tests\portable-initializer.Tests.ps1
 .\tests\runtime-component-lock.Tests.ps1
 .\tests\portable-launcher.Tests.ps1
+.\tests\log-layout.Tests.ps1
 ```
 
 See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
+
+Generated Workbench logs are grouped under `logs/`. Hermes-owned logs/receipts and component state remain at their canonical portable paths and are listed in `manifests/log-sources.json`. See [`docs/log-layout.md`](../docs/log-layout.md) for the complete mapping and sharing precautions.
 
 ## Windows Runtime Component Lock
 
