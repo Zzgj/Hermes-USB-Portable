@@ -324,8 +324,9 @@ show_advanced() {
     echo -e "  ${BRIGHT_YELLOW}[2]${RESET}  ${WHITE}View Logs${RESET}             ${GRAY}- last 20 lines${RESET}"
     echo -e "  ${BRIGHT_YELLOW}[3]${RESET}  ${WHITE}Edit Config${RESET}           ${GRAY}- open in editor${RESET}"
     echo -e "  ${BRIGHT_YELLOW}[4]${RESET}  ${WHITE}Restart Gateway${RESET}       ${GRAY}- stop + start${RESET}"
-    echo -e "  ${BRIGHT_YELLOW}[5]${RESET}  ${WHITE}Update Hermes${RESET}         ${GRAY}- fetch latest${RESET}"
-    echo -e "  ${BRIGHT_YELLOW}[6]${RESET}  ${GRAY}Back to Main Menu${RESET}"
+    echo -e "  ${BRIGHT_YELLOW}[5]${RESET}  ${WHITE}Check for Updates${RESET}      ${GRAY}- read-only${RESET}"
+    echo -e "  ${BRIGHT_YELLOW}[6]${RESET}  ${WHITE}Update Hermes${RESET}         ${GRAY}- review + confirm${RESET}"
+    echo -e "  ${BRIGHT_YELLOW}[7]${RESET}  ${GRAY}Back to Main Menu${RESET}"
     echo ""
     echo -e "${BRIGHT_CYAN}----------------------------------------------------------------${RESET}"
     echo ""
@@ -336,8 +337,9 @@ show_advanced() {
         2) adv_logs ;;
         3) adv_config ;;
         4) adv_restart ;;
-        5) adv_update ;;
-        6) show_menu ;;
+        5) adv_update_check ;;
+        6) adv_update ;;
+        7) show_menu ;;
         *) show_advanced ;;
     esac
 }
@@ -379,7 +381,46 @@ adv_restart() {
 
 adv_update() {
     clear
-    hermes update
+    echo -e "${CYAN}Reviewing the official Hermes update plan...${RESET}"
+    if ! hermes update --plan; then
+        echo ""
+        echo -e "${BRIGHT_RED}[ERROR] Update plan failed. No update was applied.${RESET}"
+        read -r -p "Press Enter to continue ..."
+        show_advanced
+        return
+    fi
+
+    echo ""
+    read -r -p "Continue with the official Hermes update from origin/main? [y/N] " confirm_update
+    case "$confirm_update" in
+        y|Y|yes|YES)
+            if hermes update; then
+                echo ""
+                echo -e "${BRIGHT_GREEN}Hermes update completed. The displayed version will be refreshed.${RESET}"
+                read -r -p "Press Enter to continue ..."
+                detect_status
+                show_menu
+            else
+                echo ""
+                echo -e "${BRIGHT_RED}[ERROR] Hermes update failed. Review the updater output and portable logs.${RESET}"
+                read -r -p "Press Enter to continue ..."
+                show_advanced
+            fi
+            ;;
+        *)
+            echo "Update cancelled. No update was applied."
+            read -r -p "Press Enter to continue ..."
+            show_advanced
+            ;;
+    esac
+}
+
+adv_update_check() {
+    clear
+    if ! hermes update --check; then
+        echo ""
+        echo -e "${BRIGHT_RED}[ERROR] Hermes update check failed. No update was applied.${RESET}"
+    fi
     read -p "Press Enter to continue ..."
     show_advanced
 }

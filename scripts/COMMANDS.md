@@ -13,6 +13,7 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 ```powershell
 .\tests\portable-initializer.Tests.ps1
 .\tests\runtime-component-lock.Tests.ps1
+.\tests\portable-launcher.Tests.ps1
 ```
 
 See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
@@ -27,7 +28,7 @@ Run the static lock/setup contract test without downloading or installing anythi
 pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
 ```
 
-The Hermes version is not permanently locked. The recorded version is a known first-install baseline; explicit updates to newer official versions are allowed and must preserve `data/`. The P0 update task is adding version/commit recording, health checks and rollback around the inherited `hermes update` capability.
+The Hermes version is not permanently locked. The recorded stable Release is a known first-install baseline; later user-initiated updates reuse the official `hermes update`, which currently tracks `origin/main`. The inherited updater already handles quick state snapshots, dependency/config migration, validation, rollback, and receipts. Portable P0 work adds visible check/plan/confirmation steps and verifies that the upstream safeguards stay inside the portable data boundary.
 
 ## Portable Launcher Commands
 
@@ -50,7 +51,9 @@ These are the commands you type in your terminal / PowerShell.
 | `launch.bat hermes config` | View current config |
 | `launch.bat hermes config edit` | Edit config in default editor |
 | `launch.bat hermes chat` | Start chat mode |
-| `launch.bat hermes update` | Update Hermes through its inherited official updater; P0 validation/rollback wrapper is in progress |
+| `launch.bat hermes update --check` | Check official `origin/main` for updates without applying one |
+| `launch.bat hermes update --plan` | Show the official read-only update plan |
+| `launch.bat hermes update` | Run the official updater directly; the interactive launcher menu adds plan and confirmation steps |
 
 ### macOS / Linux (`launch.sh`)
 
@@ -62,7 +65,9 @@ These are the commands you type in your terminal / PowerShell.
 | `./launch.sh hermes doctor` | Check for issues |
 | `./launch.sh hermes status` | Show status |
 | `./launch.sh hermes config` | View config |
-| `./launch.sh hermes update` | Update Hermes through its inherited official updater; P0 validation/rollback wrapper is in progress |
+| `./launch.sh hermes update --check` | Check official `origin/main` for updates without applying one |
+| `./launch.sh hermes update --plan` | Show the official read-only update plan |
+| `./launch.sh hermes update` | Run the official updater directly; the interactive launcher menu adds plan and confirmation steps |
 
 ---
 

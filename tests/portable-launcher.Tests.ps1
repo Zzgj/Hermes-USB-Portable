@@ -1,0 +1,82 @@
+[CmdletBinding()]
+param(
+    [string]$WindowsLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.bat"),
+    [string]$UnixLauncherPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "launch.sh"),
+    [string]$SetupScriptPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts/setup-windows.ps1")
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Assert-True {
+    param(
+        [bool]$Condition,
+        [string]$Message
+    )
+
+    if (-not $Condition) {
+        throw "Assertion failed: $Message"
+    }
+}
+
+function Get-SourceSection {
+    param(
+        [string]$Source,
+        [string]$Pattern,
+        [string]$Description
+    )
+
+    $match = [regex]::Match($Source, $Pattern)
+    Assert-True ($match.Success) "$Description should exist"
+    return $match.Value
+}
+
+try {
+    $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw
+    $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw
+    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
+
+    Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
+    Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
+
+    $windowsCheck = Get-SourceSection $windowsSource '(?ms)^:adv_update_check\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows read-only update-check action"
+    Assert-True ($windowsCheck -match 'update --check') "Windows update-check action should call the official read-only check"
+
+    $windowsPlan = Get-SourceSection $windowsSource '(?ms)^:adv_update\s*$.*?(?=^:adv_update_apply\s*$)' "Windows update-plan action"
+    Assert-True ($windowsPlan -match 'update --plan') "Windows update action should show the official read-only plan"
+    Assert-True ($windowsPlan -match 'choice /C YN') "Windows update action should require an explicit confirmation"
+    Assert-True ($windowsPlan -match 'No update was applied') "Windows update action should identify a preflight failure as non-mutating"
+
+    $windowsApply = Get-SourceSection $windowsSource '(?ms)^:adv_update_apply\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows update-apply action"
+    Assert-True ($windowsApply -match 'main\(\)" update(?:\s|\r|\n)') "Windows update action should delegate application to the official updater"
+    Assert-True ($windowsApply -match 'if errorlevel 1') "Windows update action should expose an official updater failure"
+
+    $unixCheck = Get-SourceSection $unixSource '(?ms)^adv_update_check\(\) \{.*?^\}' "Unix read-only update-check action"
+    Assert-True ($unixCheck -match 'hermes update --check') "Unix update-check action should call the official read-only check"
+
+    $unixUpdate = Get-SourceSection $unixSource '(?ms)^adv_update\(\) \{.*?^\}' "Unix update action"
+    Assert-True ($unixUpdate -match 'hermes update --plan') "Unix update action should show the official read-only plan"
+    Assert-True ($unixUpdate -match 'read -r -p .*origin/main') "Unix update action should require an explicit confirmation"
+    Assert-True ($unixUpdate -match 'if hermes update; then') "Unix update action should delegate application to the official updater and inspect its result"
+
+    foreach ($launcher in @($windowsSource, $unixSource)) {
+        Assert-True (-not ($launcher -match '(?:--no-backup|--yes|--force|--force-venv)')) "portable launchers should not bypass official update safety controls"
+    }
+
+    Assert-True ($setupSource -match 'remote add origin \$HermesComponent\.source\.url') "Windows setup should retain the manifest-declared official Hermes origin"
+    Assert-True ($setupSource -match '\.portable-source\.json') "Windows setup should record the bootstrap source state"
+    Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "Windows setup should retain Git metadata required by the official updater"
+
+    Write-Host "Portable launcher tests passed."
+}
+catch {
+    $failureText = @(
+        $_.Exception.Message
+        $_.InvocationInfo.PositionMessage
+        $_.ScriptStackTrace
+    ) -join [Environment]::NewLine
+    [Console]::Error.WriteLine("Portable launcher tests failed:{0}{1}", [Environment]::NewLine, $failureText)
+    $annotationText = $failureText.Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+    Write-Output "::error file=tests/portable-launcher.Tests.ps1,title=Portable launcher tests failed::$annotationText"
+    exit 1
+}

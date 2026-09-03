@@ -260,15 +260,17 @@ echo  %BRIGHT_YELLOW%[1]%RESET%  %WHITE%Run Doctor%RESET%            %GRAY%- che
 echo  %BRIGHT_YELLOW%[2]%RESET%  %WHITE%View Logs%RESET%             %GRAY%- last 20 lines%RESET%
 echo  %BRIGHT_YELLOW%[3]%RESET%  %WHITE%Edit Config%RESET%           %GRAY%- open in editor%RESET%
 echo  %BRIGHT_YELLOW%[4]%RESET%  %WHITE%Restart Gateway%RESET%       %GRAY%- stop + start%RESET%
-echo  %BRIGHT_YELLOW%[5]%RESET%  %WHITE%Update Hermes%RESET%         %GRAY%- fetch latest%RESET%
-echo  %BRIGHT_YELLOW%[6]%RESET%  %GRAY%Back to Main Menu%RESET%
+echo  %BRIGHT_YELLOW%[5]%RESET%  %WHITE%Check for Updates%RESET%      %GRAY%- read-only%RESET%
+echo  %BRIGHT_YELLOW%[6]%RESET%  %WHITE%Update Hermes%RESET%         %GRAY%- review + confirm%RESET%
+echo  %BRIGHT_YELLOW%[7]%RESET%  %GRAY%Back to Main Menu%RESET%
 echo.
 echo %BRIGHT_CYAN%----------------------------------------------------------------%RESET%
 echo.
 
-echo %BRIGHT_CYAN%Select option:%RESET% & choice /C 123456 /N
-if errorlevel 6 goto :show_menu
-if errorlevel 5 goto :adv_update
+echo %BRIGHT_CYAN%Select option:%RESET% & choice /C 1234567 /N
+if errorlevel 7 goto :show_menu
+if errorlevel 6 goto :adv_update
+if errorlevel 5 goto :adv_update_check
 if errorlevel 4 goto :adv_restart
 if errorlevel 3 goto :adv_config
 if errorlevel 2 goto :adv_logs
@@ -307,6 +309,37 @@ goto :detect_status
 
 :adv_update
 echo.
+echo %CYAN%Reviewing the official Hermes update plan...%RESET%
+python -c "from hermes_cli.main import main; main()" update --plan
+if errorlevel 1 (
+    echo.
+    echo %BRIGHT_RED%[ERROR] Update plan failed. No update was applied.%RESET%
+    pause
+    goto :show_advanced
+)
+echo.
+choice /C YN /N /M "Continue with the official Hermes update from origin/main? [Y/N] "
+if errorlevel 2 goto :show_advanced
+if errorlevel 1 goto :adv_update_apply
+goto :show_advanced
+
+:adv_update_apply
+echo.
 python -c "from hermes_cli.main import main; main()" update
+if errorlevel 1 (
+    echo.
+    echo %BRIGHT_RED%[ERROR] Hermes update failed. Review the updater output and portable logs.%RESET%
+    pause
+    goto :show_advanced
+)
+echo.
+echo %BRIGHT_GREEN%Hermes update completed. The displayed version will be refreshed.%RESET%
+pause
+goto :detect_status
+
+:adv_update_check
+echo.
+python -c "from hermes_cli.main import main; main()" update --check
+if errorlevel 1 echo %BRIGHT_RED%[ERROR] Hermes update check failed. No update was applied.%RESET%
 pause
 goto :show_advanced

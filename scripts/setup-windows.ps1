@@ -91,8 +91,11 @@ if ($HermesComponent.version_role -ne "bootstrap") {
 if ($HermesComponent.update_policy.mode -ne "user_initiated" -or $HermesComponent.update_policy.allow_newer_than_bootstrap -ne $true) {
     throw "The Hermes component must permit explicit user-initiated updates beyond the bootstrap version"
 }
-if ($HermesComponent.update_policy.current_upstream_command_channel -ne "main" -or $HermesComponent.update_policy.target_default_channel -ne "stable") {
-    throw "The Hermes update policy must describe the inherited main channel and the target stable channel"
+if ($HermesComponent.update_policy.official_command -ne "hermes update" -or $HermesComponent.update_policy.default_channel -ne "main") {
+    throw "The Hermes update policy must preserve the official main-channel updater"
+}
+if ($HermesComponent.update_policy.check_before_apply -ne $true -or $HermesComponent.update_policy.plan_before_apply -ne $true) {
+    throw "The Hermes update policy must require check and plan preflight steps"
 }
 
 $AnthropicRequirement = @($ComponentLock.supplemental_python_packages | Where-Object { $_.requirement -like "anthropic==*" } | Select-Object -ExpandProperty requirement)

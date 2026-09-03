@@ -32,11 +32,11 @@
 “记录当前版本”不等于“永久不允许更新”。本项目采用下列方式：
 
 - **首次安装基线**：仓库记录一个已检查的 bootstrap 版本，确保新环境可重试。它不是永久上限。
-- **目标默认更新通道**：跟随 NousResearch 官方最新稳定 Release。当前继承的 `hermes update` 默认拉取 `main`，P0-07 要将稳定通道变成 Workbench/启动器默认选项，同时保留 `main` 选项。
-- **可选开发通道**：用户明确选择后可跟随官方 `main`，接受更高的兼容性风险。
-- **更新入口**：保留原启动器的 `Update Hermes` 和 Hermes 官方 `hermes update`；P0 要补充更新前检查、备份、更新后健康检查和失败回退。
-- **记录而非阻止**：更新后记录版本、commit、通道、时间和结果，不因为 bootstrap manifest 中的旧版本而拒绝启动。
-- **数据边界**：更新只替换 Hermes 程序和必要依赖，不覆盖 `data/`、Profiles、Sessions、Memory、Skills 或 Obsidian Vault。
+- **首次安装与后续更新分开处理**：首次安装使用经审计的官方稳定 Release；后续更新复用官方 `hermes update`，其默认目标是 `origin/main`。当前官方更新器没有“自动跟随最新 Release tag”的独立稳定通道，因此项目不虚构该能力。
+- **更新入口**：启动器提供独立的只读 `hermes update --check`，应用更新前先运行只读 `hermes update --plan` 并要求用户确认，最终仍由官方更新器执行。
+- **不重复实现上游能力**：官方更新器已经提供默认 quick 状态快照、可选完整备份、依赖更新、配置迁移、关键文件语法验证、代码自动回退和更新回执；Portable 层只负责暴露这些能力并验证便携边界。
+- **记录而非阻止**：官方更新回执保存到便携 `HERMES_HOME/logs/update_receipts/`；后续诊断还需汇总实际版本、commit、通道、时间和结果，不因为 bootstrap manifest 中的旧版本而拒绝启动。
+- **数据边界**：更新可以迁移 Hermes 配置和依赖，但不得把 `data/`、Profiles、Sessions、Memory、Skills 或 Obsidian Vault 移出便携目录，也不得静默丢失用户数据。
 
 截至 2026-09-03，官方最新稳定 Release 是 [Hermes Agent `v0.21.0` / tag `v2026.8.31`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.8.31)；当前 bootstrap 基线已是该版本。因此当前不需要把版本号改成另一个值，需要完成的是“以后可以安全更新”的流程。
 
@@ -64,7 +64,7 @@
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
-- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新所需元数据，验证 `hermes update --check`、稳定/开发通道、数据保留和更新后健康检查。
+- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认，验证官方 `origin/main` 更新、回执、数据保留和失败回退；不重复实现一套自有更新器。
 - [ ] **P0-08** 对未改造的原始主流程建立冒烟测试：`launch.bat`、Chat、Setup、Gateway、Doctor、日志、配置编辑和 Update。
 - [!] **P0-09** 在专用 Windows 10/11 x64 目录执行完整首次 Runtime 安装；记录时间、空间、网络失败和不含凭据的诊断信息。
 - [!] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；不开启 Full Reset。
@@ -190,7 +190,7 @@
 
 ## 当前立即执行顺序
 
-1. 完成 **P0-07**：验证并包装 Hermes 可更新流程，保留原 `Update Hermes` 能力。
+1. 完成 **P0-07**：实机验证 Hermes 官方更新流程和 Portable 数据边界；启动器只增加检查、计划与确认，不复制上游更新/回退实现。
 2. 完成 **P0-08**：先对原项目现有主流入口做冒烟测试，建立不退化基线。
 3. 在专用 Windows 测试目录完成 **P0-09/P0-10**，不使用真实工作 U 盘。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。

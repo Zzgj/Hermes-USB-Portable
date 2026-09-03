@@ -232,13 +232,16 @@ function Read-ComponentLock {
     if ($hermesComponent.version_role -ne "bootstrap") {
         throw "The Hermes version must be identified as a bootstrap baseline."
     }
-    if ($hermesComponent.update_policy.mode -ne "user_initiated" -or $hermesComponent.update_policy.target_default_channel -ne "stable") {
-        throw "The Hermes update policy must use explicit user action and target the stable default channel."
+    if ($hermesComponent.update_policy.mode -ne "user_initiated" -or $hermesComponent.update_policy.official_command -ne "hermes update") {
+        throw "The Hermes update policy must use the explicit official update command."
     }
-    if ($hermesComponent.update_policy.current_upstream_command_channel -ne "main" -or $hermesComponent.update_policy.implementation_status -ne "in_progress") {
-        throw "The Hermes update policy must describe the inherited main-channel behavior while P0 update work is in progress."
+    if ($hermesComponent.update_policy.default_channel -ne "main" -or $hermesComponent.update_policy.implementation_status -ne "in_progress") {
+        throw "The Hermes update policy must preserve the inherited main channel while P0 validation is in progress."
     }
-    if ($hermesComponent.update_policy.allow_newer_than_bootstrap -ne $true -or $hermesComponent.update_policy.preserve_user_data -ne $true) {
+    if ($hermesComponent.update_policy.check_before_apply -ne $true -or $hermesComponent.update_policy.plan_before_apply -ne $true) {
+        throw "The Hermes update policy must require read-only check and plan steps before applying an update."
+    }
+    if ($hermesComponent.update_policy.allow_newer_than_bootstrap -ne $true -or $hermesComponent.update_policy.preserve_user_data -ne $true -or $hermesComponent.update_policy.rollback_required -ne $true) {
         throw "The Hermes update policy must allow newer versions while preserving user data."
     }
 

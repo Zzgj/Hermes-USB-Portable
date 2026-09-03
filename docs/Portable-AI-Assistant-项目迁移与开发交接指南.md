@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v1.2 |
+| 文档版本 | v1.3 |
 | 交接日期 | 2026-09-02 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
@@ -27,12 +27,13 @@
 - 建立 Windows x64 Runtime 组件锁和静态安全测试，归档 Runtime 固定版本、大小和 SHA-256，并记录可更新的 Hermes bootstrap commit。
 - 建立 `docs/PROJECT-PLAN.md`，直接记录当前 P 阶段、任务 ID、状态和验收条件。
 - 在 GitHub Actions 中验证初始化器，覆盖 Windows PowerShell 5.1 和 PowerShell 7。
+- 审计 Hermes 官方更新器并在 Portable 启动器增加 `--check`、`--plan` 和用户确认；更新应用、快照和回退仍复用官方实现。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
 - 尚未在 Windows 10/11 x64 实机执行完整 Runtime 下载、安装、失败恢复和重建测试。
-- 尚未完成 P0-07 Hermes 更新前检查、实际版本/commit 记录、健康检查和失败回退实测。
+- 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、回执、实际版本/commit、数据保留和失败回退验证。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
 - 尚未验证 `hermes desktop` 和 `hermes serve` 的完整便携性。
 - 尚未建立真实打印机驱动仓库或打印机安装 Skill。
@@ -107,7 +108,7 @@ origin   → 你自己的 GitHub Fork
 upstream → https://github.com/techjarves/Hermes-USB-Portable.git
 ```
 
-Hermes Agent 暂时作为固定版本的上游依赖使用，不立即 Fork：
+Hermes Agent 暂时作为“稳定 Release bootstrap + 官方更新器”的上游依赖使用，不立即 Fork：
 
 ```text
 https://github.com/NousResearch/hermes-agent

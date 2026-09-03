@@ -182,7 +182,7 @@ Recommended USB / external drive free space:
 
 Hermes is updateable and is not permanently locked to the bootstrap version recorded in `manifests/runtime-components.windows-x64.json`. The bootstrap entry provides a known first-install state; the installed version may advance through the inherited launcher **Update Hermes** option or the official `hermes update` command.
 
-The P0 update work adds pre-update checks, installed-version/commit recording, user-data preservation checks, post-update health checks, and rollback around that upstream capability. Stable releases are the intended default channel; tracking upstream `main` remains an explicit higher-risk option. Python, Node.js, uv, Git, and other Runtime archives remain separately integrity-checked.
+The first install uses an audited stable Release as its bootstrap baseline. Later updates deliberately reuse the official updater, whose default target is `origin/main`: the portable launchers expose a read-only `--check`, show the read-only `--plan`, and require confirmation before applying the update. Hermes itself supplies the default quick state snapshot, dependency/config migration, syntax validation, code rollback, and update receipts under the portable `HERMES_HOME`. Python, Node.js, uv, Git, and other Runtime archives remain separately integrity-checked.
 
 ---
 

@@ -26,6 +26,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           & .\tests\portable-initializer.Tests.ps1
           & .\tests\runtime-component-lock.Tests.ps1
+          & .\tests\portable-launcher.Tests.ps1
 
   windows-pwsh:
     name: Windows / PowerShell 7
@@ -41,3 +42,4 @@ jobs:
           $ErrorActionPreference = "Stop"
           & .\tests\portable-initializer.Tests.ps1
           & .\tests\runtime-component-lock.Tests.ps1
+          & .\tests\portable-launcher.Tests.ps1
