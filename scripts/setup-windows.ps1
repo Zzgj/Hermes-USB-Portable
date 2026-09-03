@@ -44,7 +44,7 @@ $ComponentLockPath = Join-Path $Root "manifests\runtime-components.windows-x64.j
 if (-not (Test-Path -LiteralPath $ComponentLockPath -PathType Leaf)) {
     throw "Runtime component lock not found: $ComponentLockPath"
 }
-$ComponentLock = Get-Content -LiteralPath $ComponentLockPath -Raw | ConvertFrom-Json
+$ComponentLock = Get-Content -LiteralPath $ComponentLockPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($ComponentLock.schema_version -ne 1 -or $ComponentLock.platform -ne "windows-x64") {
     throw "Unsupported runtime component lock: $ComponentLockPath"
 }

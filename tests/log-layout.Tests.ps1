@@ -48,7 +48,7 @@ function Assert-True {
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("hermes-log-layout-tests-{0}" -f [Guid]::NewGuid().ToString("N"))
 
 try {
-    $catalog = Get-Content -LiteralPath $LogSourcesPath -Raw | ConvertFrom-Json
+    $catalog = Get-Content -LiteralPath $LogSourcesPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($catalog.schema_version -eq 1) "log source schema should be 1"
     Assert-True ($catalog.log_root -eq "logs") "the Workbench log root should be logs"
     Assert-True ($catalog.policy.generated_data_tracked_by_git -eq $false) "generated logs should not be tracked by Git"
@@ -94,17 +94,17 @@ try {
         Assert-True ($source.may_contain_sensitive_data -is [bool]) "source '$($source.id)' should declare its sensitivity"
     }
 
-    $initializerSource = Get-Content -LiteralPath $InitializerPath -Raw
+    $initializerSource = Get-Content -LiteralPath $InitializerPath -Raw -Encoding UTF8
     foreach ($directory in $expectedDirectories) {
         Assert-True ($initializerSource -match [regex]::Escape('"' + $directory + '"')) "initializer should create '$directory'"
     }
 
-    $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw
-    $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw
-    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
-    $eventWriterSource = Get-Content -LiteralPath $EventWriterPath -Raw
-    $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw
-    $gitIgnoreSource = Get-Content -LiteralPath $GitIgnorePath -Raw
+    $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw -Encoding UTF8
+    $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw -Encoding UTF8
+    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
+    $eventWriterSource = Get-Content -LiteralPath $EventWriterPath -Raw -Encoding UTF8
+    $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw -Encoding UTF8
+    $gitIgnoreSource = Get-Content -LiteralPath $GitIgnorePath -Raw -Encoding UTF8
 
     Assert-True ($windowsSource -match 'write-portable-log-event\.ps1') "Windows launcher should write structured launcher events"
     Assert-True ($windowsSource -match 'invoke-hermes-observation\.ps1') "Windows launcher should persist Doctor and update observations"
@@ -123,7 +123,7 @@ try {
     & $EventWriterPath -Root $testRoot -Component launcher -Event test-event -Status succeeded
     $eventPath = Join-Path $testRoot "logs/launcher/events.jsonl"
     Assert-True (Test-Path -LiteralPath $eventPath -PathType Leaf) "event writer should create the JSONL file"
-    $events = @(Get-Content -LiteralPath $eventPath | ForEach-Object { $_ | ConvertFrom-Json })
+    $events = @(Get-Content -LiteralPath $eventPath -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json })
     Assert-True ($events.Count -eq 2) "event writer should append instead of overwriting"
     Assert-True ($events[0].status -eq "started" -and $events[1].status -eq "succeeded") "event order and status should be preserved"
     Assert-True ($events[0].PSObject.Properties.Name -notcontains "root") "launcher events should not expose the portable path"

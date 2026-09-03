@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v1.5 |
+| 文档版本 | v1.6 |
 | 交接日期 | 2026-09-02 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
@@ -30,6 +30,7 @@
 - 修复 Windows PowerShell 5.1 通过外部 `powershell.exe -File` 调用时，参数默认值阶段 `$PSScriptRoot` 为空导致的测试入口失败；CI 改为与用户 Win10 命令一致的外部 `-File` 调用。
 - 审计 Hermes 官方更新器并在 Portable 启动器增加 `--check`、`--plan` 和用户确认；更新应用、快照和回退仍复用官方实现。
 - 建立顶层 `logs/` 分类目录、结构化启动器事件、Setup/Doctor/更新观察记录及 `manifests/log-sources.json` 来源目录；原始日志仍不进入 Git。
+- 用户在简体中文 Win10/F 盘实测时，证明 Runtime 组件锁、启动器和日志布局测试通过；同时发现并修复 Windows PowerShell 5.1 对 UTF-8 无 BOM 脚本字面量与 JSON 的 ANSI 误解码，测试现在通过 Unicode 码点生成中文路径并断言 JSON 往返不损坏。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：

@@ -93,7 +93,10 @@ try {
     Assert-True ($freshExitCode -eq 0) "a missing target directory should be created"
     Assert-True (Test-Path -LiteralPath $freshTarget -PathType Container) "fresh target should exist"
 
-    $target = Join-Path $testRoot "Portable AI 测试"
+    # Keep this Windows PowerShell 5.1 entry script ASCII-only. Windows PowerShell
+    # reads UTF-8 files without a BOM through the active ANSI code page.
+    $unicodeTargetName = "Portable AI {0}{1}" -f ([char]0x6D4B), ([char]0x8BD5)
+    $target = Join-Path $testRoot $unicodeTargetName
     $profiles = Join-Path $target "data/profiles"
     New-Item -ItemType Directory -Path $profiles -Force | Out-Null
     $sentinel = Join-Path $profiles "keep-me.txt"
@@ -113,7 +116,7 @@ try {
 
     $manifestPath = Join-Path $target "portable-ai.manifest.json"
     Assert-True (Test-Path -LiteralPath $manifestPath -PathType Leaf) "manifest should exist"
-    $manifestBefore = Get-Content -LiteralPath $manifestPath -Raw
+    $manifestBefore = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
     $manifest = $manifestBefore | ConvertFrom-Json
     $expectedLockHash = (Get-FileHash -LiteralPath $ComponentLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Assert-True ($manifest.component_lock_sha256 -eq $expectedLockHash) "manifest should identify the exact component lock"
@@ -126,15 +129,17 @@ try {
     Assert-True ($hermesComponent[0].update_policy.allow_newer_than_bootstrap -eq $true) "Hermes should be updateable beyond the bootstrap version"
     $reportsBefore = @(Get-ChildItem -LiteralPath (Join-Path $target "logs/initializer") -Filter "environment-check-*.json")
     Assert-True ($reportsBefore.Count -eq 1) "first run should create one environment report"
-    $firstReport = $reportsBefore[0] | Get-Content -Raw | ConvertFrom-Json
+    $firstReport = $reportsBefore[0] | Get-Content -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($firstReport.status -eq "succeeded") "first report should indicate success"
+    Assert-True ($firstReport.target.path -eq $target) "UTF-8 report should preserve the non-ASCII target path"
+    Assert-True ($firstReport.target.contains_non_ascii -eq $true) "report should identify a non-ASCII target path"
     Assert-True ($firstReport.component_lock.sha256 -eq $expectedLockHash) "environment report should identify the exact component lock"
     Assert-True ($firstReport.safety.disk_formatting_performed -eq $false) "report should confirm no formatting"
     Assert-True ($firstReport.safety.symbolic_links_followed -eq $false) "report should confirm no linked paths were followed"
 
     $secondExitCode = Invoke-Initializer -Target $target
     Assert-True ($secondExitCode -eq 0) "second initialization should succeed"
-    Assert-True ((Get-Content -LiteralPath $manifestPath -Raw) -eq $manifestBefore) "existing manifest should not be overwritten"
+    Assert-True ((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8) -eq $manifestBefore) "existing manifest should not be overwritten"
     Assert-True ((Get-Content -LiteralPath $sentinel -Raw) -eq "user-data-must-survive") "user data should survive repeated initialization"
     $reportsAfter = @(Get-ChildItem -LiteralPath (Join-Path $target "logs/initializer") -Filter "environment-check-*.json")
     Assert-True ($reportsAfter.Count -eq 2) "second run should create a separate environment report"
@@ -146,7 +151,7 @@ try {
     Assert-True ($collisionExitCode -eq 1) "a file/directory collision should be a recognizable failure"
     Assert-True ((Get-Content -LiteralPath (Join-Path $collisionTarget "runtime") -Raw) -eq "do-not-overwrite") "collision file should be preserved"
     $collisionReportFile = Get-ChildItem -LiteralPath (Join-Path $collisionTarget "logs/initializer") -Filter "environment-check-*.json" | Select-Object -First 1
-    $collisionReport = $collisionReportFile | Get-Content -Raw | ConvertFrom-Json
+    $collisionReport = $collisionReportFile | Get-Content -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($collisionReport.status -eq "failed") "collision report should indicate failure"
 
     $linkTarget = Join-Path $testRoot "link-target"
@@ -175,7 +180,7 @@ try {
     Assert-True (-not (Test-Path -LiteralPath $missingLockTarget)) "an invalid component lock should fail before target mutation"
 
     $malformedLockPath = Join-Path $testRoot "malformed-components.json"
-    $malformedLock = Get-Content -LiteralPath $ComponentLockPath -Raw | ConvertFrom-Json
+    $malformedLock = Get-Content -LiteralPath $ComponentLockPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $malformedLock.components[0].integrity.sha256 = "not-a-sha256"
     $malformedLockJson = $malformedLock | ConvertTo-Json -Depth 10
     [System.IO.File]::WriteAllText($malformedLockPath, $malformedLockJson)
@@ -188,7 +193,7 @@ try {
     $rootExitCode = Invoke-Initializer -Target $filesystemRoot
     Assert-True ($rootExitCode -eq 2) "filesystem roots should be rejected"
 
-    $source = Get-Content -LiteralPath $InitializerPath -Raw
+    $source = Get-Content -LiteralPath $InitializerPath -Raw -Encoding UTF8
     Assert-True (-not ($source -match "(?i)Format-Volume|Format-Disk|Clear-Disk|Initialize-Disk|diskpart")) "initializer must not contain disk formatting commands"
 
     Write-Host "Portable initializer tests passed."

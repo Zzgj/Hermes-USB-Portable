@@ -31,7 +31,7 @@ function Assert-True {
 }
 
 try {
-    $lock = Get-Content -LiteralPath $ComponentLockPath -Raw | ConvertFrom-Json
+    $lock = Get-Content -LiteralPath $ComponentLockPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($lock.schema_version -eq 1) "component lock schema should be 1"
     Assert-True ($lock.platform -eq "windows-x64") "component lock platform should be windows-x64"
 
@@ -79,7 +79,7 @@ try {
     Assert-True ($hermes.update_policy.preserve_user_data -eq $true) "Hermes updates should preserve user data"
     Assert-True ($hermes.update_policy.rollback_required -eq $true) "Hermes update design should require rollback support"
 
-    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
+    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
     Assert-True ($setupSource -match 'runtime-components\.windows-x64\.json') "setup should consume the component lock"
     Assert-True ($setupSource -match 'Assert-ArchiveIntegrity') "setup should verify downloaded archives"
     Assert-True ($setupSource -match 'HermesComponent\.source\.commit') "setup should verify the Hermes commit"

@@ -179,7 +179,7 @@ function Read-ComponentLock {
         throw "Component lock file not found: $Path"
     }
 
-    $lock = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    $lock = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     if ($lock.schema_version -ne 1) {
         throw "Unsupported component lock schema: $($lock.schema_version)"
     }
@@ -451,7 +451,7 @@ if ($null -ne $manifestLink) {
 elseif (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     $manifestAction = "preserved"
     try {
-        $existingManifest = Get-Content -LiteralPath $manifestPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $existingManifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
         $existingLockHashProperty = $existingManifest.PSObject.Properties["component_lock_sha256"]
         if ($null -eq $existingLockHashProperty -or [string]$existingLockHashProperty.Value -ne $componentLockHash) {
             $warnings.Add("The existing version manifest was preserved and does not match the current component lock.")

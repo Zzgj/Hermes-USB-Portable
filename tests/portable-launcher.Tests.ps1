@@ -51,10 +51,10 @@ function Get-SourceSection {
 }
 
 try {
-    $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw
-    $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw
-    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
-    $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw
+    $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw -Encoding UTF8
+    $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw -Encoding UTF8
+    $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
+    $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw -Encoding UTF8
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
