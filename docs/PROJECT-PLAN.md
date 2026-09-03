@@ -8,7 +8,7 @@
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | Windows CI 通过新增更新状态测试；Win10/exFAT 实测更新回执、Runtime 实际版本、组件续跑和数据保留 |
+| 下一个验收门 | Win10/exFAT 按测试指南实测更新回执、Runtime 实际版本、组件续跑和数据保留 |
 | 最近更新 | 2026-09-04 |
 
 ## 状态说明
@@ -64,7 +64,7 @@
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
-- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。仍需 Win10/exFAT 实测官方更新、数据保留和失败回退，不重复实现上游更新器。
+- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。PowerShell 7 本地模拟覆盖成功、拒绝未审计 origin、官方失败退出三条路径，GitHub Actions run `33783429258` 的 Windows PowerShell 5.1/7 七组测试均通过。仍需 Win10/exFAT 实测官方更新、数据保留和失败回退，不重复实现上游更新器。
 - [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单，仍需实测 Chat、Setup、Gateway、配置编辑和 Update。
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
 - [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。PowerShell 7 本地 Parser/六组测试与 GitHub Actions run `33776790273` 的 Windows PowerShell 5.1/7 均通过；Win10/exFAT 中断/损坏/软重建实测完成前保持进行中，不开启 Full Reset。
