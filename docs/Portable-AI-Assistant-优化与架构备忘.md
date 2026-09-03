@@ -5,10 +5,11 @@
 | 项目 | 内容 |
 |---|---|
 | 文档状态 | 活文档（持续维护） |
-| 当前版本 | v0.3 |
+| 当前版本 | v0.4 |
 | 建立日期 | 2026-09-02 |
-| 最近更新 | 2026-09-02 |
+| 最近更新 | 2026-09-03 |
 | 当前阶段 | P0 基线实现中 |
+| 进度清单 | [`docs/PROJECT-PLAN.md`](PROJECT-PLAN.md) |
 | 基础项目 | [techjarves/Hermes-USB-Portable](https://github.com/techjarves/Hermes-USB-Portable) |
 | 参考项目 | [techjarves/Local-Hermes-Portable](https://github.com/techjarves/Local-Hermes-Portable)、[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)、[yuluyangguang1/codex-portable](https://github.com/yuluyangguang1/codex-portable) |
 
@@ -46,6 +47,7 @@
 | 知识库 | 使用便携 Obsidian Vault（Markdown 文件夹） | 已决定 |
 | 经验沉淀 | Memory 存事实，Obsidian 存长期记录，Skill 存可重复流程 | 已决定 |
 | 环境初始化 | 提供可重复的目录/U 盘初始化器，但不自动格式化整块磁盘 | In Progress：普通目录最小版已实现并通过 CI |
+| Hermes 更新 | bootstrap 版本只用于首次安装；保留用户主动更新到新版本的能力，并记录实际版本/commit | In Progress：P0-07 |
 | 本地资源仓库 | 在 U 盘建立带清单、哈希和适用条件的驱动/工具包仓库 | 已决定 |
 | 安全 | API Key、代理订阅、知识库和会话不得长期裸奔在易丢失 U 盘上 | 必须设计 |
 
@@ -450,9 +452,11 @@ repository/
 
 ### 6.3 供应链与更新
 
-- Hermes、Python、Node、Git、Mihomo 等依赖固定版本并校验 SHA-256/签名。
-- 更新采用下载到新目录、验证、切换、可回滚的流程。
-- 不直接追踪上游 `main` 作为生产版本。
+- Python、Node、Git、Mihomo 等 Runtime/工具制品使用受审查的版本并校验 SHA-256/签名。
+- Hermes 不永久锁死：manifest 中的版本是可重试的 bootstrap 基线，用户可主动更新到新版本。
+- P0-07 完成后，Hermes 默认更新到官方最新稳定 Release；当前继承的 `hermes update` 会跟随 `main`，后续将作为需要用户明确选择的开发通道保留。
+- 每次 Hermes 更新记录实际版本、commit、通道和结果；记录用于诊断和回滚，不用于阻止新版本。
+- 更新采用备份/暂存、验证、切换和失败回退的流程，不覆盖 `data/`、Profiles、Sessions、Memory、Skills 和 Vault。
 - 保存第三方组件来源、版本、许可证和哈希清单（SBOM/manifest）。
 
 ### 6.4 “零宿主污染”的真实定义
@@ -466,7 +470,7 @@ repository/
 - [x] 先实现目录模式的最小初始化器和标准目录结构。
 - [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；修复/重建尚未实测）。
 - [x] 建立可重复测试的 `feat/portable-initializer` 分支。
-- [ ] 固定 Hermes 上游版本，记录依赖清单与哈希（Windows x64 Runtime 归档和 Hermes commit 已锁定；Python 传递依赖锁、许可证清单/SBOM 与完整 Windows 实机安装尚待完成）。
+- [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit 和更新策略已记录；Hermes 更新/回退实测、Python 传递依赖锁、许可证/SBOM 和完整 Windows 安装尚待完成）。
 - [ ] 移植 Desktop 菜单项。
 - [ ] 增加 CLI、TUI、Dashboard、Desktop 独立入口。
 - [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
@@ -566,11 +570,18 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 
 ## 11. 变更日志
 
+### v0.4 — 2026-09-03
+
+- 增加 `docs/PROJECT-PLAN.md` 作为当前 P 阶段、任务 ID、状态和验收条件的唯一进度入口。
+- 确认开发策略为“继承原项目，不重写已经可用的便携启动能力”。
+- 将 Hermes 策略从“永久固定”修正为“bootstrap 可重试、后续可主动更新、实际版本可审计与回退”。
+- 明确当前 P0-07 是 Hermes 更新、健康检查、数据保留和失败回退验证。
+
 ### v0.3 — 2026-09-02
 
 - 记录已确认的 Fork、`feat/portable-initializer` 开发分支和 P0 实现状态。
 - 记录普通目录最小初始化器、数据保留行为与 PowerShell 5.1/7 CI 验证。
-- 新增 Windows x64 Runtime 组件锁，固定归档哈希/大小和 Hermes Git commit，禁止生产式 Runtime 跟随浮动 `main`。
+- 新增 Windows x64 Runtime 组件锁，固定归档哈希/大小和 Hermes Git commit；当时限制浮动 `main` 的策略已在 v0.4 被“可控更新”决策取代。
 - 明确当前限制：完整 Windows Runtime 安装、修复/重建和宿主落地审计尚待实机验证。
 
 ### v0.2 — 2026-09-02

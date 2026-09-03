@@ -36,10 +36,12 @@
 Development is on `feat/portable-initializer`. The verified P0 baseline currently includes:
 
 - A repeatable ordinary-directory initializer that preserves existing user data and never formats storage.
-- A tracked Windows x64 component lock with exact versions, archive sizes, SHA-256 values, and a pinned Hermes Git commit.
+- A tracked Windows x64 component lock with exact versions, archive sizes and SHA-256 values, plus an auditable Hermes bootstrap commit that does not block later updates.
 - Dependency-free initializer and lock tests on Windows PowerShell 5.1 and PowerShell 7.
 
 The custom Stitch workbench UI, full CLI/TUI/Desktop/WebUI entry set, model/proxy manager, private Obsidian integration, driver repository workflow, and real printer installation are planned work and are not implemented yet. The inherited launchers remain available, but cross-platform portability and host-write behavior have not yet completed the new project audit.
+
+See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order.
 
 ---
 
@@ -70,7 +72,7 @@ Hermes Portable solves the host-dependency issue by establishing a sandboxed run
 graph TD
     A[User triggers launch script] --> B{Runtimes setup?}
     B -- No / First Run --> C[Download Portable Python 3.11 & Node.js 22]
-    C --> D[Fetch the locked Hermes tag and verify its commit]
+    C --> D[Fetch the audited Hermes bootstrap and keep update metadata]
     D --> E[Create isolated virtual env using uv]
     E --> F[Install Python & Node packages locally]
     F --> G[Write runtime manifest and lock-bound ready.flag]
@@ -178,9 +180,9 @@ Recommended USB / external drive free space:
 
 ## 🔄 Updating Hermes Agent
 
-Production-style portable environments must use the reviewed component lock in `manifests/runtime-components.windows-x64.json`. Update the Hermes version, tag, commit, and compatible package pins together; review the diff; run the lock and initializer tests; then rebuild the managed Runtime.
+Hermes is updateable and is not permanently locked to the bootstrap version recorded in `manifests/runtime-components.windows-x64.json`. The bootstrap entry provides a known first-install state; the installed version may advance through the inherited launcher **Update Hermes** option or the official `hermes update` command.
 
-Do not use `/hermes update` or another floating update path for a lock-managed environment. Those paths bypass the reviewed version/commit relationship and make the resulting Runtime difficult to reproduce or audit.
+The P0 update work adds pre-update checks, installed-version/commit recording, user-data preservation checks, post-update health checks, and rollback around that upstream capability. Stable releases are the intended default channel; tracking upstream `main` remains an explicit higher-risk option. Python, Node.js, uv, Git, and other Runtime archives remain separately integrity-checked.
 
 ---
 

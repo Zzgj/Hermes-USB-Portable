@@ -228,6 +228,20 @@ function Read-ComponentLock {
         throw "The component lock contains unsupported component entries."
     }
 
+    $hermesComponent = @($lock.components | Where-Object { $_.id -eq "hermes-agent" })[0]
+    if ($hermesComponent.version_role -ne "bootstrap") {
+        throw "The Hermes version must be identified as a bootstrap baseline."
+    }
+    if ($hermesComponent.update_policy.mode -ne "user_initiated" -or $hermesComponent.update_policy.target_default_channel -ne "stable") {
+        throw "The Hermes update policy must use explicit user action and target the stable default channel."
+    }
+    if ($hermesComponent.update_policy.current_upstream_command_channel -ne "main" -or $hermesComponent.update_policy.implementation_status -ne "in_progress") {
+        throw "The Hermes update policy must describe the inherited main-channel behavior while P0 update work is in progress."
+    }
+    if ($hermesComponent.update_policy.allow_newer_than_bootstrap -ne $true -or $hermesComponent.update_policy.preserve_user_data -ne $true) {
+        throw "The Hermes update policy must allow newer versions while preserving user data."
+    }
+
     $requirements = @($lock.supplemental_python_packages | ForEach-Object { [string]$_.requirement })
     if ($requirements.Count -ne 2) {
         throw "The component lock must contain exactly two supplemental Python package pins."

@@ -52,11 +52,23 @@ try {
     Assert-True ($requirements -contains "anthropic==0.87.0") "Anthropic package should match the pinned Hermes source"
     Assert-True ($requirements -contains "python-telegram-bot[webhooks]==22.8") "Telegram package should match the pinned Hermes source"
 
+    $hermes = @($lock.components | Where-Object { $_.id -eq "hermes-agent" })[0]
+    Assert-True ($hermes.version_role -eq "bootstrap") "Hermes version should be an initial bootstrap baseline, not a permanent ceiling"
+    Assert-True ($hermes.update_policy.mode -eq "user_initiated") "Hermes updates should require an explicit user action"
+    Assert-True ($hermes.update_policy.current_upstream_command_channel -eq "main") "Hermes policy should document the inherited updater's current main channel"
+    Assert-True ($hermes.update_policy.target_default_channel -eq "stable") "Hermes should target the stable update channel"
+    Assert-True ($hermes.update_policy.development_channel -eq "main") "Hermes should expose an optional development channel"
+    Assert-True ($hermes.update_policy.implementation_status -eq "in_progress") "Hermes update wrapping should remain visibly in progress until verified"
+    Assert-True ($hermes.update_policy.allow_newer_than_bootstrap -eq $true) "Hermes should be allowed to update beyond the bootstrap version"
+    Assert-True ($hermes.update_policy.preserve_user_data -eq $true) "Hermes updates should preserve user data"
+    Assert-True ($hermes.update_policy.rollback_required -eq $true) "Hermes update design should require rollback support"
+
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw
     Assert-True ($setupSource -match 'runtime-components\.windows-x64\.json') "setup should consume the component lock"
     Assert-True ($setupSource -match 'Assert-ArchiveIntegrity') "setup should verify downloaded archives"
     Assert-True ($setupSource -match 'HermesComponent\.source\.commit') "setup should verify the Hermes commit"
     Assert-True ($setupSource -match '\.portable-source\.json') "setup should record the installed Hermes source state"
+    Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "setup should keep Git metadata required by the inherited Hermes updater"
     Assert-True ($setupSource -match 'runtime-manifest\.json') "setup should record the installed runtime state"
     Assert-True ($setupSource -match '\[System\.IO\.File\]::WriteAllText\(\$readyFlag, \(\$ComponentLockHash') "ready state should identify the installed component lock"
     Assert-True ($setupSource -match 'Get-ChildItem -Path \$CacheDir, \$SrcDir, \$TempDir') "metadata cleanup should stay inside setup-managed directories"

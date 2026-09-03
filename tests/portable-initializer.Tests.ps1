@@ -103,8 +103,10 @@ try {
     Assert-True (@($manifest.components).Count -eq 6) "manifest should contain every locked runtime component"
     $hermesComponent = @($manifest.components | Where-Object { $_.id -eq "hermes-agent" })
     Assert-True ($hermesComponent.Count -eq 1) "manifest should contain one Hermes component"
-    Assert-True ($hermesComponent[0].version -eq "0.21.0") "Hermes version should be pinned"
-    Assert-True ($hermesComponent[0].source.commit -eq "29112bef099274229cadff79cdff7bf7b99c4b77") "Hermes commit should be pinned"
+    Assert-True ($hermesComponent[0].version -eq "0.21.0") "Hermes bootstrap version should match the audited first-install baseline"
+    Assert-True ($hermesComponent[0].source.commit -eq "29112bef099274229cadff79cdff7bf7b99c4b77") "Hermes bootstrap commit should be auditable"
+    Assert-True ($hermesComponent[0].version_role -eq "bootstrap") "Hermes version should be recorded as a bootstrap baseline"
+    Assert-True ($hermesComponent[0].update_policy.allow_newer_than_bootstrap -eq $true) "Hermes should be updateable beyond the bootstrap version"
     $reportsBefore = @(Get-ChildItem -LiteralPath (Join-Path $target "logs/initializer") -Filter "environment-check-*.json")
     Assert-True ($reportsBefore.Count -eq 1) "first run should create one environment report"
     $firstReport = $reportsBefore[0] | Get-Content -Raw | ConvertFrom-Json

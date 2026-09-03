@@ -19,7 +19,7 @@ See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output
 
 ## Windows Runtime Component Lock
 
-`manifests/runtime-components.windows-x64.json` is the reviewed source of truth for the Windows x64 Runtime. `scripts/setup-windows.ps1` verifies the exact byte size and SHA-256 of every downloaded archive, fetches Hermes by a pinned tag, verifies the exact Git commit, and only writes `ready.flag` after recording `runtime-manifest.json`.
+`manifests/runtime-components.windows-x64.json` is the reviewed bootstrap source for the Windows x64 Runtime. `scripts/setup-windows.ps1` verifies the exact byte size and SHA-256 of every downloaded archive, verifies the initial Hermes tag/commit, keeps its Git update metadata, and only writes `ready.flag` after recording `runtime-manifest.json`.
 
 Run the static lock/setup contract test without downloading or installing anything:
 
@@ -27,7 +27,7 @@ Run the static lock/setup contract test without downloading or installing anythi
 pwsh -NoProfile -File .\tests\runtime-component-lock.Tests.ps1
 ```
 
-Do not use `hermes update` on a lock-managed Runtime. Update and review the component lock, run both test scripts, and rebuild the managed Runtime instead.
+The Hermes version is not permanently locked. The recorded version is a known first-install baseline; explicit updates to newer official versions are allowed and must preserve `data/`. The P0 update task is adding version/commit recording, health checks and rollback around the inherited `hermes update` capability.
 
 ## Portable Launcher Commands
 
@@ -50,7 +50,7 @@ These are the commands you type in your terminal / PowerShell.
 | `launch.bat hermes config` | View current config |
 | `launch.bat hermes config edit` | Edit config in default editor |
 | `launch.bat hermes chat` | Start chat mode |
-| `launch.bat hermes update` | Upstream floating update; do not use for a lock-managed Runtime |
+| `launch.bat hermes update` | Update Hermes through its inherited official updater; P0 validation/rollback wrapper is in progress |
 
 ### macOS / Linux (`launch.sh`)
 
@@ -62,7 +62,7 @@ These are the commands you type in your terminal / PowerShell.
 | `./launch.sh hermes doctor` | Check for issues |
 | `./launch.sh hermes status` | Show status |
 | `./launch.sh hermes config` | View config |
-| `./launch.sh hermes update` | Upstream floating update; do not use for a lock-managed Runtime |
+| `./launch.sh hermes update` | Update Hermes through its inherited official updater; P0 validation/rollback wrapper is in progress |
 
 ---
 

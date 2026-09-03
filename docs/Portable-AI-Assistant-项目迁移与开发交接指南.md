@@ -2,11 +2,11 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v1.1 |
+| 文档版本 | v1.2 |
 | 交接日期 | 2026-09-02 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
-| 核心文档 | `docs/Portable-AI-Assistant-优化与架构备忘.md` |
+| 核心文档 | `docs/PROJECT-PLAN.md`、`docs/Portable-AI-Assistant-优化与架构备忘.md` |
 
 ## 1. 当前项目状态
 
@@ -24,13 +24,15 @@
 - 确认 [Zzgj/Hermes-USB-Portable](https://github.com/Zzgj/Hermes-USB-Portable) 是上游项目的 Fork，`origin` 指向个人 Fork，`upstream` 指向 `techjarves/Hermes-USB-Portable`。
 - 建立并推送 `feat/portable-initializer` 分支。
 - 实现普通目录最小初始化器：标准目录、版本清单、环境检查、幂等与用户数据保留。
-- 建立 Windows x64 Runtime 组件锁和静态安全测试，归档固定版本、大小、SHA-256 及 Hermes Git commit。
+- 建立 Windows x64 Runtime 组件锁和静态安全测试，归档 Runtime 固定版本、大小和 SHA-256，并记录可更新的 Hermes bootstrap commit。
+- 建立 `docs/PROJECT-PLAN.md`，直接记录当前 P 阶段、任务 ID、状态和验收条件。
 - 在 GitHub Actions 中验证初始化器，覆盖 Windows PowerShell 5.1 和 PowerShell 7。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
 - 尚未在 Windows 10/11 x64 实机执行完整 Runtime 下载、安装、失败恢复和重建测试。
+- 尚未完成 P0-07 Hermes 更新前检查、实际版本/commit 记录、健康检查和失败回退实测。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
 - 尚未验证 `hermes desktop` 和 `hermes serve` 的完整便携性。
 - 尚未建立真实打印机驱动仓库或打印机安装 Skill。
@@ -282,4 +284,4 @@ git diff --cached
 
 ## 10. 当前最重要的下一步
 
-最小初始化器已完成。当前最重要的下一步是在专用 Windows 10/11 x64 测试环境中验证锁定 Runtime 的完整安装、中断后重试、数据保留与重建行为，并输出不含凭据的诊断证据。通过后再移植 Desktop 菜单和独立入口；仍不执行真实打印机安装。
+最小初始化器已完成。当前以 `docs/PROJECT-PLAN.md` 为实施顺序，先完成 P0-07：保留原 `Update Hermes` 能力，验证更新检查、用户数据保留、版本/commit 记录、更新后健康检查和失败回退。随后在专用 Windows 10/11 x64 测试目录验证完整 Runtime 和原启动器主流流程；仍不执行真实打印机安装。

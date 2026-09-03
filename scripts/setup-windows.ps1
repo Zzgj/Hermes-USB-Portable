@@ -85,6 +85,15 @@ foreach ($archiveComponent in @($PythonComponent, $NodeComponent, $UvComponent, 
     Assert-LockedComponent $archiveComponent "archive"
 }
 Assert-LockedComponent $HermesComponent "git"
+if ($HermesComponent.version_role -ne "bootstrap") {
+    throw "The Hermes component version must be a bootstrap baseline"
+}
+if ($HermesComponent.update_policy.mode -ne "user_initiated" -or $HermesComponent.update_policy.allow_newer_than_bootstrap -ne $true) {
+    throw "The Hermes component must permit explicit user-initiated updates beyond the bootstrap version"
+}
+if ($HermesComponent.update_policy.current_upstream_command_channel -ne "main" -or $HermesComponent.update_policy.target_default_channel -ne "stable") {
+    throw "The Hermes update policy must describe the inherited main channel and the target stable channel"
+}
 
 $AnthropicRequirement = @($ComponentLock.supplemental_python_packages | Where-Object { $_.requirement -like "anthropic==*" } | Select-Object -ExpandProperty requirement)
 $TelegramRequirement = @($ComponentLock.supplemental_python_packages | Where-Object { $_.requirement -like "python-telegram-bot*" } | Select-Object -ExpandProperty requirement)
@@ -453,14 +462,18 @@ if ($LASTEXITCODE -ne 0 -or $actualHermesCommit -ne $HermesComponent.source.comm
 $sourceState = [ordered]@{
     schema_version = 1
     version = $HermesComponent.version
+    version_role = $HermesComponent.version_role
     ref = $HermesComponent.source.ref
     commit = $actualHermesCommit
+    update_policy = $HermesComponent.update_policy
     component_lock_sha256 = $ComponentLockHash
 }
 $sourceStatePath = Join-Path $srcTemp ".portable-source.json"
 $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText($sourceStatePath, (($sourceState | ConvertTo-Json -Depth 4) + [Environment]::NewLine), $utf8WithoutBom)
-Remove-Item -LiteralPath (Join-Path $srcTemp ".git") -Recurse -Force
+[System.IO.File]::WriteAllText($sourceStatePath, (($sourceState | ConvertTo-Json -Depth 6) + [Environment]::NewLine), $utf8WithoutBom)
+# Keep the shallow Git metadata and official origin so the inherited
+# `hermes update` command can fetch newer upstream versions. The commit above
+# is the reviewed bootstrap state, not a permanent update ceiling.
 $destSrc = Join-Path $SrcDir "hermes-agent"
 Install-StagedDirectory $srcTemp $destSrc
 Write-Done "Hermes $($HermesComponent.version) source ready at commit $actualHermesCommit"

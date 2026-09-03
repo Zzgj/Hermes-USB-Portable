@@ -15,7 +15,7 @@ The target must be a dedicated directory, not a filesystem root such as `D:\`. A
 ## Outputs
 
 - The standard `runtime`, `data`, `knowledge`, `skills`, `repository`, `proxy`, `workspace`, `logs`, and `updates` directory tree.
-- `portable-ai.manifest.json`, created once and never overwritten by the initializer. It records the pinned Windows runtime components and the exact SHA-256 of the component lock used.
+- `portable-ai.manifest.json`, created once and never overwritten by the initializer. It records the Windows Runtime bootstrap components, the exact SHA-256 of the component lock used, and the policy allowing explicit Hermes updates beyond the recorded bootstrap version.
 - A unique `logs/initializer/environment-check-*.json` report for each run.
 
 The report records the target path, filesystem and free-space information when available, write access, created and preserved directories, failures, warnings, and explicit safety flags.
