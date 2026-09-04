@@ -160,6 +160,11 @@ try {
     }
 
     $componentLock = Get-Content -LiteralPath $componentLockPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $componentLockHash = (Get-FileHash -LiteralPath $componentLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $preRuntimeManifest = Get-Content -LiteralPath $runtimeManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([string]$preRuntimeManifest.component_lock_sha256 -ne $componentLockHash) {
+        throw "The Runtime manifest does not match the current component lock. Run setup repair before updating Hermes."
+    }
     $hermesComponent = @($componentLock.components | Where-Object { $_.id -eq "hermes-agent" })
     if ($hermesComponent.Count -ne 1) {
         throw "The Runtime component lock must contain exactly one Hermes component."
@@ -175,6 +180,31 @@ try {
     }
     $officialOriginVerified = $true
     $updateChannel = "origin/{0}" -f $defaultChannel
+
+    $sourceStatePresent = Move-LegacyHermesSourceState `
+        -SourceDirectory $sourceDirectory `
+        -RuntimeDirectory $runtimeDirectory `
+        -ExpectedComponentLockHash $componentLockHash
+    if ($sourceStatePresent) {
+        $sourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $runtimeDirectory
+        $sourceStatePresent = Test-HermesSourceStateFile `
+            -Path $sourceStatePath `
+            -ExpectedComponentLockHash $componentLockHash `
+            -ExpectedCommit $preCommit
+    }
+    if (-not $sourceStatePresent) {
+        $preSourceState = [ordered]@{
+            schema_version = 1
+            version = $preVersion
+            version_role = "installed"
+            ref = $defaultChannel
+            commit = $preCommit
+            update_policy = $hermesComponent[0].update_policy
+            component_lock_sha256 = $componentLockHash.ToLowerInvariant()
+        }
+        Write-HermesSourceState -RuntimeDirectory $runtimeDirectory -SourceState $preSourceState | Out-Null
+    }
+    Set-HermesCaseCollisionWorkaround -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory | Out-Null
 
     $pendingReceipt = [ordered]@{
         schema_version = 1
@@ -257,6 +287,16 @@ catch {
     $warnings.Add("post-update-identity-unavailable")
 }
 
+$checkoutNormalizationHealthy = $true
+try {
+    Set-HermesCaseCollisionWorkaround -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory | Out-Null
+}
+catch {
+    [Console]::Error.WriteLine("[portable-update] Unable to normalize the managed Hermes checkout after the update attempt: {0}", $_.Exception.Message)
+    $warnings.Add("checkout-normalization-failed")
+    $checkoutNormalizationHealthy = $false
+}
+
 $officialMarkerAfter = Get-UpdateFileMarker -Path $officialReceiptPath
 $officialReceiptObserved = Test-UpdateFileMarkerChanged -Before $officialMarkerBefore -After $officialMarkerAfter
 $officialReceipt = Get-SafeOfficialUpdateReceipt -Path $officialReceiptPath
@@ -267,7 +307,7 @@ elseif ($null -eq $officialReceipt) {
     $warnings.Add("official-receipt-invalid")
 }
 
-$portableStateHealthy = $true
+$portableStateHealthy = $checkoutNormalizationHealthy
 if ($officialExitCode -eq 0) {
     if ($null -eq $postCommit -or $null -eq $postVersion) {
         $portableStateHealthy = $false
@@ -279,9 +319,9 @@ if ($officialExitCode -eq 0) {
     else {
         try {
             $runtimeManifest = Get-Content -LiteralPath $runtimeManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            $componentLockHash = [string]$runtimeManifest.component_lock_sha256
-            if ($componentLockHash -notmatch '^[0-9a-fA-F]{64}$') {
-                throw "The Runtime component lock hash is missing or invalid."
+            $manifestComponentLockHash = [string]$runtimeManifest.component_lock_sha256
+            if ($manifestComponentLockHash -ne $componentLockHash) {
+                throw "The Runtime manifest does not match the current component lock."
             }
             $details = @{
                 refreshed_after_official_update = $true
@@ -290,6 +330,16 @@ if ($officialExitCode -eq 0) {
             Write-SetupReceipt -StateDirectory $stateDirectory -StepId "hermes-source" -Fingerprint $postCommit -Details $details | Out-Null
             Write-SetupReceipt -StateDirectory $stateDirectory -StepId "hermes-dependencies" -Fingerprint ("{0}:{1}" -f $componentLockHash.ToLowerInvariant(), $postCommit) -Details $details | Out-Null
             Update-PortableRuntimeManifest -Path $runtimeManifestPath -HermesCommit $postCommit -HermesVersion $postVersion -PortableReceiptPath $portableReceiptRelativePath -UpdatedAtUtc ([DateTime]::UtcNow.ToString("o"))
+            $postSourceState = [ordered]@{
+                schema_version = 1
+                version = $postVersion
+                version_role = "installed"
+                ref = $defaultChannel
+                commit = $postCommit
+                update_policy = $hermesComponent[0].update_policy
+                component_lock_sha256 = $componentLockHash.ToLowerInvariant()
+            }
+            Write-HermesSourceState -RuntimeDirectory $runtimeDirectory -SourceState $postSourceState | Out-Null
             $manifestAction = "updated"
         }
         catch {

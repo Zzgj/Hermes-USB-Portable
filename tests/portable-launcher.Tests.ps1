@@ -109,6 +109,9 @@ try {
     Assert-True ($windowsApply -match 'invoke-hermes-update\.ps1') "Windows update action should use the structured portable wrapper"
     Assert-True ($updateWrapperSource -match 'main\(\)" update(?:\s|\r|\n)') "Windows update wrapper should delegate application to the official updater"
     Assert-True ($updateWrapperSource -match '\$env:HERMES_GIT_BASH_PATH = \$gitBashExecutable') "Windows update wrapper should expose portable Git Bash when invoked directly"
+    Assert-True ($updateWrapperSource -match 'Move-LegacyHermesSourceState') "Windows update wrapper should migrate legacy Portable state before invoking the official updater"
+    Assert-True ($updateWrapperSource -match 'Set-HermesCaseCollisionWorkaround') "Windows update wrapper should maintain the bounded upstream collision workaround"
+    Assert-True ($updateWrapperSource -match 'Write-HermesSourceState') "Windows update wrapper should refresh canonical source state after a successful official update"
     Assert-True ($windowsApply -match 'if errorlevel 1') "Windows update action should expose an official updater failure"
 
     $unixCheck = Get-SourceSection $unixSource '(?ms)^adv_update_check\(\) \{.*?^\}' "Unix read-only update-check action"
@@ -124,7 +127,7 @@ try {
     }
 
     Assert-True ($setupSource -match 'remote add origin \$HermesComponent\.source\.url') "Windows setup should retain the manifest-declared official Hermes origin"
-    Assert-True ($setupSource -match '\.portable-source\.json') "Windows setup should record the bootstrap source state"
+    Assert-True ($setupSource -match 'Write-HermesSourceState') "Windows setup should record the bootstrap source state outside the upstream checkout"
     Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "Windows setup should retain Git metadata required by the official updater"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_COUNT = "2"') "Windows setup should use protected command-scope Git configuration on ownership-less filesystems"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_VALUE_0 = \$GitSafeStagingDirectory') "Windows setup should trust its exact staging repository"

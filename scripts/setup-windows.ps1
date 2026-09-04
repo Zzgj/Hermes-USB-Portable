@@ -556,6 +556,30 @@ if (Test-Path $readyFlag) {
     )
     if ($readyChecksPassed) {
         $readyHermesCommit = (& $readyGit -C $readySource rev-parse HEAD 2>$null | Out-String).Trim()
+        $readySourceStatePresent = Move-LegacyHermesSourceState `
+            -SourceDirectory $readySource `
+            -RuntimeDirectory $RuntimeDir `
+            -ExpectedComponentLockHash $ComponentLockHash
+        if ($readySourceStatePresent) {
+            $readySourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $RuntimeDir
+            $readySourceStatePresent = Test-HermesSourceStateFile `
+                -Path $readySourceStatePath `
+                -ExpectedComponentLockHash $ComponentLockHash `
+                -ExpectedCommit $readyHermesCommit
+        }
+        if (-not $readySourceStatePresent) {
+            $readySourceState = [ordered]@{
+                schema_version = 1
+                version = [string]$readyManifest.hermes_version
+                version_role = "installed"
+                ref = $HermesComponent.source.ref
+                commit = $readyHermesCommit
+                update_policy = $HermesComponent.update_policy
+                component_lock_sha256 = $ComponentLockHash
+            }
+            Write-HermesSourceState -RuntimeDirectory $RuntimeDir -SourceState $readySourceState | Out-Null
+        }
+        Set-HermesCaseCollisionWorkaround -GitExecutable $readyGit -SourceDirectory $readySource | Out-Null
         $adoptedDetails = @{ adopted_from_verified_runtime_manifest = $true }
         Write-SetupReceipt -StateDirectory $StateDir -StepId "python" -Fingerprint $PythonComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
         Write-SetupReceipt -StateDirectory $StateDir -StepId "node" -Fingerprint $NodeComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
@@ -755,13 +779,20 @@ $srcTemp = Join-Path $TempDir "hermes-agent-source"
 $destSrc = Join-Path $SrcDir "hermes-agent"
 $hermesFingerprint = [string]$HermesComponent.source.commit
 $hermesVerification = { Test-HermesRepository $gitExe $destSrc $HermesComponent.source.commit }
+if (Test-HermesRepository $gitExe $destSrc "") {
+    Move-LegacyHermesSourceState `
+        -SourceDirectory $destSrc `
+        -RuntimeDirectory $RuntimeDir `
+        -ExpectedComponentLockHash $ComponentLockHash | Out-Null
+    Set-HermesCaseCollisionWorkaround -GitExecutable $gitExe -SourceDirectory $destSrc | Out-Null
+}
 if (Test-VerifiedSetupStep "hermes-source" $hermesFingerprint $hermesVerification) {
     $actualHermesCommit = [string]$HermesComponent.source.commit
     Write-Skip "Hermes $($HermesComponent.version) source"
 }
 else {
     $preserveInstalledHermes = $false
-    $installedSourceStatePath = Join-Path $destSrc ".portable-source.json"
+    $installedSourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $RuntimeDir
     if (Test-Path -LiteralPath $installedSourceStatePath -PathType Leaf) {
         try {
             $installedSourceState = Get-Content -LiteralPath $installedSourceStatePath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -771,6 +802,7 @@ else {
                 $LASTEXITCODE -eq 0 -and
                 $installedOrigin -eq [string]$HermesComponent.source.url -and
                 $installedCommit -match '^[0-9a-fA-F]{40}$' -and
+                [string]$installedSourceState.commit -eq $installedCommit -and
                 [string]$installedSourceState.component_lock_sha256 -eq $ComponentLockHash -and
                 $installedSourceState.update_policy.allow_newer_than_bootstrap -eq $true
             ) {
@@ -853,13 +885,12 @@ else {
         update_policy = $HermesComponent.update_policy
         component_lock_sha256 = $ComponentLockHash
     }
-    $sourceStatePath = Join-Path $srcTemp ".portable-source.json"
-    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($sourceStatePath, (($sourceState | ConvertTo-Json -Depth 6) + [Environment]::NewLine), $utf8WithoutBom)
     # Keep the shallow Git metadata and official origin so the inherited
     # `hermes update` command can fetch newer upstream versions. The commit above
     # is the reviewed bootstrap state, not a permanent update ceiling.
     Install-StagedDirectory $srcTemp $destSrc
+    Write-HermesSourceState -RuntimeDirectory $RuntimeDir -SourceState $sourceState | Out-Null
+    Set-HermesCaseCollisionWorkaround -GitExecutable $gitExe -SourceDirectory $destSrc | Out-Null
     Complete-SetupStep "hermes-source" $hermesFingerprint $hermesVerification @{
         version = $HermesComponent.version
         commit = $actualHermesCommit

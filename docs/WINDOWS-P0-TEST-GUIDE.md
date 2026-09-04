@@ -56,6 +56,22 @@ $state = ".\.cache\runtimes\windows-x64\state"
 
 预期结果：Setup 显示 `Runtime is already complete; no setup work is required`。脚本会执行实时健康检查并创建组件回执，但不会重新下载或安装 Python、Node 或 Hermes。
 
+新版 Setup 还会把旧的 `src\hermes-agent\.portable-source.json` 原子迁移到 `.cache\runtimes\windows-x64\hermes-source.json`，并仅对 [Hermes 上游已确认的两个大小写冲突路径](https://github.com/NousResearch/hermes-agent/issues/89048) 设置本地 `skip-worktree`。这不改动文件内容、不写入全局 Git 配置，上游移除任一冲突路径后会撤销剩余路径的标记。运行后执行：
+
+```powershell
+$git = ".\.cache\runtimes\windows-x64\git\cmd\git.exe"
+$repo = ".\src\hermes-agent"
+& $git -c core.quotepath=false -C $repo status --porcelain=v1 --untracked-files=all
+if ($LASTEXITCODE -ne 0) { throw "Hermes 源码状态检查失败。" }
+
+[pscustomobject]@{
+    CanonicalSourceState = Test-Path ".\.cache\runtimes\windows-x64\hermes-source.json"
+    LegacySourceState = Test-Path ".\src\hermes-agent\.portable-source.json"
+}
+```
+
+预期 Git 状态没有任何输出，`CanonicalSourceState=True`，`LegacySourceState=False`。如仍有其他路径，保留现场并停止更新/恢复测试，不要执行 `reset --hard`、`clean -fd` 或删除用户文件。
+
 随后运行一次 `.\launch.bat`，进入菜单后正常退出。Windows PowerShell 默认不会从当前目录查找命令，因此必须保留开头的 `.\`。启动过程中不应再次显示 Runtime Setup/Repair。
 
 ## 4. 验证只读 Doctor 和更新检查
@@ -153,5 +169,7 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 当官方更新因外部网络暂时无法续验时，可先在同一 NTFS 盘创建一份脱敏 Runtime 沙箱。沙箱只复制启动文件、脚本/测试/清单/文档、`.cache/runtimes/` 和 `src/`；不复制 `data/`、`knowledge/`、`logs/` 或宿主应用缓存。先确认目标目录不存在且空间足够，再开始复制。
 
 脱敏沙箱完成首次无修复启动后，应在沙箱内创建非敏感的 `data/` 和 `knowledge/` 哨兵，再按顺序测试：损坏 ripgrep 组件回执后只重建该步骤、Playwright 失败单独写日志、Soft Reset 保留哨兵。每次只执行一个故障用例，并在进入下一项前确认 Runtime 恢复健康。
+
+如果沙箱是从旧版 Runtime 复制的，先把当前分支的 `scripts/`、`tests/`、`manifests/` 和启动文件覆盖到沙箱，然后在沙箱根目录执行第 3 节的 Setup 命令和 Git 清洁度检查。只有 Git 状态为 clean 才进入故障注入。
 
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。

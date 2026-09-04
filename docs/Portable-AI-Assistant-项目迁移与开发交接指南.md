@@ -48,6 +48,7 @@
 - PortableGit 修复后的 E 盘 Doctor 已完整通过并生成中央 transcript；只读更新检查在 GitHub HTTP 429 时按设计失败且未应用更新。两项高级菜单动作按键返回时均报找不到 `show_advanced` 标签，定位到发布的 `launch.bat` 为 LF-only，而失败路径需要 CMD 从文件尾反向扫描菜单标签；当前修复将批处理发布字节固定为 CRLF，并用 `.gitattributes` 与 PowerShell 字节级测试防止归档/raw 下载重新变为 LF。
 - CRLF 补丁在 E 盘通过哈希和字节门禁后，Advanced → View Logs 进一步暴露条件块内 `echo` 文字的未转义圆括号会被 CMD 当作语法边界；提交 `ae4fcd8` 将提示改为 `Gateway Log - last 20 lines` 并新增分支断言。E 盘随后成功显示 Gateway 尾部日志、按键返回高级菜单、返回主菜单并正常退出，两项 CMD 故障均已实机闭环。
 - 本次 View Logs 也读取到 Hermes 0.21.0 Gateway 的 Windows watchdog traceback：`asyncio.start_unix_server` 不存在，但主 Gateway 仍继续完成 warmup、dispatcher 与 housekeeping 启动。已核对上游提交 `d7bda2ad892a596a35c75852356fb5eba17fa1a5`：Windows 已改用 TCP loopback witness。便携层不直接修改受 Git 管理的内核源码，待 P0-07 官方更新带入修复后复验日志。
+- P0-10 脱敏沙箱已通过 40,105 个文件/1.43 GiB 的数量、总大小和抽样 SHA-256 校验，未复制 `data/`、`knowledge/`、`logs/` 或宿主应用缓存。源实例与沙箱都精确显示两项 Git dirty：上游仅大小写不同的贡献者文件在 Windows 文件系统上冲突，以及旧 Portable Setup 生成的 `.portable-source.json`。修复将后者迁移到 Runtime 权威位置，前者只对两个精确路径设置可退役的本地索引绕行，避免官方 updater 把便携层自身状态当作用户修改暂存。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：

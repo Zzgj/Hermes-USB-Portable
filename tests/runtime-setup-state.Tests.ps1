@@ -90,6 +90,55 @@ try {
     Assert-True ((Get-Content -LiteralPath $sessionSentinel -Raw) -eq "session-data") "receipt recovery should preserve session data"
     Assert-True ((Get-Content -LiteralPath $knowledgeSentinel -Raw) -eq "knowledge-data") "receipt recovery should preserve private knowledge"
 
+    $runtimeDirectory = Join-Path $testRoot ".cache\runtimes\windows-x64"
+    $sourceDirectory = Join-Path $testRoot "src\hermes-agent"
+    New-Item -ItemType Directory -Path $sourceDirectory -Force | Out-Null
+    $componentLockHash = "a" * 64
+    $sourceState = [ordered]@{
+        schema_version = 1
+        version = "0.21.0"
+        version_role = "bootstrap"
+        ref = "v0.21.0"
+        commit = "b" * 40
+        update_policy = [ordered]@{ allow_newer_than_bootstrap = $true }
+        component_lock_sha256 = $componentLockHash
+    }
+    $legacySourceStatePath = Join-Path $sourceDirectory ".portable-source.json"
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($legacySourceStatePath, (($sourceState | ConvertTo-Json -Depth 8) + [Environment]::NewLine), $utf8WithoutBom)
+    Assert-True (Move-LegacyHermesSourceState -SourceDirectory $sourceDirectory -RuntimeDirectory $runtimeDirectory -ExpectedComponentLockHash $componentLockHash) "valid legacy source state should migrate"
+    $sourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $runtimeDirectory
+    Assert-True (Test-HermesSourceStateFile -Path $sourceStatePath -ExpectedComponentLockHash $componentLockHash) "canonical Runtime-owned source state should validate"
+    Assert-True (-not (Test-HermesSourceStateFile -Path $sourceStatePath -ExpectedComponentLockHash $componentLockHash -ExpectedCommit ("c" * 40))) "source state should not validate against a different installed commit"
+    Assert-True (-not (Test-Path -LiteralPath $legacySourceStatePath)) "legacy source state should leave the upstream worktree"
+    Assert-True (@(Get-ChildItem -LiteralPath $runtimeDirectory -Filter ".hermes-source.tmp-*" -Force).Count -eq 0) "atomic source-state writes should not leave temporary files"
+
+    $gitCommand = Get-Command git -ErrorAction SilentlyContinue
+    if ($null -ne $gitCommand) {
+        $collisionRepository = Join-Path $testRoot "case-collision-repository"
+        New-Item -ItemType Directory -Path $collisionRepository -Force | Out-Null
+        & $gitCommand.Source -c init.defaultBranch=main -C $collisionRepository init --quiet
+        Assert-True ($LASTEXITCODE -eq 0) "case-collision fixture repository should initialize"
+        $blobHash = ("portable-test" | & $gitCommand.Source -C $collisionRepository hash-object -w --stdin).Trim()
+        Assert-True ($LASTEXITCODE -eq 0 -and $blobHash -match '^[0-9a-fA-F]{40,64}$') "case-collision fixture blob should be stored"
+        $upperCollisionPath = "contributors/emails/agent@Agents-Mac-mini.local"
+        $lowerCollisionPath = "contributors/emails/agent@agents-Mac-mini.local"
+        & $gitCommand.Source -C $collisionRepository update-index --add --cacheinfo "100644,$blobHash,$upperCollisionPath"
+        Assert-True ($LASTEXITCODE -eq 0) "uppercase collision fixture should enter the index"
+        & $gitCommand.Source -C $collisionRepository update-index --add --cacheinfo "100644,$blobHash,$lowerCollisionPath"
+        Assert-True ($LASTEXITCODE -eq 0) "lowercase collision fixture should enter the index"
+        Assert-True (Set-HermesCaseCollisionWorkaround -GitExecutable $gitCommand.Source -SourceDirectory $collisionRepository) "exact upstream collision should activate the bounded workaround"
+        $collisionIndex = @(& $gitCommand.Source -C $collisionRepository ls-files -v -- $upperCollisionPath $lowerCollisionPath)
+        Assert-True (@($collisionIndex | Where-Object { $_ -match '^S ' }).Count -eq 2) "both exact collision entries should be marked skip-worktree"
+
+        & $gitCommand.Source -C $collisionRepository update-index --no-skip-worktree -- $upperCollisionPath $lowerCollisionPath
+        & $gitCommand.Source -C $collisionRepository update-index --force-remove -- $lowerCollisionPath
+        & $gitCommand.Source -C $collisionRepository update-index --skip-worktree -- $upperCollisionPath
+        Assert-True (-not (Set-HermesCaseCollisionWorkaround -GitExecutable $gitCommand.Source -SourceDirectory $collisionRepository)) "a removed upstream collision should retire the workaround"
+        $survivorIndex = @(& $gitCommand.Source -C $collisionRepository ls-files -v -- $upperCollisionPath)
+        Assert-True ($survivorIndex.Count -eq 1 -and $survivorIndex[0] -match '^H ') "the surviving path should no longer be hidden"
+    }
+
     $invalidStepRejected = $false
     try {
         Get-SetupReceiptPath -StateDirectory $stateDirectory -StepId "../data" | Out-Null
@@ -107,6 +156,9 @@ try {
     Assert-True ($setupSource -match 'Reusing the managed Hermes staging repository') "Hermes fetch should reuse managed staging across retries"
     Assert-True ($setupSource -match 'the managed staging repository was retained for retry') "exhausted Hermes fetch should explain that staging is retained"
     Assert-True ($setupSource -match 'Preserving user-updated Hermes source') "runtime repair should not silently downgrade a user-updated Hermes checkout"
+    Assert-True ($setupSource -match 'Move-LegacyHermesSourceState') "setup should migrate legacy source state out of the upstream worktree"
+    Assert-True ($setupSource -match 'Set-HermesCaseCollisionWorkaround') "setup should normalize the reviewed upstream case collision"
+    Assert-True (-not ($setupSource -match 'Join-Path\s+\$srcTemp\s+"\.portable-source\.json"')) "new setup should not write Portable metadata into the upstream worktree"
     Assert-True ($setupSource -match 'playwright-\{0\}-\{1\}\.log') "Playwright should have an independent diagnostic log"
     Assert-True ($setupSource -match 'Invoke-LoggedPlaywrightInstall') "Playwright output should be captured rather than discarded"
     Assert-True (-not ($setupSource -match 'playwright install chromium 2>\$null')) "Playwright stderr should not be discarded"

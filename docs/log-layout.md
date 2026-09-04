@@ -26,7 +26,7 @@ Some operational records are state owned by another component and must remain wh
 | Hermes update receipts | `data/logs/update_receipts/` | Written and consumed by the official updater and Desktop |
 | Portable update summaries | `logs/diagnostics/update-apply-*.json` | Links the official receipt and Runtime state without copying argv, config, profiles, or step details |
 | Runtime manifest | `.cache/runtimes/{platform}-{arch}/runtime-manifest.json` | Describes the installed platform Runtime, not an append-only log |
-| Hermes source state | `src/hermes-agent/.portable-source.json` | Travels with the installed source checkout |
+| Hermes source state | `.cache/runtimes/{platform}-{arch}/hermes-source.json` | Owned by the Portable Runtime and deliberately kept outside the upstream Git worktree |
 
 `manifests/log-sources.json` is the machine-readable catalog for the future log UI. The UI should resolve every catalog path relative to the portable root and present Workbench-owned and native sources through one view. It must not assume that every source is physically copied under `logs/`.
 

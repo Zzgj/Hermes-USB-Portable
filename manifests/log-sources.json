@@ -120,7 +120,7 @@
       "category": "runtime-state",
       "owner": "portable-runtime",
       "format": "json",
-      "path": "src/hermes-agent/.portable-source.json",
+      "path": ".cache/runtimes/{platform}-{arch}/hermes-source.json",
       "canonical": true,
       "may_contain_sensitive_data": false
     },

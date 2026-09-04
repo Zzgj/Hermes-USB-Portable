@@ -94,7 +94,7 @@ try {
     Assert-True ($setupSource -match 'runtime-filesystem\.ps1') "setup should consume the removable-drive-safe filesystem helper"
     Assert-True ($setupSource -match 'Assert-ArchiveIntegrity') "setup should verify downloaded archives"
     Assert-True ($setupSource -match 'HermesComponent\.source\.commit') "setup should verify the Hermes commit"
-    Assert-True ($setupSource -match '\.portable-source\.json') "setup should record the installed Hermes source state"
+    Assert-True ($setupSource -match 'Write-HermesSourceState') "setup should record the installed Hermes source state outside the upstream checkout"
     Assert-True (-not ($setupSource -match 'Remove-Item\s+-LiteralPath\s+\(Join-Path\s+\$srcTemp\s+"\.git"\)')) "setup should keep Git metadata required by the inherited Hermes updater"
     Assert-True ($setupSource -match 'runtime-manifest\.json') "setup should record the installed runtime state"
     Assert-True ($setupSource -match 'hermes_version\s*=\s*\$actualHermesVersion') "runtime state should include the actual installed Hermes version"
