@@ -131,6 +131,10 @@ try {
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_VALUE_1 = \$GitSafeInstalledDirectory') "Windows setup should trust its exact installed repository"
     Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "Windows setup should not disable Git ownership protection or mutate host-global config"
 
+    $windowsLogs = Get-SourceSection $windowsSource '(?ms)^:adv_logs\s*$.*?(?=^:adv_config\s*$)' "Windows view-logs action"
+    Assert-True ($windowsLogs -match 'Gateway Log - last 20 lines') "Windows view-logs action should use CMD-safe text inside its parenthesized conditional"
+    Assert-True (-not ($windowsLogs -match 'Gateway Log \(')) "Windows view-logs action should not use unescaped parentheses inside a CMD parenthesized block"
+
     Write-Host "Portable launcher tests passed."
 }
 catch {

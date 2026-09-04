@@ -357,7 +357,7 @@ echo %CYAN%Hermes logs:%RESET%    %HERMES_HOME%\logs
 echo %CYAN%Log catalog:%RESET%    %PORTABLE_ROOT%\manifests\log-sources.json
 echo.
 if exist "%HERMES_HOME%\logs\gateway.log" (
-    echo %CYAN%=== Gateway Log (last 20 lines) ===%RESET%
+    echo %CYAN%=== Gateway Log - last 20 lines ===%RESET%
     powershell -Command "Get-Content '%HERMES_HOME%\logs\gateway.log' -Tail 20"
 ) else (
     echo %YELLOW%No logs found.%RESET%
