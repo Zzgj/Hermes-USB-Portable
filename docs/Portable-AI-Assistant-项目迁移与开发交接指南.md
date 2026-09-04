@@ -46,13 +46,14 @@
 - `9563a9c` 已将受管 portable Git 目录前置到启动器、观察包装器和更新包装器的 PATH；GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过。修复后的 Doctor/更新检查/官方更新仍需同一 Win10/exFAT 实机复验。
 - E 盘 NTFS 干净实例完成 DeepSeek Setup 和真实 Chat 后，Terminal 工具曾报告 `Git Bash not found`；根因是组件锁使用的 MinGit 只提供 Git 命令，不满足 Hermes v0.21.0 Windows Local terminal 对 Git Bash/MSYS 的硬要求。提交 `40fd1e2` 改用固定大小和 SHA-256 的官方 PortableGit 2.54.0，并增加 Bash/MSYS 行为探针与 Windows 入口的 `HERMES_GIT_BASH_PATH`；首轮实机又暴露 GUI SFX 未被 Windows PowerShell 可靠等待，提交 `7387c71` 改用 `Start-Process -Wait -PassThru`。最终实机已完成解压并输出 `[OK] Git ready`，Hermes 真实 terminal 成功返回 `GIT_BASH_OK`、Git 2.54.0 和 `MINGW64_NT-10.0-22631`，该故障闭环。
 - PortableGit 修复后的 E 盘 Doctor 已完整通过并生成中央 transcript；只读更新检查在 GitHub HTTP 429 时按设计失败且未应用更新。两项高级菜单动作按键返回时均报找不到 `show_advanced` 标签，定位到发布的 `launch.bat` 为 LF-only，而失败路径需要 CMD 从文件尾反向扫描菜单标签；当前修复将批处理发布字节固定为 CRLF，并用 `.gitattributes` 与 PowerShell 字节级测试防止归档/raw 下载重新变为 LF。
-- CRLF 补丁在 E 盘通过哈希和字节门禁后，Advanced → View Logs 进一步暴露条件块内 `echo` 文字的未转义圆括号会被 CMD 当作语法边界；提示已改为 `Gateway Log - last 20 lines`，并新增 View Logs 分支回归断言，待同一实例复验完整回跳。
+- CRLF 补丁在 E 盘通过哈希和字节门禁后，Advanced → View Logs 进一步暴露条件块内 `echo` 文字的未转义圆括号会被 CMD 当作语法边界；提交 `ae4fcd8` 将提示改为 `Gateway Log - last 20 lines` 并新增分支断言。E 盘随后成功显示 Gateway 尾部日志、按键返回高级菜单、返回主菜单并正常退出，两项 CMD 故障均已实机闭环。
+- 本次 View Logs 也读取到 Hermes 0.21.0 Gateway 的 Windows watchdog traceback：`asyncio.start_unix_server` 不存在，但主 Gateway 仍继续完成 warmup、dispatcher 与 housekeeping 启动。已核对上游提交 `d7bda2ad892a596a35c75852356fb5eba17fa1a5`：Windows 已改用 TCP loopback witness。便携层不直接修改受 Git 管理的内核源码，待 P0-07 官方更新带入修复后复验日志。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
 - Windows 10/exFAT 核心 Runtime 首次安装、幂等启动和无重装组件回执迁移已通过；P0-10 尚需同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
-- P0-07 失败证据链已在 Windows 实机验证；仍需用 `9563a9c` 或更新版本复验官方 `origin/main` 成功更新、三层证据、Runtime manifest 刷新和哨兵数据保留。
+- P0-07 失败证据链已在 Windows 实机验证；E 盘外壳已更新到 `ae4fcd8`，仍需在 GitHub 429 限流恢复后复验官方 `origin/main` 成功更新、三层证据、Runtime manifest 刷新、watchdog 修复和哨兵数据保留。
 - Setup 与 Doctor transcript 已在 Windows 实机生成；尚需完成更新成功日志、Playwright 日志及全部日志的内容完整性、编码和脱敏边界复核。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
 - 尚未验证 `hermes desktop` 和 `hermes serve` 的完整便携性。
