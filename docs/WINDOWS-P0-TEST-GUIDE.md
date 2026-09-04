@@ -70,6 +70,8 @@ $state = ".\.cache\runtimes\windows-x64\state"
 
 Doctor 的 `git` 检查必须通过。如果 Doctor 显示 `git not found`，或者更新检查/更新应用报 `FileNotFoundError: [WinError 2]`，说明测试副本早于修复提交 `9563a9c`。此时不要删除 Runtime 或用户数据；请从当前分支更新 `launch.bat`、`scripts/invoke-hermes-observation.ps1`、`scripts/invoke-hermes-update.ps1` 以及对应测试文件，然后从本节重试。
 
+如果只读更新检查报 HTTP 429、`curl 56`、TLS 提前断开或类似 GitHub 网络错误，但明确显示 `No update was applied`，则属于安全的只读失败。保留 `logs/diagnostics/update-check-*.log`，不要为了绕过限流而在公共测试输出中添加或粘贴 GitHub Token；等待 Git 通道恢复后再续验。
+
 ## 5. 验收 Hermes 官方更新流程
 
 应用更新前，先创建两个不含敏感内容的测试哨兵文件。下面的命令不会打开或覆盖已有用户文件：
@@ -147,5 +149,9 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 ## 6. P0-10 破坏性边界测试
 
 损坏回执、主动取消和 Soft Reset 测试会有意修改 Runtime 测试状态，因此不属于第一次更新验收。保存完更新证据后，只能在可丢弃的完整副本中执行 P0-10 恢复测试。
+
+当官方更新因外部网络暂时无法续验时，可先在同一 NTFS 盘创建一份脱敏 Runtime 沙箱。沙箱只复制启动文件、脚本/测试/清单/文档、`.cache/runtimes/` 和 `src/`；不复制 `data/`、`knowledge/`、`logs/` 或宿主应用缓存。先确认目标目录不存在且空间足够，再开始复制。
+
+脱敏沙箱完成首次无修复启动后，应在沙箱内创建非敏感的 `data/` 和 `knowledge/` 哨兵，再按顺序测试：损坏 ripgrep 组件回执后只重建该步骤、Playwright 失败单独写日志、Soft Reset 保留哨兵。每次只执行一个故障用例，并在进入下一项前确认 Runtime 恢复健康。
 
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。

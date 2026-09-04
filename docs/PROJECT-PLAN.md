@@ -8,7 +8,7 @@
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移、E 盘 DeepSeek Setup/Chat、PortableGit/Git Bash 真实 terminal 验收 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | E 盘 Win11 实例已应用 `ae4fcd8`；GitHub 限流恢复后复验只读检查和经确认的官方更新，核对三层回执、Runtime manifest、watchdog 修复和数据哨兵 |
+| 下一个验收门 | 在脱敏的 E 盘可丢弃 Runtime 副本完成 P0-10 损坏回执单步重建；GitHub Git 通道恢复后再续验 P0-07 官方更新 |
 | 最近更新 | 2026-09-04 |
 
 ## 状态说明
@@ -64,8 +64,8 @@
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
-- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。用户 Win10/exFAT 首次实测验证了计划、确认、pre-update snapshot 和失败 transcript/Portable JSON；同时暴露启动器 PATH 未向上游 Python 子进程提供 portable Git，导致 `WinError 2`，该问题已由 `9563a9c` 修复。E 盘 Win11 后续复验中 Doctor 全部核心检查通过；只读更新检查正确停在 GitHub HTTP 429 并明确未应用更新。待限流恢复后仍需完成一次成功检查/官方更新、三层证据和数据保留验收，不重复实现上游更新器。
-- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单。E 盘 Win11 实例已完成 DeepSeek Full Setup、配置持久化、真实 Chat/Terminal、Gateway 启动/停止/取消宿主持久化、cua-driver 自启动/遥测清理以及 PortableGit 修复后的 Doctor（中央 transcript 已生成）。提交 `5b754b9` 把 `launch.bat` 发布字节固定为 CRLF并增加回归门禁，提交 `ae4fcd8` 移除了 View Logs 条件块提示中的 CMD 元字符；E 盘现已实测 View Logs 输出、按键返回高级菜单、返回主菜单和退出全链路。Gateway 日志另暴露已安装内核在 Windows 调用 `asyncio.start_unix_server` 的非阻塞 traceback；上游提交 `d7bda2a` 已改用 TCP loopback，待 P0-07 官方更新后复验。配置编辑冒烟测试仍未记录。
+- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。用户 Win10/exFAT 首次实测验证了计划、确认、pre-update snapshot 和失败 transcript/Portable JSON；同时暴露启动器 PATH 未向上游 Python 子进程提供 portable Git，导致 `WinError 2`，该问题已由 `9563a9c` 修复。E 盘 Win11 后续复验中 Doctor 全部核心检查通过；两次只读更新检查分别因 GitHub HTTP 429 和 `curl 56 schannel: server closed abruptly (missing close_notify)` 安全失败，均明确未应用更新。该项当前受外部 Git/TLS 通道阻塞；待网络恢复后仍需完成一次成功检查/官方更新、三层证据和数据保留验收，不重复实现上游更新器。
+- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单。E 盘 Win11 实例已完成 DeepSeek Full Setup、配置持久化、真实 Chat/Terminal、Gateway 启动/停止/取消宿主持久化、cua-driver 自启动/遥测清理以及 PortableGit 修复后的 Doctor（中央 transcript 已生成）。提交 `5b754b9` 把 `launch.bat` 发布字节固定为 CRLF并增加回归门禁，提交 `ae4fcd8` 移除了 View Logs 条件块提示中的 CMD 元字符；E 盘现已实测 View Logs 输出、按键返回高级菜单、返回主菜单和退出全链路，且 Edit Config 已正确用记事本打开便携 `data\config.yaml` 并返回高级菜单。Gateway 日志另暴露已安装内核在 Windows 调用 `asyncio.start_unix_server` 的非阻塞 traceback；上游提交 `d7bda2a` 已改用 TCP loopback，待 P0-07 官方更新后复验。
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
 - [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。尚需在可丢弃副本验证中断/损坏/软重建和 Playwright 日志，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
@@ -190,9 +190,9 @@
 
 ## 当前立即执行顺序
 
-1. 完成 **P0-07/P0-08** 复验：E 盘 Win11 已通过 Doctor 和高级菜单完整回跳；更新检查因 GitHub HTTP 429 安全失败。限流恢复后创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留，并确认上游 `d7bda2a` 的 Windows watchdog 修复已生效。
-2. 继续 **P0-10** 实机验收：既有 Runtime 的无重装回执迁移已通过；后续在可丢弃完整副本验证取消/重试、损坏回执单步重建、Playwright 独立日志和 Soft Reset 数据保留，不执行 Full Reset。
-3. 完成 **P0-08**：在配置凭据的安全流程明确后，使用统一日志目录记录 Chat、Setup、Doctor、Gateway、配置编辑和 Update 冒烟测试。
+1. 继续 **P0-10** 实机验收：在 E 盘新建不包含 `data/`、`knowledge/`、`logs/` 和宿主应用缓存的可丢弃 Runtime 副本；先验证副本完整性，再执行损坏 ripgrep 回执的单步重建、Playwright 独立日志和 Soft Reset 数据保留，不执行 Full Reset。
+2. 续验 **P0-07/P0-08**：E 盘 Win11 已通过 Doctor、View Logs、Edit Config 和高级菜单完整回跳；更新检查因 GitHub HTTP 429 及随后的 curl 56/TLS 中断安全失败。Git 通道恢复后创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留，并确认上游 `d7bda2a` 的 Windows watchdog 修复已生效。
+3. 完成 **P0-08** 的 Update 成功冒烟；Chat、Setup、Doctor、Gateway、View Logs 和配置编辑均已有实机证据。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。
 5. P0 验收后才开始 P1；不跳过基线直接执行打印机安装。
 
