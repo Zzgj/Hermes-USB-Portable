@@ -110,6 +110,15 @@ try {
     Assert-True ($filesystemSource -match 'HRESULT') "runtime move failures should report diagnostic exception details"
     Assert-True ($setupSource -match 'Complete-SetupStep "uv"') "setup should verify uv and write its success receipt after installation"
     Assert-True ($setupSource -match 'Extract-SevenZipSelfExtractor') "setup should extract the official PortableGit self-extractor"
+    $extractorMatch = [regex]::Match($setupSource, '(?ms)^function Extract-SevenZipSelfExtractor.*?(?=^\$script:GitBashProbeOutput)')
+    Assert-True ($extractorMatch.Success) "setup should define a bounded PortableGit extraction helper"
+    $extractorSource = $extractorMatch.Value
+    Assert-True ($extractorSource -match 'Start-Process') "PortableGit extraction should start an identifiable process"
+    Assert-True ($extractorSource -match '(?m)^\s*-Wait\s*`?\s*$') "PortableGit extraction should wait for the GUI self-extractor"
+    Assert-True ($extractorSource -match '(?m)^\s*-PassThru\s*`?\s*$') "PortableGit extraction should retain the process object"
+    Assert-True ($extractorSource -match '\$extractProcess\.ExitCode') "PortableGit extraction should inspect the launched process exit code"
+    Assert-True (-not ($extractorSource -match 'if\s*\(\s*\$LASTEXITCODE')) "PortableGit extraction should not branch on a stale native-command exit code"
+    Assert-True (-not ($extractorSource -match '&\s+\$Archive')) "PortableGit extraction should not use asynchronous GUI direct invocation"
     Assert-True ($setupSource -match 'Test-GitBashCompatibility') "setup should verify that Git Bash and its Unix tools work"
     Assert-True ($setupSource -match 'Complete-SetupStep "portablegit"') "setup should record PortableGit only after verification"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_KEY_0 = "safe\.directory"') "setup should declare Git safe directories through command-scope environment configuration"

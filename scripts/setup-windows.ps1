@@ -440,9 +440,19 @@ function Extract-SevenZipSelfExtractor($Archive, $Destination) {
     }
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     try {
-        & $Archive "-o$Destination" "-y"
-        if ($LASTEXITCODE -ne 0) {
-            throw "self-extractor exited with code $LASTEXITCODE"
+        # PortableGit is a GUI-subsystem 7-Zip self-extractor. Windows PowerShell
+        # can return from a direct invocation before that process exits, leaving
+        # $LASTEXITCODE unchanged from an earlier native command. Wait for the
+        # exact process and inspect its own exit code instead.
+        $extractArguments = '-y -o"{0}"' -f $Destination
+        $extractProcess = Start-Process `
+            -FilePath $Archive `
+            -ArgumentList $extractArguments `
+            -Wait `
+            -PassThru `
+            -ErrorAction Stop
+        if ($extractProcess.ExitCode -ne 0) {
+            throw "self-extractor exited with code $($extractProcess.ExitCode)"
         }
         if (-not (Get-ChildItem -LiteralPath $Destination -Force | Select-Object -First 1)) {
             throw "archive extracted with no files"
