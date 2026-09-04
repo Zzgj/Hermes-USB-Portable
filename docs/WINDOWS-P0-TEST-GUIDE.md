@@ -1,25 +1,25 @@
-# Windows 10 / exFAT P0 test guide
+# Windows 10 / exFAT P0 测试指南
 
-This guide is the acceptance checklist for the current `feat/portable-initializer` build. Run it in a copy of the Portable folder on the USB drive. It does not require administrator privileges, format a disk, install a printer, or ask you to expose an API key.
+本文档是当前 `feat/portable-initializer` 测试版本的实机验收清单。请在 U 盘上的 Portable 项目副本中执行。本测试不需要管理员权限，不会格式化磁盘、安装打印机，也不会要求你公开 API Key。
 
-## 1. Preserve generated state when updating the test build
+## 1. 更新测试版本时保留运行数据
 
-The generated folders below are intentionally absent from Git/branch ZIP files. When replacing project scripts, keep the existing copies on the USB drive:
+以下目录是运行时生成的内容，因此不会包含在 Git 或分支 ZIP 压缩包中。替换项目脚本时，必须保留 U 盘中已有的这些目录：
 
 ```text
-.cache/    verified downloads and installed Runtime
-data/      Hermes configuration, receipts, sessions, memory and logs
-logs/      Workbench logs
-src/       installed and user-updated Hermes checkout
-.tmp/      resumable Hermes staging, if present
-knowledge/ private Obsidian vault
+.cache/    已校验的下载文件和安装完成的 Runtime
+data/      Hermes 配置、更新回执、会话、Memory 和日志
+logs/      Workbench 日志
+src/       已安装或由用户更新过的 Hermes 源码仓库
+.tmp/      可续传的 Hermes 暂存仓库（如果存在）
+knowledge/ 私人 Obsidian 知识库
 ```
 
-Do not restore an old incomplete `.cache` from the Recycle Bin, and do not delete the current working `.cache`. Copy the new tracked files (`launch.*`, `scripts/`, `tests/`, `manifests/`, `docs/`) over the test build while leaving the generated folders in place.
+不要从回收站还原旧的、不完整的 `.cache`，也不要删除当前正在使用的 `.cache`。请只把新版本中受 Git 跟踪的文件和目录（`launch.*`、`scripts/`、`tests/`、`manifests/`、`docs/`）覆盖到测试副本，同时保留上述运行数据目录。
 
-## 2. Run the dependency-free regression tests
+## 2. 运行不需要额外依赖的回归测试
 
-From the Portable root in Windows PowerShell 5.1:
+在 Windows PowerShell 5.1 中进入 Portable 项目根目录，然后运行：
 
 ```powershell
 $tests = @(
@@ -34,15 +34,15 @@ $tests = @(
 
 foreach ($test in $tests) {
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File $test
-    if ($LASTEXITCODE -ne 0) { throw "测试失败：$test (exit $LASTEXITCODE)" }
+    if ($LASTEXITCODE -ne 0) { throw "测试失败：$test（退出码 $LASTEXITCODE）" }
 }
 ```
 
-Expected result: every script ends in `tests passed`. The symbolic-link initializer case may say it was skipped when the Windows account lacks link-creation permission; that is not a failure and does not require elevation.
+预期结果：每个脚本最后都显示 `tests passed`。如果当前 Windows 账号没有创建符号链接的权限，初始化器测试可能提示跳过符号链接用例；这不属于测试失败，也不需要提升权限。
 
-## 3. Adopt component receipts without reinstalling Runtime
+## 3. 在不重装 Runtime 的情况下迁移组件回执
 
-Existing Runtime installations created before P0-10 do not yet have component receipts. Run setup directly once while `ready.flag` is still present:
+P0-10 之前创建的 Runtime 还没有组件级回执。请在 `ready.flag` 仍然存在时，直接运行一次 Setup 脚本：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1 -Root (Get-Location).Path
@@ -54,23 +54,23 @@ $state = ".\.cache\runtimes\windows-x64\state"
 }
 ```
 
-Expected result: setup says `Runtime is already complete; no setup work is required`, performs live checks, creates receipts, and does not download or reinstall Python/Node/Hermes.
+预期结果：Setup 显示 `Runtime is already complete; no setup work is required`。脚本会执行实时健康检查并创建组件回执，但不会重新下载或安装 Python、Node 或 Hermes。
 
-Then run `launch.bat`, enter and exit the menu once. It should not display Runtime Setup/Repair.
+随后运行一次 `launch.bat`，进入菜单后正常退出。启动过程中不应再次显示 Runtime Setup/Repair。
 
-## 4. Read-only Doctor and update checks
+## 4. 验证只读 Doctor 和更新检查
 
-In `launch.bat`, open `Advanced Options` and run:
+运行 `launch.bat`，进入 `Advanced Options`（高级选项），依次执行：
 
-1. `Run Doctor`.
-2. `Check for Updates`.
-3. `Update Hermes`, then answer `N` at the apply confirmation for the first pass.
+1. `Run Doctor`（运行 Doctor）。
+2. `Check for Updates`（检查更新）。
+3. `Update Hermes`（更新 Hermes），第一次到应用确认界面时选择 `N`。
 
-These actions should create timestamped files under `logs/doctor/` and `logs/diagnostics/`. The first two updater actions are read-only; answering `N` must not change the Hermes commit.
+这些操作应在 `logs/doctor/` 和 `logs/diagnostics/` 下生成带时间戳的文件。Doctor、更新检查和更新计划不会应用更新；在确认界面选择 `N` 也不得改变当前 Hermes commit。
 
-## 5. Official Hermes update acceptance
+## 5. 验收 Hermes 官方更新流程
 
-Before applying the update, create dedicated non-secret sentinels. Existing user files are not opened or overwritten:
+应用更新前，先创建两个不含敏感内容的测试哨兵文件。下面的命令不会打开或覆盖已有用户文件：
 
 ```powershell
 $sentinelValue = [guid]::NewGuid().ToString("N")
@@ -85,9 +85,9 @@ foreach ($path in $sentinels) {
 }
 ```
 
-Open `launch.bat` → `Advanced Options` → `Update Hermes`. Review the official plan, answer `Y` only when ready, and follow any additional prompts from the official updater. Do not start Chat or Gateway in another window during this test.
+打开 `launch.bat` → `Advanced Options` → `Update Hermes`。先检查官方更新计划，确认准备完成后再选择 `Y`，并按官方更新器的后续提示操作。测试期间不要在其他窗口启动 Chat 或 Gateway。
 
-After the menu reports completion, inspect only the allowlisted summary fields:
+菜单报告更新完成后，运行以下命令。它只显示允许检查的摘要字段，不会输出 API Key、配置内容或会话正文：
 
 ```powershell
 $runtimeManifest = Get-Content ".\.cache\runtimes\windows-x64\runtime-manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -116,17 +116,27 @@ $officialReceipt = Get-Content ".\data\logs\update_receipts\latest.json" -Raw -E
 }
 ```
 
-Acceptance requires:
+通过验收必须同时满足：
 
-- `PortableStatus = succeeded`, `OfficialExitCode = 0`, `OriginVerified = True` and `Channel = origin/main`.
-- The official outcome is `success` (or another clearly explained official no-op success state).
-- Runtime manifest commit/version equal the post-update commit/version.
-- `SentinelsPreserved = True`.
-- A transcript and JSON summary with the same timestamp exist in `logs/diagnostics/`, and the official receipt exists in `data/logs/update_receipts/`.
-- A second `launch.bat` starts directly without reinstalling or downgrading Hermes.
+- `PortableStatus = succeeded`、`OfficialExitCode = 0`、`OriginVerified = True`，并且 `Channel = origin/main`。
+- 官方更新结果为 `success`，或者是官方明确说明的“已经是最新版本”等成功状态。
+- Runtime manifest 中的 commit 和版本与 `PostCommit`、`PostVersion` 完全一致。
+- `SentinelsPreserved = True`，证明测试会话目录和知识库中的哨兵文件没有丢失。
+- `logs/diagnostics/` 中存在时间戳对应的更新 transcript 和 JSON 摘要，`data/logs/update_receipts/` 中存在官方更新回执。
+- 第二次运行 `launch.bat` 时直接进入菜单，不重新安装 Runtime，也不把 Hermes 降级回 bootstrap 版本。
 
-If the update fails, do not delete `.cache`, `src`, or `data`. Exit the launcher and retain the newest matching `logs/diagnostics/update-apply-*.log`, `logs/diagnostics/update-apply-*.json`, and `data/logs/update_receipts/latest.json`. Raw `.log` and official receipt files may contain local paths/profile details; review them before sharing. The Portable JSON summary is intentionally narrower but should still be reviewed.
+如果更新失败，不要删除 `.cache`、`src` 或 `data`。退出启动器并保留以下最新文件：
 
-## 6. P0-10 destructive-boundary tests
+```text
+logs/diagnostics/update-apply-*.log
+logs/diagnostics/update-apply-*.json
+data/logs/update_receipts/latest.json
+```
 
-Corrupt-receipt, cancellation, and Soft Reset checks deliberately change Runtime test state. They are not part of the first update pass. Follow the P0-10 checklist only in a disposable copy after the update evidence has been saved. Never run `reset-windows.ps1 -Mode full` against the working USB copy, and never test a real printer during P0.
+原始 `.log` 和官方回执可能包含本机路径或 Profile 信息，发送前必须先检查。Portable JSON 摘要已经刻意缩小字段范围，但发送前仍建议复核。
+
+## 6. P0-10 破坏性边界测试
+
+损坏回执、主动取消和 Soft Reset 测试会有意修改 Runtime 测试状态，因此不属于第一次更新验收。保存完更新证据后，只能在可丢弃的完整副本中执行 P0-10 恢复测试。
+
+不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
