@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v2.2 |
+| 文档版本 | v2.3 |
 | 交接日期 | 2026-09-04 |
 | 目标环境 | 另一台 Windows 开发电脑 |
 | 项目阶段 | Fork 和迁移已确认，P0 基线实现中 |
@@ -41,13 +41,16 @@
 - P0-07 更新观察层已实现：Windows 菜单在计划和确认后使用 portable venv 调用官方 updater，先验证 `origin` 与组件锁中的官方地址一致；官方 transcript、官方 `data/logs/update_receipts/` 回执和脱敏 Portable JSON 摘要分别保留。成功更新会把实际版本、commit、`origin/main`、时间和摘要路径写入 Runtime manifest，并刷新源码/依赖回执。Unix apply 也写入统一 transcript；真实更新和失败回退仍待 Win10/exFAT 验收。
 - P0-07 本地模拟已覆盖官方成功、未审计 origin 拒绝和官方失败退出；GitHub Actions run `33783429258` 的 Windows PowerShell 5.1/7 七组测试全部通过。`docs/WINDOWS-P0-TEST-GUIDE.md` 是当前实机验收的唯一操作顺序。
 - 启动器现在同时检查核心文件和 `ready.flag`，Setup 返回后再次检查 `ready.flag`，取消或异常不再进入错误的成功路径；原“删除 `.cache`”提示已替换为保留缓存并从 `logs/setup` 诊断/续跑。Playwright stdout/stderr 独立写入 `logs/setup/playwright-*.log`，仍保持可选失败不阻塞核心 Runtime。
+- 用户在同一 Win10/exFAT U 盘完成 P0 七组测试；既有健康 Runtime 在不重装的情况下迁移为 `Ready=True` 且生成 10 份组件回执，重复启动没有重跑 Setup。Doctor 已完整运行并生成中央 transcript；在进行凭据 Setup 前，`.env` 与 API 未配置告警属预期。
+- 首次 P0-07 实机更新已到达官方计划和用户确认，并创建 pre-update snapshot；官方更新器随后因子进程找不到 `git` 而报 `WinError 2`。Portable 层正确保存失败 transcript/JSON 且没有误报成功；故障发生在源码交换前，无需删除 Runtime 或回滚用户数据。
+- `9563a9c` 已将受管 portable Git 目录前置到启动器、观察包装器和更新包装器的 PATH；GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过。修复后的 Doctor/更新检查/官方更新仍需同一 Win10/exFAT 实机复验。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
-- Windows 10/exFAT 核心 Runtime 首次安装和幂等启动已通过；P0-10 自动化实现已通过 Linux PowerShell 7 Parser/六组测试及 GitHub Actions run `33775881283` 的 Windows PowerShell 5.1/7，尚需同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
-- 尚未在 Windows 实机完成 P0-07 官方 `origin/main` 更新、三层证据（transcript/官方回执/Portable 摘要）、Runtime manifest 刷新、数据保留和失败回退验证。
-- 尚未在 Windows 实机验证 Setup transcript、Doctor/更新观察日志的内容完整性、编码和脱敏边界。
+- Windows 10/exFAT 核心 Runtime 首次安装、幂等启动和无重装组件回执迁移已通过；P0-10 尚需同一 Win10/exFAT 环境的中断续跑、损坏回执/缓存、Soft Reset 数据保留和 Playwright 日志实测。
+- P0-07 失败证据链已在 Windows 实机验证；仍需用 `9563a9c` 或更新版本复验官方 `origin/main` 成功更新、三层证据、Runtime manifest 刷新和哨兵数据保留。
+- Setup 与 Doctor transcript 已在 Windows 实机生成；尚需完成更新成功日志、Playwright 日志及全部日志的内容完整性、编码和脱敏边界复核。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
 - 尚未验证 `hermes desktop` 和 `hermes serve` 的完整便携性。
 - 尚未建立真实打印机驱动仓库或打印机安装 Skill。
@@ -299,4 +302,4 @@ git diff --cached
 
 ## 10. 当前最重要的下一步
 
-最小初始化器和 P0-09 Win10/exFAT 核心 Runtime 首次安装、manifest/ready 状态及幂等启动已经完成。P0-10 的组件回执、Hermes 暂存恢复、取消/失败状态和 Playwright 诊断代码已经实现；P0-07 的结构化更新观察层已通过 Windows PowerShell 5.1/7 自动化验收。当前按 `docs/WINDOWS-P0-TEST-GUIDE.md` 在同一 Win10/exFAT 副本依次验证 P0-10 恢复矩阵和 P0-07 官方更新证据链；之后才进入需要 API 凭据的 Setup/Chat 测试。仍不执行 Full Reset 或真实打印机安装。
+最小初始化器、P0-09 核心 Runtime、幂等启动及 P0-10 既有 Runtime 的 10 份组件回执无重装迁移已在 Win10/exFAT 完成。当前第一优先级是在保留所有运行数据的前提下，将 U 盘副本更新到 `9563a9c` 或更新版本，复验 Doctor 中 portable Git 可见、更新检查和官方更新证据链；第二优先级才是在可丢弃副本完成 P0-10 其余恢复矩阵。在可更新基线完成前，不进入需要 API 凭据的 Setup/Chat，不执行 Full Reset 或真实打印机安装。

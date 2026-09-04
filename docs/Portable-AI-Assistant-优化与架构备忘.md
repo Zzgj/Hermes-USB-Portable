@@ -5,7 +5,7 @@
 | 项目 | 内容 |
 |---|---|
 | 文档状态 | 活文档（持续维护） |
-| 当前版本 | v0.8 |
+| 当前版本 | v0.9 |
 | 建立日期 | 2026-09-02 |
 | 最近更新 | 2026-09-04 |
 | 当前阶段 | P0 基线实现中 |
@@ -479,15 +479,21 @@ repository/
 ### P0：基线与快速改进
 
 - [x] 先实现目录模式的最小初始化器和标准目录结构。
-- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和数据保留已覆盖；组件回执、暂存恢复和失败状态已实现并通过 PowerShell 7 本地测试，Windows 实机修复/重建尚待验收）。
+- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和既有健康 Runtime 的无重装回执迁移已在 Win10/exFAT 实机通过；损坏回执、中断续跑和 Soft Reset 尚待验收）。
 - [x] 建立可重复测试的 `feat/portable-initializer` 分支。
 - [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit、完整 Win10/exFAT 首次安装和幂等启动已验证；Hermes 更新/回退实测、Python 传递依赖锁和许可证/SBOM 尚待完成）。
 - [ ] 移植 Desktop 菜单项。
 - [ ] 增加 CLI、TUI、Dashboard、Desktop 独立入口。
-- [ ] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题。
+- [-] 修正便携 Git 的 PATH、默认工作目录和盘符变化问题（PATH 修复 `9563a9c` 及 Windows CI 已通过，实机复验与盘符变化仍待完成）。
 - [ ] 完成宿主机落地文件审计。
 
-P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装，验证精确 Hermes commit、ready/manifest 和重复启动不再 Setup。P0-10 的 fail-closed 组件验证已通过 GitHub Actions run `33776790273`；P0-07 更新观察层的 PowerShell 7 本地三路径模拟及七组测试已通过，GitHub Actions run `33783429258` 的 Windows PowerShell 5.1/7 也全部成功。两者仍待 Win10/exFAT 实机恢复/更新矩阵；开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
+P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `windows-latest` 上同时覆盖 Windows PowerShell 5.1 和 PowerShell 7；用户已在 Win10/exFAT U 盘完成核心 Runtime 首次安装、幂等启动、全部七组测试和无重装迁移 10 份组件回执。官方更新首次实测在源码交换前因 portable Git 未进入子进程 PATH 失败，但 pre-update snapshot、Portable transcript/JSON 和非零失败传播均正常。`9563a9c` 已修复 PATH，GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过；实机成功更新、恢复矩阵及盘符移动仍待验收。开发阶段没有执行磁盘格式化、Full Reset、真实打印机安装或凭据配置。
+
+### v0.9 — 2026-09-04
+
+- 记录 Win10/exFAT 七组 P0 测试全部通过，已有 Runtime 以 `Ready=True` 和 10 份组件回执无重装迁移完成。
+- 记录首次官方更新在变更源码前因 portable Git PATH 缺失可识别失败，已保留 snapshot、transcript 和 Portable JSON，没有假成功状态。
+- 启动器与 Windows 包装器现在向上游 Hermes 子进程显式提供受管 Git；修复提交 `9563a9c` 及 GitHub Actions run `33825333550` 已通过，实机重试待完成。
 
 ### v0.8 — 2026-09-04
 
@@ -587,6 +593,12 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 6. 将讨论中的事实、建议和待验证推测明确分开。
 
 ## 11. 变更日志
+
+### v0.9 — 2026-09-04
+
+- 用户 Win10/exFAT 实机完成全部七组 P0 测试、既有 Runtime 的 10 份组件回执无重装迁移和重复启动。
+- Doctor 已生成中央 transcript；首次官方更新实测完成计划、确认和 pre-update snapshot，随后在源码交换前因上游子进程找不到 portable Git 失败；Portable 层正确记录失败且没有误报成功。
+- `9563a9c` 在启动器及 Windows 更新/观察包装器中前置受管 Git PATH；GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过，实机复验待完成。
 
 ### v0.8 — 2026-09-04
 

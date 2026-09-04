@@ -68,6 +68,8 @@ $state = ".\.cache\runtimes\windows-x64\state"
 
 这些操作应在 `logs/doctor/` 和 `logs/diagnostics/` 下生成带时间戳的文件。Doctor、更新检查和更新计划不会应用更新；在确认界面选择 `N` 也不得改变当前 Hermes commit。
 
+Doctor 的 `git` 检查必须通过。如果 Doctor 显示 `git not found`，或者更新检查/更新应用报 `FileNotFoundError: [WinError 2]`，说明测试副本早于修复提交 `9563a9c`。此时不要删除 Runtime 或用户数据；请从当前分支更新 `launch.bat`、`scripts/invoke-hermes-observation.ps1`、`scripts/invoke-hermes-update.ps1` 以及对应测试文件，然后从本节重试。
+
 ## 5. 验收 Hermes 官方更新流程
 
 应用更新前，先创建两个不含敏感内容的测试哨兵文件。下面的命令不会打开或覆盖已有用户文件：
