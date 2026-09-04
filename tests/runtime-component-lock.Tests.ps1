@@ -39,7 +39,7 @@ try {
     Assert-True ($lock.schema_version -eq 1) "component lock schema should be 1"
     Assert-True ($lock.platform -eq "windows-x64") "component lock platform should be windows-x64"
 
-    $requiredIds = @("python", "node", "uv", "ripgrep", "mingit", "hermes-agent")
+    $requiredIds = @("python", "node", "uv", "ripgrep", "portablegit", "hermes-agent")
     $componentIds = @($lock.components | ForEach-Object { [string]$_.id })
     Assert-True ($componentIds.Count -eq $requiredIds.Count) "component lock should contain exactly the required components"
     foreach ($requiredId in $requiredIds) {
@@ -62,6 +62,11 @@ try {
             throw "Unsupported component source type: $($component.source.type)"
         }
     }
+
+    $portableGit = @($lock.components | Where-Object { $_.id -eq "portablegit" })[0]
+    Assert-True ($portableGit.source.archive_type -eq "7z-sfx") "PortableGit should use its official self-extracting archive"
+    Assert-True ([string]$portableGit.source.url -match '/PortableGit-[^/]+-64-bit\.7z\.exe$') "PortableGit should use the 64-bit Git Bash distribution"
+    Assert-True (-not ([string]$portableGit.source.url -match '/MinGit-')) "the locked Git runtime should not use MinGit because it omits Git Bash"
 
     $requirements = @($lock.supplemental_python_packages | ForEach-Object { [string]$_.requirement })
     Assert-True ($requirements.Count -eq 2) "component lock should contain exactly the supported supplemental package pins"
@@ -104,6 +109,9 @@ try {
     Assert-True ($filesystemSource -match 'Copy fallback SHA-256 mismatch') "copy fallback should verify file content"
     Assert-True ($filesystemSource -match 'HRESULT') "runtime move failures should report diagnostic exception details"
     Assert-True ($setupSource -match 'Complete-SetupStep "uv"') "setup should verify uv and write its success receipt after installation"
+    Assert-True ($setupSource -match 'Extract-SevenZipSelfExtractor') "setup should extract the official PortableGit self-extractor"
+    Assert-True ($setupSource -match 'Test-GitBashCompatibility') "setup should verify that Git Bash and its Unix tools work"
+    Assert-True ($setupSource -match 'Complete-SetupStep "portablegit"') "setup should record PortableGit only after verification"
     Assert-True ($setupSource -match '\$env:GIT_CONFIG_KEY_0 = "safe\.directory"') "setup should declare Git safe directories through command-scope environment configuration"
     Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "setup should never trust all repositories or modify host-global Git configuration"
     Assert-True ($setupSource -match '\$gitFetchAttempts = 4') "Hermes source fetch should retry bounded network failures"

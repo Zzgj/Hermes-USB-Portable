@@ -99,6 +99,7 @@ $basePython = Join-Path $runtimeDirectory "python\python.exe"
 $venvPython = Join-Path $runtimeDirectory "venv\Scripts\python.exe"
 $gitDirectory = Join-Path $runtimeDirectory "git\cmd"
 $gitExecutable = Join-Path $gitDirectory "git.exe"
+$gitBashExecutable = Join-Path $runtimeDirectory "git\bin\bash.exe"
 $runtimeManifestPath = Join-Path $runtimeDirectory "runtime-manifest.json"
 $stateDirectory = Join-Path $runtimeDirectory "state"
 $sourceDirectory = Join-Path $rootPath "src\hermes-agent"
@@ -106,7 +107,7 @@ $componentLockPath = Join-Path $rootPath "manifests\runtime-components.windows-x
 $officialReceiptPath = Join-Path $rootPath "data\logs\update_receipts\latest.json"
 $diagnosticsDirectory = Join-Path $rootPath "logs\diagnostics"
 
-foreach ($requiredFile in @($basePython, $venvPython, $gitExecutable, $runtimeManifestPath, $componentLockPath)) {
+foreach ($requiredFile in @($basePython, $venvPython, $gitExecutable, $gitBashExecutable, $runtimeManifestPath, $componentLockPath)) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         throw "Required portable Runtime file not found: $requiredFile"
     }
@@ -142,6 +143,7 @@ $env:GIT_CONFIG_COUNT = "1"
 $env:GIT_CONFIG_KEY_0 = "safe.directory"
 $env:GIT_CONFIG_VALUE_0 = $sourceDirectory.Replace("\", "/")
 $env:HERMES_HOME = Join-Path $rootPath "data"
+$env:HERMES_GIT_BASH_PATH = $gitBashExecutable
 $env:PYTHONNOUSERSITE = "1"
 $env:PYTHONHOME = ""
 $env:PATH = $gitDirectory + [System.IO.Path]::PathSeparator + $env:PATH

@@ -121,7 +121,7 @@ $PythonComponent = Get-LockedComponent "python"
 $NodeComponent = Get-LockedComponent "node"
 $UvComponent = Get-LockedComponent "uv"
 $RgComponent = Get-LockedComponent "ripgrep"
-$GitComponent = Get-LockedComponent "mingit"
+$GitComponent = Get-LockedComponent "portablegit"
 $HermesComponent = Get-LockedComponent "hermes-agent"
 
 foreach ($archiveComponent in @($PythonComponent, $NodeComponent, $UvComponent, $RgComponent, $GitComponent)) {
@@ -432,6 +432,74 @@ function Extract-Zip($Archive, $Destination) {
     Write-Host " done" -ForegroundColor Green
 }
 
+function Extract-SevenZipSelfExtractor($Archive, $Destination) {
+    $label = Split-Path $Archive -Leaf
+    Write-Host "        Extracting $label ..." -NoNewline
+    if (Test-Path -LiteralPath $Destination) {
+        Remove-Item -LiteralPath $Destination -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    try {
+        & $Archive "-o$Destination" "-y"
+        if ($LASTEXITCODE -ne 0) {
+            throw "self-extractor exited with code $LASTEXITCODE"
+        }
+        if (-not (Get-ChildItem -LiteralPath $Destination -Force | Select-Object -First 1)) {
+            throw "archive extracted with no files"
+        }
+    }
+    catch {
+        Remove-Item -LiteralPath $Destination -Recurse -Force -ErrorAction SilentlyContinue
+        throw "7-Zip self-extraction failed for ${label}: $_"
+    }
+    Write-Host " done" -ForegroundColor Green
+}
+
+$script:GitBashProbeOutput = $null
+function Test-GitBashCompatibility($BashPath) {
+    if (-not (Test-Path -LiteralPath $BashPath -PathType Leaf)) {
+        $script:GitBashProbeOutput = "Git Bash executable not found: $BashPath"
+        return $false
+    }
+
+    $process = $null
+    try {
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $BashPath
+        $startInfo.Arguments = '--noprofile --norc -c "/usr/bin/true; /usr/bin/cat --version >/dev/null"'
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) {
+            throw "unable to start Git Bash"
+        }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit(15000)) {
+            try { $process.Kill() } catch {}
+            $process.WaitForExit()
+            throw "Git Bash compatibility probe timed out after 15 seconds"
+        }
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        $script:GitBashProbeOutput = (@($stdout, $stderr) -join " ").Trim()
+        return ($process.ExitCode -eq 0)
+    }
+    catch {
+        $script:GitBashProbeOutput = $_.Exception.Message
+        return $false
+    }
+    finally {
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
+    }
+}
+
 function Move-SubfolderContents($Source, $Dest) {
     $sub = Get-ChildItem $Source -Directory | Select-Object -First 1
     if ($sub) {
@@ -462,6 +530,7 @@ if (Test-Path $readyFlag) {
     $readyPython = Join-Path $RuntimeDir "python\python.exe"
     $readyVenvPython = Join-Path $RuntimeDir "venv\Scripts\python.exe"
     $readyGit = Join-Path $RuntimeDir "git\cmd\git.exe"
+    $readyGitBash = Join-Path $RuntimeDir "git\bin\bash.exe"
     $readySource = Join-Path $SrcDir "hermes-agent"
     $readyChecksPassed = (
         $readyHash -eq $ComponentLockHash -and
@@ -471,6 +540,7 @@ if (Test-Path $readyFlag) {
         (Test-NativeCommand (Join-Path $RuntimeDir "uv\uv.exe") @("--version")) -and
         (Test-NativeCommand (Join-Path $RuntimeDir "bin\rg.exe") @("--version")) -and
         (Test-NativeCommand $readyGit @("--version")) -and
+        (Test-GitBashCompatibility $readyGitBash) -and
         (Test-NativeCommand $readyVenvPython @("-c", "import hermes_cli.main")) -and
         (Test-HermesRepository $readyGit $readySource "")
     )
@@ -481,7 +551,7 @@ if (Test-Path $readyFlag) {
         Write-SetupReceipt -StateDirectory $StateDir -StepId "node" -Fingerprint $NodeComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
         Write-SetupReceipt -StateDirectory $StateDir -StepId "uv" -Fingerprint $UvComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
         Write-SetupReceipt -StateDirectory $StateDir -StepId "ripgrep" -Fingerprint $RgComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
-        Write-SetupReceipt -StateDirectory $StateDir -StepId "mingit" -Fingerprint $GitComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
+        Write-SetupReceipt -StateDirectory $StateDir -StepId "portablegit" -Fingerprint $GitComponent.integrity.sha256 -Details $adoptedDetails | Out-Null
         Write-SetupReceipt -StateDirectory $StateDir -StepId "hermes-source" -Fingerprint $readyHermesCommit -Details $adoptedDetails | Out-Null
         $readyVenvFingerprint = "$($PythonComponent.integrity.sha256):$($UvComponent.integrity.sha256)"
         $readyDependenciesFingerprint = "$ComponentLockHash`:$readyHermesCommit"
@@ -629,28 +699,43 @@ else {
 }
 
 # ---------------------------------------------------------------------------
-# 5. Git (MinGit)
+# 5. Git for Windows (PortableGit, including Git Bash)
 # ---------------------------------------------------------------------------
 Write-Step "Installing portable Git ..."
 $gitExe = Join-Path $RuntimeDir "git\cmd\git.exe"
 $gitVersionPattern = [regex]::Escape([string]$GitComponent.version)
-$gitVerification = { Test-NativeCommand $gitExe @("--version") $gitVersionPattern }
-if (Test-VerifiedSetupStep "mingit" $GitComponent.integrity.sha256 $gitVerification) {
+$gitBash = Join-Path $RuntimeDir "git\bin\bash.exe"
+$gitVerification = {
+    (Test-NativeCommand $gitExe @("--version") $gitVersionPattern) -and
+    (Test-GitBashCompatibility $gitBash)
+}
+if (Test-VerifiedSetupStep "portablegit" $GitComponent.integrity.sha256 $gitVerification) {
     Write-Skip "Git $($GitComponent.version)"
 }
 else {
-    $gitArchive = Join-Path $RuntimeDir "git.zip"
+    if ([string]$GitComponent.source.archive_type -ne "7z-sfx") {
+        throw "PortableGit must use the locked 7z-sfx archive type"
+    }
+    $gitArchive = Join-Path $RuntimeDir "portablegit.7z.exe"
     Download-File $GitComponent.source.url $gitArchive $GitComponent.integrity.sha256 $GitComponent.source.size_bytes
     $gitTemp = Join-Path $TempDir "git"
-    Extract-Zip $gitArchive $gitTemp
+    Extract-SevenZipSelfExtractor $gitArchive $gitTemp
     $stagedGitExe = Join-Path $gitTemp "cmd\git.exe"
+    $stagedGitBash = Join-Path $gitTemp "bin\bash.exe"
     if (-not (Test-NativeCommand $stagedGitExe @("--version") $gitVersionPattern)) {
         throw "Portable Git verification failed after extraction: $stagedGitExe"
     }
+    if (-not (Test-GitBashCompatibility $stagedGitBash)) {
+        throw "Portable Git Bash verification failed after extraction: $stagedGitBash; $script:GitBashProbeOutput"
+    }
     Install-StagedDirectory $gitTemp (Join-Path $RuntimeDir "git")
-    Complete-SetupStep "mingit" $GitComponent.integrity.sha256 $gitVerification @{ version = $GitComponent.version }
+    Complete-SetupStep "portablegit" $GitComponent.integrity.sha256 $gitVerification @{
+        version = $GitComponent.version
+        bash = "git/bin/bash.exe"
+    }
     Write-Done "Git ready"
 }
+$env:HERMES_GIT_BASH_PATH = $gitBash
 
 # ---------------------------------------------------------------------------
 # 6. Hermes source code

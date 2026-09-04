@@ -44,6 +44,7 @@
 - 用户在同一 Win10/exFAT U 盘完成 P0 七组测试；既有健康 Runtime 在不重装的情况下迁移为 `Ready=True` 且生成 10 份组件回执，重复启动没有重跑 Setup。Doctor 已完整运行并生成中央 transcript；在进行凭据 Setup 前，`.env` 与 API 未配置告警属预期。
 - 首次 P0-07 实机更新已到达官方计划和用户确认，并创建 pre-update snapshot；官方更新器随后因子进程找不到 `git` 而报 `WinError 2`。Portable 层正确保存失败 transcript/JSON 且没有误报成功；故障发生在源码交换前，无需删除 Runtime 或回滚用户数据。
 - `9563a9c` 已将受管 portable Git 目录前置到启动器、观察包装器和更新包装器的 PATH；GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过。修复后的 Doctor/更新检查/官方更新仍需同一 Win10/exFAT 实机复验。
+- E 盘 NTFS 干净实例完成 DeepSeek Setup 和真实 Chat 后，Terminal 工具执行 Windows 命令报告 `Git Bash not found`；检查确认 Runtime 与宿主机均没有 `bash.exe`。根因是组件锁使用的 MinGit 只提供 Git 命令，不满足 Hermes v0.21.0 Windows Local terminal 对 Git Bash/MSYS 的硬要求。当前修复改用固定大小和 SHA-256 的官方 PortableGit 2.54.0，安装后直接探测 `bash.exe`、`/usr/bin/true` 和 `/usr/bin/cat`，启动器缺少 Bash 时自动进入 Runtime 修复，并为所有 Windows 入口设置 `HERMES_GIT_BASH_PATH`；本地七组测试通过，尚待 Windows PowerShell 5.1 实机安装及 Hermes terminal 烟雾测试。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：

@@ -187,7 +187,7 @@ function Read-ComponentLock {
         throw "Unsupported component lock platform: $($lock.platform)"
     }
 
-    $requiredIds = @("python", "node", "uv", "ripgrep", "mingit", "hermes-agent")
+    $requiredIds = @("python", "node", "uv", "ripgrep", "portablegit", "hermes-agent")
     $seenIds = @{}
     foreach ($component in $lock.components) {
         if ([string]::IsNullOrWhiteSpace([string]$component.id)) {

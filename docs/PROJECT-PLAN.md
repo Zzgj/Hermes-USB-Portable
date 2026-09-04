@@ -69,7 +69,7 @@
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
 - [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。尚需在可丢弃副本验证中断/损坏/软重建和 Playwright 日志，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
-- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。portable Git 自身已安装可用，但首次官方更新实测发现其目录未继承到上游 Python 子进程；`9563a9c` 已补齐 PATH 并通过 Windows CI，实机复验待完成。盘符移动与移动后 venv 修复仍未完成。
+- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git/Git Bash PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。`9563a9c` 已补齐 `git.exe` PATH；E 盘干净实例的真实 terminal 烟雾测试进一步发现 Runtime 锁定的 MinGit 不包含 Hermes Windows Local backend 必需的 `bash.exe`。当前修复已改锁定官方 PortableGit、自解压安装、15 秒 Git Bash/MSYS 探针、启动门禁及 `HERMES_GIT_BASH_PATH` 注入，本地 PowerShell Parser 与七组回归通过；Windows 实机修复和 terminal 命令复验待完成。盘符移动与移动后 venv 修复仍未完成。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。
 - [ ] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档。
 

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "platform": "windows-x64",
-  "updated_at_utc": "2026-09-03T00:00:00Z",
+  "updated_at_utc": "2026-09-04T00:00:00Z",
   "components": [
     {
       "id": "python",
@@ -60,16 +60,16 @@
       }
     },
     {
-      "id": "mingit",
+      "id": "portablegit",
       "version": "2.54.0.windows.1",
       "source": {
         "type": "archive",
-        "url": "https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/MinGit-2.54.0-64-bit.zip",
-        "archive_type": "zip",
-        "size_bytes": 39989839
+        "url": "https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/PortableGit-2.54.0-64-bit.7z.exe",
+        "archive_type": "7z-sfx",
+        "size_bytes": 58995352
       },
       "integrity": {
-        "sha256": "04f937e1f0918b17b9be6f2294cb2bb66e96e1d9832d1c298e2de088a1d0e668",
+        "sha256": "bea006a6cc69673f27b1647e84ab3a68e912fbc175ab6320c5987e012897f311",
         "source": "https://github.com/git-for-windows/git/releases/tag/v2.54.0.windows.1"
       }
     },

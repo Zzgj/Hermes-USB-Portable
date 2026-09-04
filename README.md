@@ -216,7 +216,8 @@ The first install uses an audited stable Release as its bootstrap baseline. Late
 
 *   Verify your internet connection (the setup downloads ~600 MB of data).
 *   Some corporate/school firewall settings block Node.js CDNs or GitHub releases. Try configuring a VPN.
-*   Delete the `.cache/` folder and launch again to clean-install the runtimes.
+*   Keep `data/`, `knowledge/`, and `logs/`. Re-run `launch.bat`; the launcher and setup script verify required Runtime executables and rebuild only invalid components while retaining verified downloads.
+*   On Windows, the local terminal also requires the bundled `git\bin\bash.exe`. A missing Git Bash executable must trigger Runtime Setup / Repair even when `git\cmd\git.exe` exists.
 </details>
 
 <details>

@@ -28,7 +28,7 @@ Generated Workbench logs are grouped under `logs/`. Hermes-owned logs/receipts a
 
 ## Windows Runtime Component Lock
 
-`manifests/runtime-components.windows-x64.json` is the reviewed bootstrap source for the Windows x64 Runtime. `scripts/setup-windows.ps1` verifies the exact byte size and SHA-256 of every downloaded archive, verifies the initial Hermes tag/commit, keeps its Git update metadata, and only writes `ready.flag` after recording `runtime-manifest.json`.
+`manifests/runtime-components.windows-x64.json` is the reviewed bootstrap source for the Windows x64 Runtime. `scripts/setup-windows.ps1` verifies the exact byte size and SHA-256 of every downloaded archive, verifies the initial Hermes tag/commit, keeps its Git update metadata, and only writes `ready.flag` after recording `runtime-manifest.json`. The Windows Git component is the official PortableGit distribution rather than MinGit because Hermes' local terminal requires Git Bash and its MSYS tools; setup probes both `git.exe` and `bash.exe` before accepting the Runtime.
 
 Run the static lock/setup contract test and the staged-directory behavior test without downloading or installing Runtime archives:
 
