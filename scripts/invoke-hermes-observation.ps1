@@ -12,7 +12,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $rootPath = [System.IO.Path]::GetFullPath($Root)
-$pythonExecutable = Join-Path $rootPath ".cache\runtimes\windows-x64\venv\Scripts\python.exe"
+$runtimeDirectory = Join-Path $rootPath ".cache\runtimes\windows-x64"
+$pythonExecutable = Join-Path $runtimeDirectory "venv\Scripts\python.exe"
+$gitDirectory = Join-Path $runtimeDirectory "git\cmd"
+$gitExecutable = Join-Path $gitDirectory "git.exe"
 $sourceDirectory = Join-Path $rootPath "src\hermes-agent"
 if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
     throw "Portable Python executable not found: $pythonExecutable"
@@ -20,6 +23,12 @@ if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) {
     throw "Hermes source directory not found: $sourceDirectory"
 }
+if (-not (Test-Path -LiteralPath $gitExecutable -PathType Leaf)) {
+    throw "Portable Git executable not found: $gitExecutable"
+}
+
+$env:HERMES_HOME = Join-Path $rootPath "data"
+$env:PATH = $gitDirectory + [System.IO.Path]::PathSeparator + $env:PATH
 
 switch ($Operation) {
     "doctor" {

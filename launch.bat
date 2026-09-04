@@ -71,7 +71,7 @@ REM ---------------------------------------------------------------------------
 REM Environment isolation - keep everything inside the portable folder
 REM ---------------------------------------------------------------------------
 set "VIRTUAL_ENV=%RUNTIME_DIR%\venv"
-set "PATH=%VIRTUAL_ENV%\Scripts;%RUNTIME_DIR%\python;%RUNTIME_DIR%\python\Scripts;%RUNTIME_DIR%\node;%RUNTIME_DIR%\uv;%RUNTIME_DIR%\bin;%PATH%"
+set "PATH=%VIRTUAL_ENV%\Scripts;%RUNTIME_DIR%\python;%RUNTIME_DIR%\python\Scripts;%RUNTIME_DIR%\node;%RUNTIME_DIR%\uv;%RUNTIME_DIR%\bin;%RUNTIME_DIR%\git\cmd;%PATH%"
 set "PYTHONNOUSERSITE=1"
 set "PYTHONHOME="
 set "PYTHONPATH="

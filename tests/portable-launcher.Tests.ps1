@@ -62,6 +62,7 @@ try {
     $updateWrapperSource = Get-Content -LiteralPath $UpdateWrapperPath -Raw -Encoding UTF8
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
+    Assert-True ($windowsSource -match '%RUNTIME_DIR%\\git\\cmd;%PATH%') "Windows launcher should expose portable Git to Hermes subprocesses"
     Assert-True ($unixSource -match 'HERMES_HOME="\$PORTABLE_ROOT/data"') "Unix launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($windowsSource -match 'set "GIT_CONFIG_COUNT=2"') "Windows launcher should provide two command-scope Git safe-directory entries"
     Assert-True ($windowsSource -match 'set "GIT_CONFIG_VALUE_0=%PORTABLE_ROOT_GIT%/\.tmp/hermes-agent-source"') "Windows launcher should trust only its managed staging repository"
@@ -75,6 +76,7 @@ try {
     $windowsPlan = Get-SourceSection $windowsSource '(?ms)^:adv_update\s*$.*?(?=^:adv_update_apply\s*$)' "Windows update-plan action"
     Assert-True ($windowsPlan -match '-Operation update-plan') "Windows update action should select the logged read-only plan"
     Assert-True ($observationSource -match '@\("update", "--plan"\)') "Windows observation runner should map update-plan to the official read-only plan"
+    Assert-True ($observationSource -match '\$env:PATH = \$gitDirectory \+ \[System\.IO\.Path\]::PathSeparator \+ \$env:PATH') "Windows observation runner should expose portable Git when invoked directly"
     Assert-True ($windowsPlan -match 'choice /C YN') "Windows update action should require an explicit confirmation"
     Assert-True ($windowsPlan -match 'No update was applied') "Windows update action should identify a preflight failure as non-mutating"
 

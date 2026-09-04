@@ -97,7 +97,8 @@ $rootPath = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
 $runtimeDirectory = Join-Path $rootPath ".cache\runtimes\windows-x64"
 $basePython = Join-Path $runtimeDirectory "python\python.exe"
 $venvPython = Join-Path $runtimeDirectory "venv\Scripts\python.exe"
-$gitExecutable = Join-Path $runtimeDirectory "git\cmd\git.exe"
+$gitDirectory = Join-Path $runtimeDirectory "git\cmd"
+$gitExecutable = Join-Path $gitDirectory "git.exe"
 $runtimeManifestPath = Join-Path $runtimeDirectory "runtime-manifest.json"
 $stateDirectory = Join-Path $runtimeDirectory "state"
 $sourceDirectory = Join-Path $rootPath "src\hermes-agent"
@@ -143,6 +144,7 @@ $env:GIT_CONFIG_VALUE_0 = $sourceDirectory.Replace("\", "/")
 $env:HERMES_HOME = Join-Path $rootPath "data"
 $env:PYTHONNOUSERSITE = "1"
 $env:PYTHONHOME = ""
+$env:PATH = $gitDirectory + [System.IO.Path]::PathSeparator + $env:PATH
 
 $officialMarkerBefore = Get-UpdateFileMarker -Path $officialReceiptPath
 

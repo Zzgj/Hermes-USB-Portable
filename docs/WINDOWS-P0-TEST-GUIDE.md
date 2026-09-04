@@ -56,11 +56,11 @@ $state = ".\.cache\runtimes\windows-x64\state"
 
 预期结果：Setup 显示 `Runtime is already complete; no setup work is required`。脚本会执行实时健康检查并创建组件回执，但不会重新下载或安装 Python、Node 或 Hermes。
 
-随后运行一次 `launch.bat`，进入菜单后正常退出。启动过程中不应再次显示 Runtime Setup/Repair。
+随后运行一次 `.\launch.bat`，进入菜单后正常退出。Windows PowerShell 默认不会从当前目录查找命令，因此必须保留开头的 `.\`。启动过程中不应再次显示 Runtime Setup/Repair。
 
 ## 4. 验证只读 Doctor 和更新检查
 
-运行 `launch.bat`，进入 `Advanced Options`（高级选项），依次执行：
+运行 `.\launch.bat`，进入 `Advanced Options`（高级选项），依次执行：
 
 1. `Run Doctor`（运行 Doctor）。
 2. `Check for Updates`（检查更新）。
@@ -85,7 +85,7 @@ foreach ($path in $sentinels) {
 }
 ```
 
-打开 `launch.bat` → `Advanced Options` → `Update Hermes`。先检查官方更新计划，确认准备完成后再选择 `Y`，并按官方更新器的后续提示操作。测试期间不要在其他窗口启动 Chat 或 Gateway。
+打开 `.\launch.bat` → `Advanced Options` → `Update Hermes`。先检查官方更新计划，确认准备完成后再选择 `Y`，并按官方更新器的后续提示操作。测试期间不要在其他窗口启动 Chat 或 Gateway。
 
 菜单报告更新完成后，运行以下命令。它只显示允许检查的摘要字段，不会输出 API Key、配置内容或会话正文：
 
@@ -123,14 +123,21 @@ $officialReceipt = Get-Content ".\data\logs\update_receipts\latest.json" -Raw -E
 - Runtime manifest 中的 commit 和版本与 `PostCommit`、`PostVersion` 完全一致。
 - `SentinelsPreserved = True`，证明测试会话目录和知识库中的哨兵文件没有丢失。
 - `logs/diagnostics/` 中存在时间戳对应的更新 transcript 和 JSON 摘要，`data/logs/update_receipts/` 中存在官方更新回执。
-- 第二次运行 `launch.bat` 时直接进入菜单，不重新安装 Runtime，也不把 Hermes 降级回 bootstrap 版本。
+- 第二次运行 `.\launch.bat` 时直接进入菜单，不重新安装 Runtime，也不把 Hermes 降级回 bootstrap 版本。
 
-如果更新失败，不要删除 `.cache`、`src` 或 `data`。退出启动器并保留以下最新文件：
+如果更新失败，不要删除 `.cache`、`src` 或 `data`。退出启动器并运行以下命令列出需要保留的最新文件。不要把文件路径本身当作 PowerShell 命令直接运行：
 
-```text
-logs/diagnostics/update-apply-*.log
-logs/diagnostics/update-apply-*.json
-data/logs/update_receipts/latest.json
+```powershell
+Get-ChildItem ".\logs\diagnostics\update-apply-*.log" -File |
+    Sort-Object LastWriteTimeUtc -Descending |
+    Select-Object -First 1 FullName, Length, LastWriteTime
+
+Get-ChildItem ".\logs\diagnostics\update-apply-*.json" -File |
+    Sort-Object LastWriteTimeUtc -Descending |
+    Select-Object -First 1 FullName, Length, LastWriteTime
+
+Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue |
+    Select-Object FullName, Length, LastWriteTime
 ```
 
 原始 `.log` 和官方回执可能包含本机路径或 Profile 信息，发送前必须先检查。Portable JSON 摘要已经刻意缩小字段范围，但发送前仍建议复核。

@@ -106,6 +106,7 @@ try {
     Assert-True (-not ($wrapperSource -match '(?:--no-backup|--yes|--force|--force-venv)')) "wrapper should not bypass official update safeguards"
     Assert-True ($wrapperSource -match '\$env:GIT_CONFIG_COUNT = "1"') "wrapper should scope the Git ownership exception to its process"
     Assert-True ($wrapperSource -match '\$env:HERMES_HOME = Join-Path \$rootPath "data"') "wrapper should force official receipts into portable data"
+    Assert-True ($wrapperSource -match '\$env:PATH = \$gitDirectory \+ \[System\.IO\.Path\]::PathSeparator \+ \$env:PATH') "wrapper should expose portable Git to official updater subprocesses"
     Assert-True ($wrapperSource -match 'remote", "get-url", "origin"') "wrapper should inspect the actual official update origin"
     Assert-True ($wrapperSource -match 'does not match the reviewed Runtime component lock') "wrapper should refuse an unreviewed update origin"
     Assert-True ($wrapperSource -match 'channel = \$updateChannel') "portable receipt should record the actual configured update channel"
