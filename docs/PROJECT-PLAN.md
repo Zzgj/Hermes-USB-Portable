@@ -6,9 +6,9 @@
 |---|---|
 | 当前阶段 | **P0：保留原版能力并建立可验证基线** |
 | 当前分支 | `feat/portable-initializer` |
-| 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移 |
+| 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移、E 盘 DeepSeek Setup/Chat、PortableGit/Git Bash 真实 terminal 验收 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | Win10/exFAT 应用 `9563a9c` 后复验 Doctor、更新检查和官方更新，再核对回执、manifest 和数据哨兵 |
+| 下一个验收门 | E 盘 Win11 实例在 `7387c71` 上复验 Doctor、只读更新检查和经确认的官方更新，核对三层回执、Runtime manifest 和数据哨兵 |
 | 最近更新 | 2026-09-04 |
 
 ## 状态说明
@@ -64,14 +64,14 @@
 - [x] **P0-04** 实现普通目录最小初始化器：标准目录、manifest、环境报告、幂等和数据保留。
 - [x] **P0-05** 在 Windows PowerShell 5.1 和 PowerShell 7 CI 验证初始化器：外部 `powershell.exe -File` 和 Unicode 路径/UTF-8 JSON 往返已通过 GitHub Actions run `33729932116` 及用户简体中文 Win10/Windows PowerShell 5.1 实机验收；其他三组静态测试同步通过。
 - [x] **P0-06** 为 Windows Runtime 归档增加来源、大小和 SHA-256 校验；记录 Hermes bootstrap 版本和 commit。
-- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。用户 Win10/exFAT 首次实测验证了计划、确认、pre-update snapshot 和失败 transcript/Portable JSON；同时暴露启动器 PATH 未向上游 Python 子进程提供 portable Git，导致 `WinError 2`。该问题已由 `9563a9c` 修复，GitHub Actions run `33825333550` 的 Windows PowerShell 5.1/7 均通过；尚需在同一实机复验成功更新、三层证据和数据保留，不重复实现上游更新器。
-- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单，Doctor 能完整执行并生成中央 transcript。Doctor 的 `.env`/配置缺失是尚未进行凭据 Setup 的预期状态；当时的 `git not found` 已由 `9563a9c` 修复，实机待复验。仍需实测 Chat、Setup、Gateway 和配置编辑。
+- [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。用户 Win10/exFAT 首次实测验证了计划、确认、pre-update snapshot 和失败 transcript/Portable JSON；同时暴露启动器 PATH 未向上游 Python 子进程提供 portable Git，导致 `WinError 2`，该问题已由 `9563a9c` 修复。E 盘 Win11 后续复验中 Doctor 全部核心检查通过；只读更新检查正确停在 GitHub HTTP 429 并明确未应用更新。待限流恢复后仍需完成一次成功检查/官方更新、三层证据和数据保留验收，不重复实现上游更新器。
+- [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单。E 盘 Win11 实例已完成 DeepSeek Full Setup、配置持久化、真实 Chat/Terminal、Gateway 启动/停止/取消宿主持久化、cua-driver 自启动/遥测清理以及 PortableGit 修复后的 Doctor（中央 transcript 已生成）。Doctor/Update 动作返回高级菜单时暴露 LF-only `launch.bat` 的反向标签扫描故障；当前补丁把发布字节固定为 CRLF 并增加回归门禁。仍需 Windows 实机复验菜单回跳，并记录一次配置编辑冒烟测试。
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
 - [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。尚需在可丢弃副本验证中断/损坏/软重建和 Playwright 日志，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
-- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git/Git Bash PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。`9563a9c` 已补齐 `git.exe` PATH；E 盘干净实例的真实 terminal 烟雾测试进一步发现 Runtime 锁定的 MinGit 不包含 Hermes Windows Local backend 必需的 `bash.exe`。当前修复已改锁定官方 PortableGit、自解压安装、15 秒 Git Bash/MSYS 探针、启动门禁及 `HERMES_GIT_BASH_PATH` 注入，本地 PowerShell Parser 与七组回归通过；Windows 实机修复和 terminal 命令复验待完成。盘符移动与移动后 venv 修复仍未完成。
+- [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git/Git Bash PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。`9563a9c` 补齐 `git.exe` PATH 后，提交 `40fd1e2` 又将 MinGit 替换为固定大小/SHA-256 的官方 PortableGit，增加 15 秒 Git Bash/MSYS 探针、启动门禁及 `HERMES_GIT_BASH_PATH` 注入；提交 `7387c71` 修复 Windows PowerShell 等待 GUI SFX 的退出码语义。E 盘 Win11 实机已输出 `Extracting portablegit.7z.exe ... done`、`[OK] Git ready`，且 Hermes 真实 terminal 成功返回 `GIT_BASH_OK`、Git 2.54.0 和 `MINGW64_NT-10.0-22631`。Git Bash 子任务完成；盘符移动与移动后 venv 修复仍未完成。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。
-- [ ] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档。
+- [-] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档：现已增加 Windows `launch.bat` CRLF 字节与 Git 属性门禁；完整诊断报告模板仍待收口。
 
 ### P0 验收条件
 
@@ -190,7 +190,7 @@
 
 ## 当前立即执行顺序
 
-1. 完成 **P0-07** 复验：在保留 `.cache/`、`data/`、`logs/`、`src/`、`.tmp/` 和 `knowledge/` 的前提下应用 `9563a9c` 或更新版本；先确认 Doctor 不再报 `git not found`，再执行更新检查和经确认的官方更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和现有数据哨兵。
+1. 完成 **P0-07/P0-08** 复验：E 盘 Win11 已通过 Doctor，更新检查因 GitHub HTTP 429 安全失败；先应用 CRLF 启动器补丁并验证 Doctor/Update 均能回到高级菜单，限流恢复后再创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留。
 2. 继续 **P0-10** 实机验收：既有 Runtime 的无重装回执迁移已通过；后续在可丢弃完整副本验证取消/重试、损坏回执单步重建、Playwright 独立日志和 Soft Reset 数据保留，不执行 Full Reset。
 3. 完成 **P0-08**：在配置凭据的安全流程明确后，使用统一日志目录记录 Chat、Setup、Doctor、Gateway、配置编辑和 Update 冒烟测试。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。

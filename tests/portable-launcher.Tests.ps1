@@ -4,7 +4,8 @@ param(
     [string]$UnixLauncherPath,
     [string]$SetupScriptPath,
     [string]$ObservationRunnerPath,
-    [string]$UpdateWrapperPath
+    [string]$UpdateWrapperPath,
+    [string]$AttributesPath
 )
 
 Set-StrictMode -Version Latest
@@ -29,6 +30,9 @@ if ([string]::IsNullOrWhiteSpace($ObservationRunnerPath)) {
 }
 if ([string]::IsNullOrWhiteSpace($UpdateWrapperPath)) {
     $UpdateWrapperPath = Join-Path $repositoryRoot "scripts/invoke-hermes-update.ps1"
+}
+if ([string]::IsNullOrWhiteSpace($AttributesPath)) {
+    $AttributesPath = Join-Path $repositoryRoot ".gitattributes"
 }
 
 function Assert-True {
@@ -55,11 +59,29 @@ function Get-SourceSection {
 }
 
 try {
+    $windowsBytes = [System.IO.File]::ReadAllBytes($WindowsLauncherPath)
+    $bareLineFeeds = 0
+    $bareCarriageReturns = 0
+    for ($index = 0; $index -lt $windowsBytes.Length; $index++) {
+        if ($windowsBytes[$index] -eq 10 -and ($index -eq 0 -or $windowsBytes[$index - 1] -ne 13)) {
+            $bareLineFeeds++
+        }
+        if ($windowsBytes[$index] -eq 13 -and ($index + 1 -ge $windowsBytes.Length -or $windowsBytes[$index + 1] -ne 10)) {
+            $bareCarriageReturns++
+        }
+    }
+
     $windowsSource = Get-Content -LiteralPath $WindowsLauncherPath -Raw -Encoding UTF8
     $unixSource = Get-Content -LiteralPath $UnixLauncherPath -Raw -Encoding UTF8
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
     $observationSource = Get-Content -LiteralPath $ObservationRunnerPath -Raw -Encoding UTF8
     $updateWrapperSource = Get-Content -LiteralPath $UpdateWrapperPath -Raw -Encoding UTF8
+    $attributesSource = Get-Content -LiteralPath $AttributesPath -Raw -Encoding UTF8
+
+    Assert-True ($windowsBytes -contains 10) "Windows launcher should contain line endings"
+    Assert-True ($bareLineFeeds -eq 0) "Windows launcher should use CRLF instead of bare LF so cmd.exe can scan backward labels reliably"
+    Assert-True ($bareCarriageReturns -eq 0) "Windows launcher should not contain bare CR line endings"
+    Assert-True ($attributesSource -match '(?m)^\*\.bat[ \t]+-text(?:[ \t]|$)') ".gitattributes should preserve batch-file CRLF bytes in Git archives and raw downloads"
 
     Assert-True ($windowsSource -match 'set "HERMES_HOME=%PORTABLE_ROOT%\\data"') "Windows launcher should keep HERMES_HOME inside the portable data directory"
     Assert-True ($windowsSource -match '%RUNTIME_DIR%\\git\\cmd;%RUNTIME_DIR%\\git\\bin;%PATH%') "Windows launcher should expose portable Git and Git Bash to Hermes subprocesses"

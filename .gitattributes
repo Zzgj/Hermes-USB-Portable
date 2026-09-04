@@ -1,0 +1,3 @@
+# Keep Windows command scripts byte-for-byte so published downloads retain CRLF.
+*.bat -text whitespace=cr-at-eol
+*.cmd -text whitespace=cr-at-eol
