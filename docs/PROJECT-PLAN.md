@@ -8,7 +8,7 @@
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移、E 盘 DeepSeek Setup/Chat、PortableGit/Git Bash 真实 terminal 验收 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | 在已清洁的 E 盘脱敏沙箱完成 P0-10 损坏 ripgrep 回执单步重建与 Playwright 独立日志验收；GitHub Git 通道恢复后再续验 P0-07 官方更新 |
+| 下一个验收门 | 在已恢复健康的 E 盘脱敏沙箱完成 P0-10 损坏 ripgrep 缓存的校验拒绝与重新下载；GitHub Git 通道恢复后再续验 P0-07 官方更新 |
 | 最近更新 | 2026-09-05 |
 
 ## 状态说明
@@ -67,7 +67,7 @@
 - [-] **P0-07** 将 Hermes 策略改为“可更新、可记录、可回退”：保留 Git 更新元数据，在启动器中增加官方 `--check`、`--plan` 和用户确认；Windows apply 入口已通过 portable venv 委托官方更新器，校验实际 origin 与组件清单一致，完整输出写入诊断 transcript，脱敏摘要记录前后版本/commit、`origin/main`、退出状态和官方回执，成功后刷新 Runtime manifest 与源码/依赖回执。Unix apply 也已纳入统一 transcript。用户 Win10/exFAT 首次实测验证了计划、确认、pre-update snapshot 和失败 transcript/Portable JSON；同时暴露启动器 PATH 未向上游 Python 子进程提供 portable Git，导致 `WinError 2`，该问题已由 `9563a9c` 修复。E 盘 Win11 后续复验中 Doctor 全部核心检查通过；两次只读更新检查分别因 GitHub HTTP 429 和 `curl 56 schannel: server closed abruptly (missing close_notify)` 安全失败，均明确未应用更新。随后发现 Windows 上游 checkout 因两个仅大小写不同的已跟踪贡献者文件永久显示 dirty，且旧 Portable 版本把 `.portable-source.json` 写进上游工作树。当前修复把源码状态原子迁移到 Runtime，并仅对上游已确认的冲突文件应用可退役的 `skip-worktree` 绕行；更新成功后同步刷新该状态。该项仍需在 Git 通道恢复后完成一次成功检查/官方更新、三层证据和数据保留验收。
 - [-] **P0-08** 对原始主流程建立不退化基线：已建立统一日志目录/来源目录、启动器事件、Setup/Doctor/更新观察记录和静态测试，并使回归 CI 覆盖用户实际的 `powershell.exe -File` 入口；用户 Win10/exFAT 已验证首次及重复 `launch.bat` 进入菜单。E 盘 Win11 实例已完成 DeepSeek Full Setup、配置持久化、真实 Chat/Terminal、Gateway 启动/停止/取消宿主持久化、cua-driver 自启动/遥测清理以及 PortableGit 修复后的 Doctor（中央 transcript 已生成）。提交 `5b754b9` 把 `launch.bat` 发布字节固定为 CRLF并增加回归门禁，提交 `ae4fcd8` 移除了 View Logs 条件块提示中的 CMD 元字符；E 盘现已实测 View Logs 输出、按键返回高级菜单、返回主菜单和退出全链路，且 Edit Config 已正确用记事本打开便携 `data\config.yaml` 并返回高级菜单。Gateway 日志另暴露已安装内核在 Windows 调用 `asyncio.start_unix_server` 的非阻塞 traceback；上游提交 `d7bda2a` 已改用 TCP loopback，待 P0-07 官方更新后复验。
 - [x] **P0-09** 在 Windows 10 x64/exFAT U 盘完成首次 Runtime 安装：验证缓存归档大小/SHA-256、目录移动重试、portable Git 精确安全目录、Hermes 0.21.0 commit `29112bef099274229cadff79cdff7bf7b99c4b77`、venv、核心/Provider/Telegram 依赖、`runtime-manifest.json` 与 `ready.flag`；重复启动直接进入菜单且不再安装。Playwright Chromium 作为可选组件失败并被隔离记录，不阻塞核心验收。
-- [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。E 盘脱敏沙箱已完成 40,105 个文件/1.43 GiB 的数量、总大小和抽样 SHA-256 校验，且确认未复制私人数据。2026-09-05，源实例与沙箱均通过 checkout 清洁化：`GitClean=True`、Runtime 权威源码状态存在、工作树内旧状态已移除、两个上游大小写冲突路径均由精确且可退役的本地索引绕行处理；两次 Setup 都确认 Runtime 已完整而未重装。尚需在该副本验证损坏 ripgrep 回执的单步重建、Playwright 独立日志、中断续跑、损坏缓存与 Soft Reset 数据保留，不开启 Full Reset。
+- [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。E 盘脱敏沙箱已完成 40,105 个文件/1.43 GiB 的复制校验和 checkout 清洁化。2026-09-05，该沙箱进一步实测损坏 `ripgrep.json` 后只从已校验缓存重建 ripgrep：Setup 成功、`ready.flag` 与回执恢复、可执行文件哈希复原、其余回执不变、哨兵保留且 Git 仍 clean；同次运行确认 Playwright 缺包输出写入非空独立日志且不阻塞核心成功。证据位于 `logs/diagnostics/p0-ripgrep-recovery-20260905-123146/result.json`。尚需验证中断续跑、损坏缓存与 Soft Reset 数据保留，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
 - [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git/Git Bash PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。`9563a9c` 补齐 `git.exe` PATH 后，提交 `40fd1e2` 又将 MinGit 替换为固定大小/SHA-256 的官方 PortableGit，增加 15 秒 Git Bash/MSYS 探针、启动门禁及 `HERMES_GIT_BASH_PATH` 注入；提交 `7387c71` 修复 Windows PowerShell 等待 GUI SFX 的退出码语义。E 盘 Win11 实机已输出 `Extracting portablegit.7z.exe ... done`、`[OK] Git ready`，且 Hermes 真实 terminal 成功返回 `GIT_BASH_OK`、Git 2.54.0 和 `MINGW64_NT-10.0-22631`。新增的 checkout 清洁化只处理两个精确上游大小写冲突路径，上游移除冲突后会自动撤销绕行，不修改全局 Git 配置。Git Bash 子任务完成；盘符移动与移动后 venv 修复仍未完成。
 - [ ] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。
@@ -190,7 +190,7 @@
 
 ## 当前立即执行顺序
 
-1. 继续 **P0-10** 实机验收：E 盘源实例与脱敏沙箱的 checkout 清洁化已经通过，且两边 Setup 都确认 Runtime 完整。下一项只在脱敏沙箱执行损坏 ripgrep 回执的单步重建，并同时核对 Playwright 独立日志；恢复健康后再验证中断续跑、损坏缓存和 Soft Reset 数据保留，不执行 Full Reset。
+1. 继续 **P0-10** 实机验收：checkout 清洁化、损坏 ripgrep 回执单步重建和 Playwright 独立日志均已通过，沙箱已恢复健康。下一项只在该脱敏沙箱损坏小型 `rg.zip` 缓存，验证哈希拒绝、重新下载、回执恢复和哨兵保留；之后再验证中断续跑与 Soft Reset 数据保留，不执行 Full Reset。
 2. 续验 **P0-07/P0-08**：E 盘 Win11 已通过 Doctor、View Logs、Edit Config 和高级菜单完整回跳；更新检查因 GitHub HTTP 429 及随后的 curl 56/TLS 中断安全失败。Git 通道恢复后创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留，并确认上游 `d7bda2a` 的 Windows watchdog 修复已生效。
 3. 完成 **P0-08** 的 Update 成功冒烟；Chat、Setup、Doctor、Gateway、View Logs 和配置编辑均已有实机证据。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。

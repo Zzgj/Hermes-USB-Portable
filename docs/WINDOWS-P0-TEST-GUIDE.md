@@ -174,4 +174,6 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 当前 E 盘脱敏沙箱 `E:\HermesPortable-P0-10-Sandbox-20260904-231542` 已在 2026-09-05 完成上述门禁：源实例和沙箱均为 clean，Runtime 权威源码状态已迁移，旧工作树状态已移除，两个已知大小写冲突路径已隐藏；两次 Setup 均确认 Runtime 已完整且无需安装。下一项从损坏 ripgrep 回执的单步重建开始。
 
+损坏 ripgrep 回执的单步重建已通过：只有 ripgrep 步骤重建，其余回执未变化，`ready.flag`、可执行文件哈希、Git clean 状态以及 `data/`/`knowledge/` 哨兵全部保持正确；Playwright 缺包也生成了独立非空日志且未阻塞核心 Setup。证据摘要为沙箱内 `logs/diagnostics/p0-ripgrep-recovery-20260905-123146/result.json`。下一项只损坏约 1.73 MB 的 `rg.zip`，验证缓存校验拒绝和重新下载。
+
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
