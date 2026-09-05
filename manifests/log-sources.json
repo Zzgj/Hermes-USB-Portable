@@ -17,6 +17,33 @@
   ],
   "sources": [
     {
+      "id": "p0-diagnostic-reports",
+      "category": "diagnostics",
+      "owner": "portable-workbench",
+      "format": "json",
+      "path": "logs/diagnostics/p0-report-*.json",
+      "canonical": true,
+      "may_contain_sensitive_data": false
+    },
+    {
+      "id": "case-collision-backups",
+      "category": "update",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "logs/diagnostics/case-collision-*",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "p0-package-backups",
+      "category": "update",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "logs/diagnostics/p0-package-backup-*",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
       "id": "initializer-reports",
       "category": "initializer",
       "owner": "portable-workbench",
