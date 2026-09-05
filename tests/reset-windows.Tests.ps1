@@ -108,7 +108,7 @@ $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("hermes-reset-test
 
 try {
     $resetSource = Get-Content -LiteralPath $ResetScriptPath -Raw -Encoding UTF8
-    $confirmPosition = $resetSource.IndexOf('$confirm = Read-Host', [System.StringComparison]::Ordinal)
+    $confirmPosition = $resetSource.IndexOf('if ($confirm -ne "yes")', [System.StringComparison]::Ordinal)
     $stopPosition = $resetSource.LastIndexOf('Stop-PortableGateway -PortableRoot $Root', [System.StringComparison]::Ordinal)
 
     Assert-True ($resetSource -match 'function Test-CommandLineBelongsToPortableRoot') "reset should define an exact portable-root command-line check"
