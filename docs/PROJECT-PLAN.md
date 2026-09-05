@@ -8,7 +8,7 @@
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移、E 盘 DeepSeek Setup/Chat、PortableGit/Git Bash 真实 terminal 验收 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | 将已通过 Windows CI 的 Soft Reset 安全修复部署到 E 盘源实例和脱敏沙箱，先运行非破坏行为测试，再只在沙箱执行 P0-10 Soft Reset 数据保留 |
+| 下一个验收门 | 沙箱 Soft Reset 数据保留已通过；继续在沙箱执行 Setup 重建，验收运行环境恢复和用户内容保留 |
 | 最近更新 | 2026-09-05 |
 
 ## 状态说明
@@ -190,7 +190,7 @@
 
 ## 当前立即执行顺序
 
-1. 继续 **P0-10/P0-13**：受控下载中断续跑已通过，Soft Reset 安全边界与行为测试也已由 Actions run `33945993164` 在 Windows PowerShell 5.1/7 通过。把 `reset-windows.ps1` 和对应测试部署到 E 盘源实例与沙箱，先在两处运行临时夹具行为测试；通过后仅在脱敏沙箱执行 Soft Reset 数据保留，不执行 Full Reset。
+1. 继续 **P0-10/P0-13**：安全修复已部署到 E 盘源实例和沙箱，两处行为测试通过。2026-09-05 沙箱实际 Soft Reset 七项检查全部通过，证据为 `E:\HermesPortable-P0-SoftReset-Evidence-20260905-133623-b5fb7e19/result.json`；Runtime 和源码已删除，原有数据、知识和日志文件哈希不变。下一步在沙箱运行 Setup，验证软重建恢复；尚未完成该重建，不执行 Full Reset。
 2. 续验 **P0-07/P0-08**：E 盘 Win11 已通过 Doctor、View Logs、Edit Config 和高级菜单完整回跳；更新检查因 GitHub HTTP 429 及随后的 curl 56/TLS 中断安全失败。Git 通道恢复后创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留，并确认上游 `d7bda2a` 的 Windows watchdog 修复已生效。
 3. 完成 **P0-08** 的 Update 成功冒烟；Chat、Setup、Doctor、Gateway、View Logs 和配置编辑均已有实机证据。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。

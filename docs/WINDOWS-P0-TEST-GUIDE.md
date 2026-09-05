@@ -185,4 +185,6 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
 
+2026-09-05 13:36，固定沙箱实际 Soft Reset 已输出 `P0_SOFT_RESET_PRESERVATION_OK`，七项检查全部为 True。删除了沙箱 `.cache/runtimes`（1174.6 MB）和 `src/hermes-agent`（190.4 MB），原有 `data`、`knowledge`、`logs` 文件哈希不变。外部证据目录：`E:\HermesPortable-P0-SoftReset-Evidence-20260905-133623-b5fb7e19`，包含 `before.csv` 与 `result.json`。下一项为沙箱 Setup 重建及重建后的保留检查；本结果不代表重建已通过。
+
 2026-09-05，用户已在 `E:\HermesPortable-Clean` 与 `E:\HermesPortable-P0-10-Sandbox-20260904-231542` 完成安全修复部署及临时夹具测试，两处均输出 `Windows reset tests passed.` 和 `TestPassed=True`，最终输出 `P0_RESET_SAFETY_DEPLOY_OK`。部署备份为 `E:\HermesPortable-P0-ResetSafety-Backup-20260905-130445`。下一项为仅在该沙箱执行 Soft Reset，记录删除前的用户内容哈希和删除后的数据保留结果；实测完成前不得将真实沙箱 Soft Reset 标记为通过。
