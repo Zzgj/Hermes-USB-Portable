@@ -165,6 +165,8 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 ## 6. P0-10 破坏性边界测试
 
+最新结果：用户已确认 Soft Reset 后使用绝对 `-Root` 重建退出码为 0，对外部 `before.csv` 的复核没有变化文件（数量 0），venv 输出 `HERMES_IMPORT_OK` 且退出码 0。软重建与数据保留子项通过。此前 `-Root .` 在最终切换到源码目录读取版本时导致相对 Python 路径失效；修复提交 `1232141` 将 Root 预先规范化，但本次成功使用绝对路径绕过，不能作为该补丁已部署的证据。以下为验收历史。
+
 损坏回执、主动取消和 Soft Reset 测试会有意修改 Runtime 测试状态，因此不属于第一次更新验收。保存完更新证据后，只能在可丢弃的完整副本中执行 P0-10 恢复测试。
 
 当官方更新因外部网络暂时无法续验时，可先在同一 NTFS 盘创建一份脱敏 Runtime 沙箱。沙箱只复制启动文件、脚本/测试/清单/文档、`.cache/runtimes/` 和 `src/`；不复制 `data/`、`knowledge/`、`logs/` 或宿主应用缓存。先确认目标目录不存在且空间足够，再开始复制。
