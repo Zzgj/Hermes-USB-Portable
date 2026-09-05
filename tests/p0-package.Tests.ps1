@@ -11,10 +11,15 @@ try {
     [IO.File]::WriteAllText("$target/launch.bat", 'old shell')
     [IO.File]::WriteAllText("$target/data/.env", 'SECRET_SENTINEL')
     $manifest = @{ schema_version=1; candidate='p0-rc1'; files=@(@{path='launch.bat';sha256=(Get-FileHash "$package/launch.bat").Hash}) }
-    $manifest | ConvertTo-Json -Depth 5 | Set-Content "$package/package-manifest.json" -Encoding UTF8
+    $unicodePath = 'docs/' + [char]0x6D4B + [char]0x8BD5 + '.md'
+    New-Item -ItemType Directory -Path "$package/docs" -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $package $unicodePath), 'unicode path fixture')
+    $manifest.files += @{path=$unicodePath;sha256=(Get-FileHash (Join-Path $package $unicodePath)).Hash}
+    [IO.File]::WriteAllText("$package/package-manifest.json", ($manifest | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding($false)))
     & $hostExe -NoProfile -File "$package/scripts/install-p0-package.ps1" -Target $target -ConfirmInstall
     Assert ($LASTEXITCODE -eq 0) 'Installer should succeed'
     Assert ([IO.File]::ReadAllText("$target/launch.bat") -eq 'new shell') 'Shell replaced'
+    Assert (Test-Path -LiteralPath (Join-Path $target $unicodePath)) 'UTF-8 manifest preserves Unicode paths'
     Assert ([IO.File]::ReadAllText("$target/data/.env") -eq 'SECRET_SENTINEL') 'User data preserved'
     $saved = @(Get-ChildItem "$target/logs/diagnostics" -Directory)[0].FullName
     Assert ([IO.File]::ReadAllText("$saved/launch.bat") -eq 'old shell') 'Original shell backed up'

@@ -7,7 +7,7 @@ $Target = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPat
 if ($Target -eq $package.TrimEnd('\', '/')) { throw 'Choose a different installation directory.' }
 if ($Target -eq [IO.Path]::GetPathRoot($Target).TrimEnd('\', '/')) { throw 'A filesystem root is not an installation target.' }
 if (-not (Test-Path -LiteralPath (Join-Path $Target 'launch.bat'))) { throw 'Target must be an existing Hermes Portable installation.' }
-$manifest = Get-Content -LiteralPath (Join-Path $package 'package-manifest.json') -Raw | ConvertFrom-Json
+$manifest = Get-Content -LiteralPath (Join-Path $package 'package-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($manifest.schema_version -ne 1 -or $manifest.candidate -ne 'p0-rc1') { throw 'Unsupported package manifest.' }
 $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 foreach ($file in $manifest.files) {
