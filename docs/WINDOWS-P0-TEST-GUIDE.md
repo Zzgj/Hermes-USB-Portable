@@ -165,6 +165,8 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 ## 6. P0-10 破坏性边界测试
 
+P0-07 最新实机进展：沙箱更新检查成功后，第一次 apply 被旧提交两个大小写冲突路径阻塞（Git status 被 skip-worktree 隐藏，read-tree dry-run 返回 128）。用户将磁盘冲突文件校验备份并移到 `E:\HermesPortable-P0-CollisionBackup-2fbe1d4914bb4606927dcae5be70fd91` 后，dry-run 返回 0；第二次官方更新完成，从 `29112bef` 切换到 `main @ f58fcc8`，Web UI 构建成功，Portable 包装器显示成功。日志/摘要为 `update-apply-20260905T090649717Z-91855f95.log` / `.json`。尚需复核 JSON、Runtime manifest 与数据保留；这次为人工备份绕行成功，不能记为冲突处理已自动化。菜单仍显示 v0.21.0，提交变更与版本号须分别核对。
+
 最新结果：用户已确认 Soft Reset 后使用绝对 `-Root` 重建退出码为 0，对外部 `before.csv` 的复核没有变化文件（数量 0），venv 输出 `HERMES_IMPORT_OK` 且退出码 0。软重建与数据保留子项通过。此前 `-Root .` 在最终切换到源码目录读取版本时导致相对 Python 路径失效；修复提交 `1232141` 将 Root 预先规范化，但本次成功使用绝对路径绕过，不能作为该补丁已部署的证据。以下为验收历史。
 
 损坏回执、主动取消和 Soft Reset 测试会有意修改 Runtime 测试状态，因此不属于第一次更新验收。保存完更新证据后，只能在可丢弃的完整副本中执行 P0-10 恢复测试。
