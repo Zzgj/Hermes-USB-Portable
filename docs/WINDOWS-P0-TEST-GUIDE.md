@@ -184,3 +184,5 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 该 Soft Reset 修复及 `tests/reset-windows.Tests.ps1` 已由 GitHub Actions run `33945993164` 在 Windows PowerShell 5.1/7 通过。部署到源实例和沙箱后，应先分别运行该测试；它只在系统临时目录创建并删除夹具，不重置真实实例。两处都显示 `Windows reset tests passed.` 后，才可进入沙箱 Soft Reset。
 
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
+
+2026-09-05，用户已在 `E:\HermesPortable-Clean` 与 `E:\HermesPortable-P0-10-Sandbox-20260904-231542` 完成安全修复部署及临时夹具测试，两处均输出 `Windows reset tests passed.` 和 `TestPassed=True`，最终输出 `P0_RESET_SAFETY_DEPLOY_OK`。部署备份为 `E:\HermesPortable-P0-ResetSafety-Backup-20260905-130445`。下一项为仅在该沙箱执行 Soft Reset，记录删除前的用户内容哈希和删除后的数据保留结果；实测完成前不得将真实沙箱 Soft Reset 标记为通过。
