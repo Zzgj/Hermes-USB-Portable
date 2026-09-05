@@ -181,4 +181,6 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 受控中断续跑已经通过：第一次运行对不可达 URL 非零退出且未生成 `ready.flag`，既有回执未改变；恢复原锁和已校验缓存后，第二次运行成功恢复全部健康状态。证据补充为 `logs/diagnostics/p0-interruption-retry-20260905-124604/result-addendum.json`。进入 Soft Reset 前必须先使用包含确认后变更、当前 Portable 根目录 Gateway 限定及相应行为测试的新版 `reset-windows.ps1`；旧版不得用于该验收。
 
+该 Soft Reset 修复及 `tests/reset-windows.Tests.ps1` 已由 GitHub Actions run `33945993164` 在 Windows PowerShell 5.1/7 通过。部署到源实例和沙箱后，应先分别运行该测试；它只在系统临时目录创建并删除夹具，不重置真实实例。两处都显示 `Windows reset tests passed.` 后，才可进入沙箱 Soft Reset。
+
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。

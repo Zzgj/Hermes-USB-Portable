@@ -8,7 +8,7 @@
 | 当前分支 | `feat/portable-initializer` |
 | 已完成里程碑 | Fork/迁移确认、最小初始化器及中文 Win10 验收、Windows Runtime 组件校验基线、统一日志目录、Win10/exFAT 首次 Runtime 安装与幂等启动、无重装回执迁移、E 盘 DeepSeek Setup/Chat、PortableGit/Git Bash 真实 terminal 验收 |
 | 当前任务 | **P0-07 Hermes 更新证据链 + P0-10 恢复矩阵实机验收** |
-| 下一个验收门 | 先通过 Windows CI 和实机行为测试验收 Soft Reset 的确认/进程范围修复，再只在 E 盘脱敏沙箱执行 P0-10 Soft Reset 数据保留 |
+| 下一个验收门 | 将已通过 Windows CI 的 Soft Reset 安全修复部署到 E 盘源实例和脱敏沙箱，先运行非破坏行为测试，再只在沙箱执行 P0-10 Soft Reset 数据保留 |
 | 最近更新 | 2026-09-05 |
 
 ## 状态说明
@@ -70,8 +70,8 @@
 - [-] **P0-10** 测试中断重试、损坏缓存、更新失败、软重建和数据保留；已实现按锁指纹保存的原子组件回执、跳过前实时可执行验证、既有成功 Runtime 的回执迁移、无效回执单步重建、Hermes Git 暂存跨运行保留、用户已更新 Hermes 源码保护、启动器 `ready.flag` 后置检查、明确非零失败状态及 Playwright 独立日志。用户 Win10/exFAT 已运行全部七组测试，并将既有健康 Runtime 无重装迁移为 `Ready=True`/10 份回执，重复启动没有重跑 Setup。E 盘脱敏沙箱已完成 40,105 个文件/1.43 GiB 的复制校验和 checkout 清洁化。2026-09-05，该沙箱已通过损坏回执单步重建、Playwright 独立日志、损坏缓存恢复及受控下载中断续跑；中断运行非零退出且未创建 `ready.flag`，既有回执不变，恢复原锁与已校验缓存后续跑成功并保留哨兵/Git clean。原验收脚本因把原生命令接到 `Select-Object -First 1` 而误判一次退出码，独立直连复核八项全部通过并写入 `p0-interruption-retry-20260905-124604/result-addendum.json`。现在只剩 Soft Reset 数据保留，不开启 Full Reset。
 - [ ] **P0-11** 保留原 TUI 主入口，补充 CLI、TUI、Desktop、Web Dashboard 的独立入口和能力检测；不解析 TUI 文本作为 Workbench 协议。
 - [-] **P0-12** 验证盘符变化、路径空格/中文、便携 Git/Git Bash PATH、默认工作目录和移动后 venv 修复：用户 F 盘已验证脚本及完整 Runtime 直接位于 exFAT U 盘，临时目标路径含空格/中文时 Windows PowerShell 5.1 与 UTF-8 JSON 正确。`9563a9c` 补齐 `git.exe` PATH 后，提交 `40fd1e2` 又将 MinGit 替换为固定大小/SHA-256 的官方 PortableGit，增加 15 秒 Git Bash/MSYS 探针、启动门禁及 `HERMES_GIT_BASH_PATH` 注入；提交 `7387c71` 修复 Windows PowerShell 等待 GUI SFX 的退出码语义。E 盘 Win11 实机已输出 `Extracting portablegit.7z.exe ... done`、`[OK] Git ready`，且 Hermes 真实 terminal 成功返回 `GIT_BASH_OK`、Git 2.54.0 和 `MINGW64_NT-10.0-22631`。新增的 checkout 清洁化只处理两个精确上游大小写冲突路径，上游移除冲突后会自动撤销绕行，不修改全局 Git 配置。Git Bash 子任务完成；盘符移动与移动后 venv 修复仍未完成。
-- [-] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。Soft Reset 审查发现旧脚本会在确认前删除锁且可能终止其他 Portable 根目录的 Gateway；当前修复把所有变更后移到明确确认之后，并仅按规范化根路径匹配当前实例的 Gateway，待 Windows CI/实机验收。
-- [-] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档：现已增加 Windows `launch.bat` CRLF 字节与 Git 属性门禁，以及 Soft Reset 取消零变更、根目录拒绝、Runtime/源码删除和用户内容保留行为测试；完整诊断报告模板仍待收口。
+- [-] **P0-13** 审计普通运行对宿主的落地：用户目录、AppData、Temp、Electron/Chromium 缓存、注册表、服务和计划任务。Soft Reset 审查发现旧脚本会在确认前删除锁且可能终止其他 Portable 根目录的 Gateway；当前修复把所有变更后移到明确确认之后，并仅按规范化根路径匹配当前实例的 Gateway。GitHub Actions run `33945993164` 的 Windows PowerShell 5.1/7 均通过，待 E 盘实机部署验收。
+- [-] **P0-14** 固化 P0 回归测试和诊断报告模板，更新交接文档：现已增加 Windows `launch.bat` CRLF 字节与 Git 属性门禁，以及 Soft Reset 取消零变更、根目录拒绝、Runtime/源码删除和用户内容保留行为测试；新增测试已由 Actions run `33945993164` 在 Windows PowerShell 5.1/7 通过，完整诊断报告模板仍待收口。
 
 ### P0 验收条件
 
@@ -190,7 +190,7 @@
 
 ## 当前立即执行顺序
 
-1. 继续 **P0-10/P0-13**：受控下载中断已确认非零失败、无 `ready.flag`、既有回执保留，恢复原锁与已校验缓存后续跑成功。先让新增 Soft Reset 安全边界和行为测试通过 Windows PowerShell 5.1/7 CI，再把修复部署到源实例与沙箱；随后仅在脱敏沙箱执行 Soft Reset 数据保留，不执行 Full Reset。
+1. 继续 **P0-10/P0-13**：受控下载中断续跑已通过，Soft Reset 安全边界与行为测试也已由 Actions run `33945993164` 在 Windows PowerShell 5.1/7 通过。把 `reset-windows.ps1` 和对应测试部署到 E 盘源实例与沙箱，先在两处运行临时夹具行为测试；通过后仅在脱敏沙箱执行 Soft Reset 数据保留，不执行 Full Reset。
 2. 续验 **P0-07/P0-08**：E 盘 Win11 已通过 Doctor、View Logs、Edit Config 和高级菜单完整回跳；更新检查因 GitHub HTTP 429 及随后的 curl 56/TLS 中断安全失败。Git 通道恢复后创建非敏感数据哨兵、执行经确认的官方 `origin/main` 更新，核对 transcript/官方回执/Portable 摘要、Runtime manifest 和数据保留，并确认上游 `d7bda2a` 的 Windows watchdog 修复已生效。
 3. 完成 **P0-08** 的 Update 成功冒烟；Chat、Setup、Doctor、Gateway、View Logs 和配置编辑均已有实机证据。
 4. 完成 **P0-11/P0-13** 的多入口与宿主落地审计。
