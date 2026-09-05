@@ -89,6 +89,24 @@ try {
     Assert-True ($hermes.update_policy.rollback_required -eq $true) "Hermes update design should require rollback support"
 
     $setupSource = Get-Content -LiteralPath $SetupScriptPath -Raw -Encoding UTF8
+
+    # Exercise the actual setup preamble without downloading or installing.
+    $preambleEnd = $setupSource.IndexOf('$RuntimeFilesystemScript =')
+    Assert-True ($preambleEnd -gt 0) "setup preamble should precede helper loading"
+    $preamble = [scriptblock]::Create($setupSource.Substring(0, $preambleEnd) + "`nreturn `$Root")
+    Push-Location $repositoryRoot
+    try {
+        $resolvedRoot = & $preamble -Root '.'
+        Assert-True ($resolvedRoot -eq (Get-Location).ProviderPath) "relative root should resolve against the caller location"
+        Push-Location (Join-Path $repositoryRoot 'tests')
+        try {
+            Assert-True (Test-Path -LiteralPath (Join-Path $resolvedRoot 'scripts/setup-windows.ps1')) "resolved root should survive working-directory changes"
+            $parentRoot = & $preamble -Root '..'
+            Assert-True ($parentRoot -eq $resolvedRoot) "parent-relative root should resolve consistently"
+        }
+        finally { Pop-Location }
+    }
+    finally { Pop-Location }
     $filesystemSource = Get-Content -LiteralPath $RuntimeFilesystemPath -Raw -Encoding UTF8
     Assert-True ($setupSource -match 'runtime-components\.windows-x64\.json') "setup should consume the component lock"
     Assert-True ($setupSource -match 'runtime-filesystem\.ps1') "setup should consume the removable-drive-safe filesystem helper"

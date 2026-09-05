@@ -12,6 +12,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve against PowerShell's caller location before deriving paths or changing
+# directory. Relative executable paths otherwise break during version recording.
+$Root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root)
+
 $RuntimeFilesystemScript = Join-Path $PSScriptRoot "runtime-filesystem.ps1"
 if (-not (Test-Path -LiteralPath $RuntimeFilesystemScript -PathType Leaf)) {
     throw "Runtime filesystem helper not found: $RuntimeFilesystemScript"
