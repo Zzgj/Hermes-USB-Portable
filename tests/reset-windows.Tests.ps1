@@ -68,13 +68,18 @@ function Invoke-ResetFixture {
     param(
         [string]$ScriptPath,
         [AllowNull()]
-        [object]$Confirmation
+        [object]$Confirmation,
+        [switch]$ConfirmReset
     )
 
     $hostExecutable = (Get-Process -Id $PID).Path
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $hostExecutable
-    $startInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Mode soft"
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Mode soft"
+    if ($ConfirmReset) {
+        $arguments += " -ConfirmReset"
+    }
+    $startInfo.Arguments = $arguments
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardInput = $true
@@ -128,7 +133,7 @@ try {
 
         $softRoot = Join-Path $temporaryRoot "soft"
         $softScript = New-ResetFixture -FixtureRoot $softRoot
-        $softResult = Invoke-ResetFixture -ScriptPath $softScript -Confirmation "yes"
+        $softResult = Invoke-ResetFixture -ScriptPath $softScript -Confirmation $null -ConfirmReset
         Assert-True ($softResult.ExitCode -eq 0) "confirmed soft reset should exit successfully: $($softResult.Stderr)"
         Assert-True (-not (Test-Path -LiteralPath (Join-Path $softRoot ".cache/runtimes"))) "soft reset should delete runtimes"
         Assert-True (-not (Test-Path -LiteralPath (Join-Path $softRoot "src/hermes-agent"))) "soft reset should delete Hermes source"

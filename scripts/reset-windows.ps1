@@ -10,7 +10,9 @@
 
 param(
     [ValidateSet("soft", "full")]
-    [string]$Mode = ""
+    [string]$Mode = "",
+
+    [switch]$ConfirmReset
 )
 
 $ErrorActionPreference = "Stop"
@@ -137,7 +139,12 @@ if ($Mode -eq "soft") {
 }
 
 Write-Host ""
-$confirm = Read-Host "Type 'yes' to confirm deletion"
+$confirm = if ($ConfirmReset) {
+    "yes"
+}
+else {
+    Read-Host "Type 'yes' to confirm deletion"
+}
 if ($confirm -ne "yes") {
     Write-Host "Cancelled. Nothing was deleted." -ForegroundColor Yellow
     exit 0
