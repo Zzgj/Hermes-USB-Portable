@@ -51,11 +51,12 @@
 - P0-10 脱敏沙箱已通过 40,105 个文件/1.43 GiB 的数量、总大小和抽样 SHA-256 校验，未复制 `data/`、`knowledge/`、`logs/` 或宿主应用缓存。源实例与沙箱都精确显示两项 Git dirty：上游仅大小写不同的贡献者文件在 Windows 文件系统上冲突，以及旧 Portable Setup 生成的 `.portable-source.json`。修复将后者迁移到 Runtime 权威位置，前者只对两个精确路径设置可退役的本地索引绕行，避免官方 updater 把便携层自身状态当作用户修改暂存。
 - 2026-09-05，checkout 清洁化已在 E 盘源实例与脱敏沙箱实机通过：两边均为 `GitClean=True`、`CanonicalSourceState=True`、`LegacySourceState=False`、`CollisionPathsHidden=2`，随后 Setup 均报告 Runtime 已完整且无需安装。P0-10 现在可在脱敏沙箱进入故障注入，下一项是损坏 ripgrep 回执后的单步重建与 Playwright 独立日志核对。
 - 同日，脱敏沙箱的 ripgrep 故障注入全部通过：损坏回执并移除 `ready.flag` 后，Setup 只使用已校验的 `rg.zip` 重建 ripgrep，其他九份回执不变，`ready.flag`、有效回执及可执行文件哈希均恢复，数据/知识哨兵保留且 Hermes Git 仍 clean。Playwright 缺包错误写入独立非空日志，并按可选组件策略未阻塞 Setup。下一项为损坏小型 `rg.zip` 缓存后的校验拒绝与重新下载。
+- 随后的损坏缓存实测也已通过：Setup 明确拒绝 16 字节伪造的 `rg.zip`，从锁定 GitHub URL 重新下载 1.73 MB 归档并完成大小/SHA-256 校验；ripgrep 回执、可执行文件和 `ready.flag` 恢复，其他回执、哨兵及 Git clean 状态不变。证据摘要位于 `logs/diagnostics/p0-rg-cache-recovery-20260905-124011/result.json`。下一项为受控下载中断后的失败关闭与缓存续跑。
 - 用户已在 Stitch 创建 `Hermes Portable AI Workbench` 前端 UI；尚未导出或合并到当前 Git 仓库。
 
 当前尚未完成：
 
-- Windows 10/exFAT 核心 Runtime 首次安装、幂等启动和无重装组件回执迁移已通过；E 盘脱敏沙箱也已完成损坏回执单步重建和 Playwright 独立日志实测。P0-10 尚需中断续跑、损坏缓存及 Soft Reset 数据保留。
+- Windows 10/exFAT 核心 Runtime 首次安装、幂等启动和无重装组件回执迁移已通过；E 盘脱敏沙箱也已完成损坏回执单步重建、Playwright 独立日志及损坏缓存恢复。P0-10 尚需中断续跑与 Soft Reset 数据保留。
 - P0-07 失败证据链已在 Windows 实机验证；E 盘外壳已更新到 `ae4fcd8`，仍需在 GitHub 429 限流恢复后复验官方 `origin/main` 成功更新、三层证据、Runtime manifest 刷新、watchdog 修复和哨兵数据保留。
 - Setup、Doctor 和 Playwright 失败 transcript 已在 Windows 实机生成；尚需完成更新成功日志及全部日志的内容完整性、编码和脱敏边界复核。
 - Stitch 中的前端 UI 尚未作为可运行代码进入仓库，也尚未连接 Hermes。
@@ -309,4 +310,4 @@ git diff --cached
 
 ## 10. 当前最重要的下一步
 
-最小初始化器、P0-09 核心 Runtime、幂等启动、10 份组件回执无重装迁移、checkout 清洁化、损坏 ripgrep 回执单步重建和 Playwright 独立日志均已通过。当前第一优先级是在 E 盘脱敏沙箱逐项完成损坏 `rg.zip` 缓存、中断续跑和 Soft Reset 数据保留；每项之后必须恢复健康，且不执行 Full Reset。GitHub Git 通道恢复后，再在保留所有运行数据的前提下续验 P0-07 官方更新证据链。
+最小初始化器、P0-09 核心 Runtime、幂等启动、10 份组件回执无重装迁移、checkout 清洁化、损坏回执单步重建、Playwright 独立日志和损坏缓存恢复均已通过。当前第一优先级是在 E 盘脱敏沙箱完成受控中断续跑和 Soft Reset 数据保留；每项之后必须恢复健康，且不执行 Full Reset。GitHub Git 通道恢复后，再在保留所有运行数据的前提下续验 P0-07 官方更新证据链。
