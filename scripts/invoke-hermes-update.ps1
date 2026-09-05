@@ -297,6 +297,9 @@ try {
         Restore-HermesCollisionFiles $collisionTransaction
     }
     Set-HermesCaseCollisionWorkaround -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory | Out-Null
+    if ($null -ne $collisionTransaction -and $null -ne $postCommit -and $postCommit -ne $preCommit) {
+        Complete-HermesCollisionUpdate -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory -Transaction $collisionTransaction
+    }
 }
 catch {
     [Console]::Error.WriteLine("[portable-update] Unable to normalize the managed Hermes checkout after the update attempt: {0}", $_.Exception.Message)

@@ -49,6 +49,44 @@ try {
     try { Restore-HermesCollisionFiles $transaction } catch { $rejected = $true }
     Assert $rejected 'Restore must refuse overwriting changed content'
     Assert ([IO.File]::ReadAllText($file) -eq 'new content after update') 'New content must survive restore refusal'
+
+    # Real Git regression: manufacture the exact historic blobs/index on both
+    # case-sensitive Linux and ordinary case-insensitive Windows filesystems.
+    $git = (Get-Command git -ErrorAction Stop).Source
+    $real = Join-Path $fixture 'real-repo'
+    New-Item -ItemType Directory -Path "$real/contributors/emails" -Force | Out-Null
+    & $git init -q $real
+    & $git -C $real config user.name fixture
+    & $git -C $real config user.email fixture@example.invalid
+    & $git -C $real config core.autocrlf false
+    $blobFile = Join-Path $fixture 'blob'
+    [IO.File]::WriteAllBytes($blobFile, [Convert]::FromBase64String('c2tpcC1hZ2VudAo='))
+    $upperHash = (& $git -C $real hash-object -w --no-filters $blobFile).Trim()
+    [IO.File]::WriteAllBytes($blobFile, [Convert]::FromBase64String('bW9tb21vam8K'))
+    $lowerHash = (& $git -C $real hash-object -w --no-filters $blobFile).Trim()
+    & $git -C $real update-index --add --cacheinfo "100644,$upperHash,$upper"
+    & $git -C $real update-index --add --cacheinfo "100644,$lowerHash,$lower"
+    $tree = (& $git -C $real write-tree).Trim()
+    $oldCommit = (& $git -C $real commit-tree $tree -m old).Trim()
+    & $git -C $real update-ref HEAD $oldCommit
+    & $git -C $real update-index --force-remove -- $upper
+    $tree = (& $git -C $real write-tree).Trim()
+    $newCommit = (& $git -C $real commit-tree $tree -p $oldCommit -m new).Trim()
+    & $git -C $real update-ref refs/remotes/origin/main $newCommit
+    & $git -C $real read-tree $oldCommit
+    [IO.File]::WriteAllText((Join-Path $real $upper), 'unrecognized original')
+    & $git -C $real update-index --skip-worktree -- $upper $lower
+    $tx = Protect-HermesUpdateCollision $git $real origin/main $backups
+    & $git -C $real read-tree --dry-run -m -u HEAD origin/main
+    Assert ($LASTEXITCODE -eq 0) 'Real Git dry-run should pass after preparation'
+    & $git -C $real checkout -q -b updated origin/main
+    Assert ($LASTEXITCODE -eq 0) 'Real Git checkout should succeed'
+    . "$PSScriptRoot/../scripts/runtime-setup-state.ps1"
+    Set-HermesCaseCollisionWorkaround $git $real | Out-Null
+    Complete-HermesCollisionUpdate $git $real $tx
+    $status = @(& $git -C $real status --porcelain)
+    Assert ($status.Count -eq 0) 'Updated checkout should be clean'
+    Assert (Test-Path -LiteralPath (Join-Path $real $lower)) 'Surviving tracked file should be materialized'
     Write-Host 'Update case collision tests passed.'
 } finally {
     Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue

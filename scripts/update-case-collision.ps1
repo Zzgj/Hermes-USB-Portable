@@ -65,7 +65,7 @@ function Protect-HermesUpdateCollision {
         if ((Get-FileHash -LiteralPath $saved -Algorithm SHA256).Hash -ne $hash) { throw 'Collision backup verification failed.' }
         $transaction.files += [pscustomobject]@{ original = $path; backup = $saved; sha256 = $hash }
     }
-    if ($transaction.files.Count -eq 0) { return $null }
+    if ($transaction.files.Count -eq 0) { return $transaction }
     $transaction | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $backupRoot 'transaction.json') -Encoding UTF8
     try {
         foreach ($entry in $transaction.files) {
@@ -78,4 +78,22 @@ function Protect-HermesUpdateCollision {
     }
     Write-Host "[portable-update] Case-collision originals preserved at: $backupRoot"
     return $transaction
+}
+
+function Complete-HermesCollisionUpdate {
+    param([string]$GitExecutable, [string]$SourceDirectory, $Transaction)
+    if ($null -eq $Transaction) { return }
+    $lower = 'contributors/emails/agent@agents-Mac-mini.local'
+    $upper = 'contributors/emails/agent@Agents-Mac-mini.local'
+    $tree = @(& $GitExecutable -C $SourceDirectory ls-tree HEAD -- $upper $lower)
+    if ($LASTEXITCODE -ne 0 -or $tree.Count -ne 1 -or $tree[0] -notmatch ('\t' + [regex]::Escape($lower) + '$')) {
+        throw 'Updated checkout still has an unexpected collision; originals retained in backup.'
+    }
+    # The surviving blob may be unchanged between commits. Git can therefore
+    # leave it absent while its old skip-worktree flag was set. Materialize only
+    # an absent survivor, never force-overwrite a newly written file.
+    if (-not (Test-Path -LiteralPath (Join-Path $SourceDirectory $lower))) {
+        & $GitExecutable -C $SourceDirectory checkout-index -- $lower
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to materialize collision survivor; backup retained.' }
+    }
 }

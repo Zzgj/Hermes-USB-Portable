@@ -11,6 +11,7 @@ def build(root, output):
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode().split('\0')
     allowed_roots = {'launch.bat', 'launch.sh', 'P0-Workbench.bat', 'README.md', '.gitattributes', '.gitignore'}
     files = sorted(p for p in tracked if p and (p in allowed_roots or p.split('/')[0] in {'scripts', 'tests', 'manifests', 'docs'}))
+    files = [p for p in files if p != 'scripts/test-p0-soft-reset-sandbox.ps1']
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root).decode().strip()
     manifest = {'schema_version': 1, 'candidate': 'p0-rc1', 'commit': revision, 'files': []}
     payloads = {}

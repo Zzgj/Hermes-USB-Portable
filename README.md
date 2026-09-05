@@ -259,3 +259,6 @@ The first install uses an audited stable Release as its bootstrap baseline. Late
 *   **[Hermes Agent](https://github.com/NousResearch/hermes-agent)** — Powerful Agentic core created by [Nous Research](https://github.com/NousResearch).
 *   **[python-build-standalone](https://github.com/indygreg/python-build-standalone)** — Portable Python interpreter compilation.
 *   **[uv](https://github.com/astral-sh/uv)** — Blazing fast package installer and resolver.
+# P0 RC1 集中验收版本
+
+本分支提供源码测试包：Windows 双 PowerShell CI 通过后，在 Actions 下载 `Hermes-Portable-P0-RC1` artifact。解压并校验后按 [集中验收说明](docs/P0-RC1-ACCEPTANCE.md) 部署到测试副本；使用 `P0-Workbench.bat` 进入集中菜单。它是候选版，尚未代表 U 盘迁移和整个 P0 完成。

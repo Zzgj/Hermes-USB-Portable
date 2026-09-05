@@ -19,6 +19,9 @@ function Probe([string]$Executable, [string]$Arguments) {
     $process.StartInfo.EnvironmentVariables['PYTHONHOME'] = ''
     $process.StartInfo.EnvironmentVariables['PYTHONNOUSERSITE'] = '1'
     $process.StartInfo.EnvironmentVariables['HERMES_HOME'] = (Join-Path $Root 'data')
+    $process.StartInfo.EnvironmentVariables['GIT_CONFIG_COUNT'] = '1'
+    $process.StartInfo.EnvironmentVariables['GIT_CONFIG_KEY_0'] = 'safe.directory'
+    $process.StartInfo.EnvironmentVariables['GIT_CONFIG_VALUE_0'] = $source.Replace('\', '/')
     try {
         [void]$process.Start()
         $stdout = $process.StandardOutput.ReadToEndAsync()
@@ -52,7 +55,12 @@ foreach ($entry in @(
     @('Uv', 'uv/uv.exe'), @('Ripgrep', 'bin/rg.exe'), @('Git', 'git/cmd/git.exe')
 )) { $checks[$entry[0]] = Probe (Join-Path $runtime $entry[1]) '--version' }
 $checks.GitBash = Probe (Join-Path $runtime 'git/bin/bash.exe') '--noprofile --norc -c "printf GIT_BASH_OK"'
-$checks.HermesImport = Probe (Join-Path $runtime 'venv/Scripts/python.exe') '-c "import hermes_cli.main"'
+$checks.HermesImport = Probe (Join-Path $runtime 'venv/Scripts/python.exe') '-c "import pathlib,sys,hermes_cli.main as m; assert pathlib.Path(m.__file__).resolve().is_relative_to(pathlib.Path(''src/hermes-agent'').resolve()); assert pathlib.Path(sys.base_prefix).resolve() == pathlib.Path(''.cache/runtimes/windows-x64/python'').resolve()"'
+$checks.SourceCommitMatches = $false
+if ($null -ne $commit) {
+    $code = '-c "import subprocess; assert subprocess.check_output([''.cache/runtimes/windows-x64/git/cmd/git.exe'', ''-C'', ''src/hermes-agent'', ''rev-parse'', ''HEAD''], text=True).strip() == ''' + $commit + '''"'
+    $checks.SourceCommitMatches = Probe (Join-Path $runtime 'python/python.exe') $code
+}
 # Report booleans and counts, never raw config, proxy URLs, process command lines,
 # usernames, root paths, session contents, or native stdout/stderr.
 $hostFindings = [ordered]@{

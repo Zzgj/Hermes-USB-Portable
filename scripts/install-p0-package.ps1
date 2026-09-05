@@ -13,7 +13,7 @@ $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer
 foreach ($file in $manifest.files) {
     $relative = [string]$file.path
     if ($relative -notmatch '^(scripts|tests|manifests|docs)/[a-zA-Z0-9_.\-/\p{L}]+$' -and $relative -notin @('launch.bat','launch.sh','P0-Workbench.bat','README.md','.gitattributes','.gitignore')) { throw "Unapproved package path: $relative" }
-    if ($relative.Split('/') -contains '..' -or -not $seen.Add($relative)) { throw 'Traversal or duplicate path in package.' }
+    if ($relative.Split('/') -contains '..' -or $relative.Split('/') -contains '.' -or $relative.Contains('//') -or -not $seen.Add($relative)) { throw 'Traversal or duplicate path in package.' }
     $inputFile = Join-Path $package $relative
     if ((Get-FileHash -LiteralPath $inputFile -Algorithm SHA256).Hash -ne $file.sha256) { throw "Package hash mismatch: $relative" }
     # Refuse links in both source and destination chains before any mutation.
@@ -26,6 +26,12 @@ foreach ($file in $manifest.files) {
     }
 }
 if (@($manifest.files).Count -eq 0) { throw 'Empty package.' }
+if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+    $active = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+        $_.ExecutablePath -and $_.ExecutablePath.StartsWith($Target + '\', [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($active.Count -gt 0) { throw 'Target executables are running. Close the instance before installing.' }
+}
 Write-Host "Install P0 RC1 shell into: $Target"
 Write-Host 'Close target launchers and Hermes processes before continuing. Runtime, data and knowledge are not copied.'
 if (-not $ConfirmInstall -and (Read-Host 'Type yes to install') -ne 'yes') { exit 0 }
@@ -42,7 +48,8 @@ foreach ($file in $manifest.files) {
         Copy-Item -LiteralPath $dest -Destination $saved
         if ((Get-FileHash $saved).Hash -ne (Get-FileHash $dest).Hash) { throw 'Backup verification failed.' }
     }
-    $entries += [pscustomobject]@{ relative = $file.path; existed = $existed }
+    $oldHash = if ($existed) { (Get-FileHash -LiteralPath $saved).Hash } else { $null }
+    $entries += [pscustomobject]@{ relative = $file.path; existed = $existed; old_sha256 = $oldHash; new_sha256 = $file.sha256 }
 }
 $entries | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $backup 'restore-manifest.json') -Encoding UTF8
 $written = @()
