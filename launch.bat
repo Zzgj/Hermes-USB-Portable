@@ -30,6 +30,9 @@ REM ---------------------------------------------------------------------------
 REM First-run setup and repair detection
 REM ---------------------------------------------------------------------------
 set "NEED_RUNTIME_SETUP=0"
+set "RECORDED_PORTABLE_ROOT="
+if exist "%RUNTIME_DIR%\portable-location.txt" set /p RECORDED_PORTABLE_ROOT=<"%RUNTIME_DIR%\portable-location.txt"
+if /I not "!RECORDED_PORTABLE_ROOT!"=="%PORTABLE_ROOT%" set "NEED_RUNTIME_SETUP=1"
 if not exist "%RUNTIME_DIR%\ready.flag" set "NEED_RUNTIME_SETUP=1"
 if not exist "%RUNTIME_DIR%\python\python.exe" set "NEED_RUNTIME_SETUP=1"
 if not exist "%RUNTIME_DIR%\node\node.exe" set "NEED_RUNTIME_SETUP=1"

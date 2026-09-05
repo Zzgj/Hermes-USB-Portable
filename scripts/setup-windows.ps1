@@ -38,6 +38,9 @@ $BinDir     = Join-Path $RuntimeDir "bin"
 $StateDir   = Join-Path $RuntimeDir "state"
 $TempDir    = Join-Path $Root ".tmp"
 $SetupLogDir = Join-Path (Join-Path $Root "logs") "setup"
+$LocationMarker = Join-Path $RuntimeDir 'portable-location.txt'
+$baseLocationProbe = "import pathlib,sys; assert pathlib.Path(sys.base_prefix).resolve() == pathlib.Path(sys.argv[1]).resolve()"
+$importLocationProbe = "import pathlib,sys,hermes_cli.main as m; assert pathlib.Path(m.__file__).resolve().is_relative_to(pathlib.Path(sys.argv[1]).resolve())"
 
 # Git 2.35.2+ rejects repositories on filesystems such as exFAT that cannot
 # report ownership. Trust only the two repositories managed by this setup,
@@ -555,7 +558,8 @@ if (Test-Path $readyFlag) {
         (Test-NativeCommand (Join-Path $RuntimeDir "bin\rg.exe") @("--version")) -and
         (Test-NativeCommand $readyGit @("--version")) -and
         (Test-GitBashCompatibility $readyGitBash) -and
-        (Test-NativeCommand $readyVenvPython @("-c", "import hermes_cli.main")) -and
+        (Test-NativeCommand $readyVenvPython @("-c", $baseLocationProbe, (Join-Path $RuntimeDir 'python'))) -and
+        (Test-NativeCommand $readyVenvPython @("-c", $importLocationProbe, $readySource)) -and
         (Test-HermesRepository $readyGit $readySource "")
     )
     if ($readyChecksPassed) {
@@ -616,6 +620,7 @@ if (Test-Path $readyFlag) {
             Write-SetupReceipt -StateDirectory $StateDir -StepId "playwright-chromium" -Fingerprint "$readyDependenciesFingerprint`:chromium" -Details $adoptedDetails | Out-Null
         }
         Write-Done "Runtime is already complete; no setup work is required"
+        [System.IO.File]::WriteAllText($LocationMarker, $Root, (New-Object System.Text.UTF8Encoding($false)))
         $SetupSucceeded = $true
         return
     }
@@ -913,7 +918,10 @@ $venvDir   = Join-Path $RuntimeDir "venv"
 $uvExe     = Join-Path $RuntimeDir "uv\uv.exe"
 $venvPython = Join-Path $venvDir "Scripts\python.exe"
 $venvFingerprint = "$($PythonComponent.integrity.sha256):$($UvComponent.integrity.sha256)"
-$venvVerification = { Test-NativeCommand $venvPython @("--version") $pythonVersionPattern }
+$venvVerification = {
+    (Test-NativeCommand $venvPython @("--version") $pythonVersionPattern) -and
+    (Test-NativeCommand $venvPython @("-c", $baseLocationProbe, (Join-Path $RuntimeDir 'python')))
+}
 if (Test-VerifiedSetupStep "python-venv" $venvFingerprint $venvVerification) {
     Write-Skip "Python virtual environment"
 }
@@ -939,7 +947,7 @@ $ErrorActionPreference = "Continue"
 Write-Step "Installing Hermes Python dependencies ..."
 Write-Host "        This may take 3-10 minutes depending on your connection."
 $dependenciesFingerprint = "$ComponentLockHash`:$actualHermesCommit"
-$dependenciesVerification = { Test-NativeCommand $venvPython @("-c", "import hermes_cli.main") }
+$dependenciesVerification = { Test-NativeCommand $venvPython @("-c", $importLocationProbe, $destSrc) }
 if (Test-VerifiedSetupStep "hermes-dependencies" $dependenciesFingerprint $dependenciesVerification) {
     Write-Skip "Hermes Python dependencies"
 }
@@ -1114,6 +1122,7 @@ finally {
     }
 }
 [System.IO.File]::WriteAllText($readyFlag, ($ComponentLockHash + [Environment]::NewLine), $utf8WithoutBom)
+[System.IO.File]::WriteAllText($LocationMarker, $Root, $utf8WithoutBom)
 $SetupSucceeded = $true
 
 # Cleanup temp

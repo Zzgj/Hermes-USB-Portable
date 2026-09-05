@@ -33,6 +33,9 @@ jobs:
             ".\tests\portable-update-state.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
             ".\tests\reset-windows.Tests.ps1",
+            ".\tests\update-case-collision.Tests.ps1",
+            ".\tests\portable-location.Tests.ps1",
+            ".\tests\p0-package.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
@@ -63,6 +66,9 @@ jobs:
             ".\tests\portable-update-state.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
             ".\tests\reset-windows.Tests.ps1",
+            ".\tests\update-case-collision.Tests.ps1",
+            ".\tests\portable-location.Tests.ps1",
+            ".\tests\p0-package.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
@@ -71,3 +77,17 @@ jobs:
               throw "Test entrypoint failed with exit code $LASTEXITCODE`: $testScript"
             }
           }
+
+  p0-package:
+    name: P0 candidate package
+    needs: [windows-powershell, windows-pwsh]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Build source-only candidate
+        run: python3 scripts/build-p0-package.py --output /tmp/p0-package
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Hermes-Portable-P0-RC1
+          path: /tmp/p0-package/*
+          if-no-files-found: error

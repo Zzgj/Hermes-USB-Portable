@@ -14,6 +14,7 @@ if ([string]::IsNullOrWhiteSpace($scriptPath)) {
 $scriptDirectory = Split-Path -Parent $scriptPath
 . (Join-Path $scriptDirectory "portable-update-state.ps1")
 . (Join-Path $scriptDirectory "runtime-setup-state.ps1")
+. (Join-Path $scriptDirectory "update-case-collision.ps1")
 
 function Get-SingleNativeOutput {
     [CmdletBinding()]
@@ -93,7 +94,7 @@ function Test-HermesImport {
     }
 }
 
-$rootPath = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+$rootPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root).TrimEnd('\', '/')
 $runtimeDirectory = Join-Path $rootPath ".cache\runtimes\windows-x64"
 $basePython = Join-Path $runtimeDirectory "python\python.exe"
 $venvPython = Join-Path $runtimeDirectory "venv\Scripts\python.exe"
@@ -137,6 +138,7 @@ $receiptWritten = $false
 $receiptFinalized = $false
 $updateChannel = $null
 $officialOriginVerified = $false
+$collisionTransaction = $null
 
 # Keep Git's ownership exception process-scoped and limited to the managed checkout.
 $env:GIT_CONFIG_COUNT = "1"
@@ -246,6 +248,7 @@ try {
 
     Write-Host "[portable-update] Delegating to the official Hermes updater."
     Write-Host "[portable-update] No safety-bypass arguments are being forwarded."
+    $collisionTransaction = Protect-HermesUpdateCollision -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory -TargetRef $updateChannel -BackupDirectory $diagnosticsDirectory
     Push-Location $sourceDirectory
     try {
         & $venvPython -c "from hermes_cli.main import main; main()" update
@@ -290,6 +293,9 @@ catch {
 
 $checkoutNormalizationHealthy = $true
 try {
+    if ($null -ne $collisionTransaction -and $postCommit -eq $preCommit) {
+        Restore-HermesCollisionFiles $collisionTransaction
+    }
     Set-HermesCaseCollisionWorkaround -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory | Out-Null
 }
 catch {
