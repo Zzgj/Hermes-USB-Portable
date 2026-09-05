@@ -556,10 +556,20 @@ if (Test-Path $readyFlag) {
     )
     if ($readyChecksPassed) {
         $readyHermesCommit = (& $readyGit -C $readySource rev-parse HEAD 2>$null | Out-String).Trim()
+        $readySourceState = [ordered]@{
+            schema_version = 1
+            version = [string]$readyManifest.hermes_version
+            version_role = "installed"
+            ref = $HermesComponent.source.ref
+            commit = $readyHermesCommit
+            update_policy = $HermesComponent.update_policy
+            component_lock_sha256 = $ComponentLockHash
+        }
         $readySourceStatePresent = Move-LegacyHermesSourceState `
             -SourceDirectory $readySource `
             -RuntimeDirectory $RuntimeDir `
-            -ExpectedComponentLockHash $ComponentLockHash
+            -ExpectedComponentLockHash $ComponentLockHash `
+            -FallbackSourceState $readySourceState
         if ($readySourceStatePresent) {
             $readySourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $RuntimeDir
             $readySourceStatePresent = Test-HermesSourceStateFile `
@@ -568,15 +578,6 @@ if (Test-Path $readyFlag) {
                 -ExpectedCommit $readyHermesCommit
         }
         if (-not $readySourceStatePresent) {
-            $readySourceState = [ordered]@{
-                schema_version = 1
-                version = [string]$readyManifest.hermes_version
-                version_role = "installed"
-                ref = $HermesComponent.source.ref
-                commit = $readyHermesCommit
-                update_policy = $HermesComponent.update_policy
-                component_lock_sha256 = $ComponentLockHash
-            }
             Write-HermesSourceState -RuntimeDirectory $RuntimeDir -SourceState $readySourceState | Out-Null
         }
         Set-HermesCaseCollisionWorkaround -GitExecutable $readyGit -SourceDirectory $readySource | Out-Null

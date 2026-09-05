@@ -113,6 +113,12 @@ try {
     Assert-True (-not (Test-Path -LiteralPath $legacySourceStatePath)) "legacy source state should leave the upstream worktree"
     Assert-True (@(Get-ChildItem -LiteralPath $runtimeDirectory -Filter ".hermes-source.tmp-*" -Force).Count -eq 0) "atomic source-state writes should not leave temporary files"
 
+    Remove-Item -LiteralPath $sourceStatePath -Force
+    [System.IO.File]::WriteAllText($legacySourceStatePath, '{"schema_version":1}', $utf8WithoutBom)
+    Assert-True (Move-LegacyHermesSourceState -SourceDirectory $sourceDirectory -RuntimeDirectory $runtimeDirectory -ExpectedComponentLockHash $componentLockHash -FallbackSourceState $sourceState) "verified Runtime state should replace a stale legacy source state"
+    Assert-True (Test-HermesSourceStateFile -Path $sourceStatePath -ExpectedComponentLockHash $componentLockHash) "replacement source state should validate"
+    Assert-True (-not (Test-Path -LiteralPath $legacySourceStatePath)) "stale legacy source state should be removed after verified replacement"
+
     $gitCommand = Get-Command git -ErrorAction SilentlyContinue
     if ($null -ne $gitCommand) {
         $collisionRepository = Join-Path $testRoot "case-collision-repository"

@@ -181,10 +181,20 @@ try {
     $officialOriginVerified = $true
     $updateChannel = "origin/{0}" -f $defaultChannel
 
+    $preSourceState = [ordered]@{
+        schema_version = 1
+        version = $preVersion
+        version_role = "installed"
+        ref = $defaultChannel
+        commit = $preCommit
+        update_policy = $hermesComponent[0].update_policy
+        component_lock_sha256 = $componentLockHash.ToLowerInvariant()
+    }
     $sourceStatePresent = Move-LegacyHermesSourceState `
         -SourceDirectory $sourceDirectory `
         -RuntimeDirectory $runtimeDirectory `
-        -ExpectedComponentLockHash $componentLockHash
+        -ExpectedComponentLockHash $componentLockHash `
+        -FallbackSourceState $preSourceState
     if ($sourceStatePresent) {
         $sourceStatePath = Get-HermesSourceStatePath -RuntimeDirectory $runtimeDirectory
         $sourceStatePresent = Test-HermesSourceStateFile `
@@ -193,15 +203,6 @@ try {
             -ExpectedCommit $preCommit
     }
     if (-not $sourceStatePresent) {
-        $preSourceState = [ordered]@{
-            schema_version = 1
-            version = $preVersion
-            version_role = "installed"
-            ref = $defaultChannel
-            commit = $preCommit
-            update_policy = $hermesComponent[0].update_policy
-            component_lock_sha256 = $componentLockHash.ToLowerInvariant()
-        }
         Write-HermesSourceState -RuntimeDirectory $runtimeDirectory -SourceState $preSourceState | Out-Null
     }
     Set-HermesCaseCollisionWorkaround -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory | Out-Null
