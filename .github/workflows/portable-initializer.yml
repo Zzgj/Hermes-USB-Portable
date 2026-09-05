@@ -32,6 +32,7 @@ jobs:
             ".\tests\runtime-setup-state.Tests.ps1",
             ".\tests\portable-update-state.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
+            ".\tests\reset-windows.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
@@ -61,6 +62,7 @@ jobs:
             ".\tests\runtime-setup-state.Tests.ps1",
             ".\tests\portable-update-state.Tests.ps1",
             ".\tests\portable-launcher.Tests.ps1",
+            ".\tests\reset-windows.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {

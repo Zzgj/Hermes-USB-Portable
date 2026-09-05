@@ -17,6 +17,7 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 .\tests\runtime-setup-state.Tests.ps1
 .\tests\portable-update-state.Tests.ps1
 .\tests\portable-launcher.Tests.ps1
+.\tests\reset-windows.Tests.ps1
 .\tests\log-layout.Tests.ps1
 ```
 
@@ -93,8 +94,8 @@ Located in `scripts/` folder.
 ### Windows
 ```powershell
 cd scripts
-.\reset-windows.ps1 -Mode soft     # Keep data (API keys, config)
-.\reset-windows.ps1 -Mode full     # Delete everything
+.\reset-windows.ps1 -Mode soft     # Keep data, knowledge, and logs
+.\reset-windows.ps1 -Mode full     # Also delete data; preserve knowledge and logs
 ```
 
 ### macOS / Linux

@@ -479,7 +479,7 @@ repository/
 ### P0：基线与快速改进
 
 - [x] 先实现目录模式的最小初始化器和标准目录结构。
-- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和既有健康 Runtime 的无重装回执迁移已在 Win10/exFAT 实机通过；损坏回执、中断续跑和 Soft Reset 尚待验收）。
+- [ ] 完成初始化、修复、重建 Runtime 和数据保留测试（初始化和既有健康 Runtime 的无重装回执迁移已在 Win10/exFAT 实机通过；E 盘脱敏沙箱的损坏回执、损坏缓存、Playwright 日志及中断续跑也已通过，只剩修复后的 Soft Reset 数据保留）。
 - [x] 建立可重复测试的 `feat/portable-initializer` 分支。
 - [ ] 完成 Runtime 归档完整性和 Hermes 可更新基线（Windows x64 归档哈希、Hermes bootstrap commit、完整 Win10/exFAT 首次安装和幂等启动已验证；Hermes 更新/回退实测、Python 传递依赖锁和许可证/SBOM 尚待完成）。
 - [ ] 移植 Desktop 菜单项。

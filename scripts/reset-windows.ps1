@@ -4,8 +4,8 @@
 # Deletes downloaded runtimes and source code to trigger fresh first-run setup.
 #
 # Usage:
-#   .\scripts\reset-windows.ps1 -Mode soft    # Keep data/ folder (API keys, config)
-#   .\scripts\reset-windows.ps1 -Mode full    # Delete everything including data/
+#   .\scripts\reset-windows.ps1 -Mode soft    # Keep data/, knowledge/, and logs/
+#   .\scripts\reset-windows.ps1 -Mode full    # Also delete data/; preserve knowledge/ and logs/
 # ============================================================================
 
 param(
@@ -15,6 +15,58 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path $PSScriptRoot -Parent
+$Root = [System.IO.Path]::GetFullPath($Root).TrimEnd("\", "/")
+
+if (-not (Test-Path -LiteralPath (Join-Path $Root "launch.bat") -PathType Leaf)) {
+    throw "Refusing to reset a directory that is not a Hermes Portable root: $Root"
+}
+
+function Test-CommandLineBelongsToPortableRoot {
+    param(
+        [string]$CommandLine,
+        [string]$PortableRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) {
+        return $false
+    }
+
+    $normalizedCommandLine = $CommandLine.Replace("/", "\")
+    $normalizedRoot = [System.IO.Path]::GetFullPath($PortableRoot).TrimEnd("\", "/").Replace("/", "\")
+    $rootPrefix = $normalizedRoot + "\"
+    return $normalizedCommandLine.IndexOf($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+
+function Stop-PortableGateway {
+    param(
+        [string]$PortableRoot
+    )
+
+    $lockFile = Join-Path $PortableRoot "data\auth.lock"
+    if (Test-Path -LiteralPath $lockFile) {
+        Write-Host "[INFO]  Stopping gateway (removing portable lock) ..." -ForegroundColor Yellow
+        Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+    }
+
+    try {
+        $managedGatewayProcesses = @(
+            Get-CimInstance -ClassName Win32_Process -ErrorAction Stop |
+                Where-Object {
+                    $_.CommandLine -match '(?i)hermes.*gateway' -and
+                    (Test-CommandLineBelongsToPortableRoot -CommandLine $_.CommandLine -PortableRoot $PortableRoot)
+                }
+        )
+    }
+    catch {
+        Write-Host "[WARN]  Unable to inspect gateway process command lines; continuing without terminating processes." -ForegroundColor Yellow
+        $managedGatewayProcesses = @()
+    }
+
+    foreach ($gatewayProcess in $managedGatewayProcesses) {
+        Write-Host "[INFO]  Stopping gateway process PID $($gatewayProcess.ProcessId) for this portable root ..." -ForegroundColor Yellow
+        Stop-Process -Id $gatewayProcess.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
 
 # If no mode provided, ask interactively
 if (-not $Mode) {
@@ -24,7 +76,7 @@ if (-not $Mode) {
     Write-Host ""
     Write-Host "Choose reset mode:" -ForegroundColor Yellow
     Write-Host "  [1] Soft reset  - Delete runtimes + source, keep data/ (API keys, config, history)"
-    Write-Host "  [2] Full reset  - Delete everything including data/ (completely fresh start)"
+    Write-Host "  [2] Full reset  - Also delete data/; preserve knowledge/ and logs/"
     Write-Host ""
     $choice = Read-Host "Enter 1 or 2"
     if ($choice -eq "2") {
@@ -37,24 +89,6 @@ if (-not $Mode) {
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "   Hermes Portable - Reset ($Mode)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
-
-# Stop any running gateway first
-$lockFile = Join-Path $Root "data\auth.lock"
-if (Test-Path $lockFile) {
-    Write-Host "[INFO]  Stopping gateway (removing lock) ..." -ForegroundColor Yellow
-    Remove-Item $lockFile -Force -ErrorAction SilentlyContinue
-}
-
-# Also try to kill any hermes gateway processes
-Get-Process | Where-Object { $_.ProcessName -like "*python*" -or $_.ProcessName -like "*hermes*" } | ForEach-Object {
-    try {
-        $cmd = (Get-WmiObject Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
-        if ($cmd -and $cmd -like "*hermes*gateway*") {
-            Write-Host "[INFO]  Killing gateway process PID $($_.Id) ..." -ForegroundColor Yellow
-            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-        }
-    } catch {}
-}
 
 # --- Soft reset: delete runtimes + source, keep data ---
 $foldersToDelete = @()
@@ -69,7 +103,7 @@ if (Test-Path $src) {
     $foldersToDelete += $src
 }
 
-# --- Full reset: also delete data ---
+# --- Full reset: also delete Hermes data; preserve knowledge and diagnostics. ---
 if ($Mode -eq "full") {
     $data = Join-Path $Root "data"
     if (Test-Path $data) {
@@ -94,10 +128,12 @@ foreach ($f in $foldersToDelete) {
 
 if ($Mode -eq "soft") {
     Write-Host ""
-    Write-Host "Your data folder is PRESERVED:" -ForegroundColor Green
+    Write-Host "Your portable user content is PRESERVED:" -ForegroundColor Green
     Write-Host "  - $Root\data\.env        (API keys)"
     Write-Host "  - $Root\data\config.yaml  (settings)"
     Write-Host "  - $Root\data\sessions\    (chat history)"
+    Write-Host "  - $Root\knowledge\         (knowledge base)"
+    Write-Host "  - $Root\logs\              (Workbench diagnostics)"
 }
 
 Write-Host ""
@@ -106,6 +142,10 @@ if ($confirm -ne "yes") {
     Write-Host "Cancelled. Nothing was deleted." -ForegroundColor Yellow
     exit 0
 }
+
+# Stop only the Gateway owned by this exact portable root, and only after the
+# user has confirmed the destructive reset.
+Stop-PortableGateway -PortableRoot $Root
 
 # Perform deletion
 foreach ($f in $foldersToDelete) {
@@ -127,6 +167,7 @@ if ($Mode -eq "soft") {
     Write-Host "Your API keys and config are still saved in data\"
 } else {
     Write-Host ""
-    Write-Host "Next step: run .\launch.bat for a completely fresh start"
+    Write-Host "Next step: run .\launch.bat to rebuild and reconfigure Hermes"
     Write-Host "You'll need to re-run the setup wizard and re-enter API keys"
+    Write-Host "Your knowledge\ and logs\ folders were preserved"
 }

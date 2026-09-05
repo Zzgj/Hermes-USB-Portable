@@ -29,6 +29,7 @@ $tests = @(
     ".\tests\runtime-setup-state.Tests.ps1",
     ".\tests\portable-update-state.Tests.ps1",
     ".\tests\portable-launcher.Tests.ps1",
+    ".\tests\reset-windows.Tests.ps1",
     ".\tests\log-layout.Tests.ps1"
 )
 
@@ -177,5 +178,7 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 损坏 ripgrep 回执的单步重建已通过：只有 ripgrep 步骤重建，其余回执未变化，`ready.flag`、可执行文件哈希、Git clean 状态以及 `data/`/`knowledge/` 哨兵全部保持正确；Playwright 缺包也生成了独立非空日志且未阻塞核心 Setup。证据摘要为沙箱内 `logs/diagnostics/p0-ripgrep-recovery-20260905-123146/result.json`。下一项只损坏约 1.73 MB 的 `rg.zip`，验证缓存校验拒绝和重新下载。
 
 损坏 `rg.zip` 的恢复也已通过：Setup 拒绝伪造缓存，从组件锁 URL 重新下载并验证归档，恢复 ripgrep、回执和 `ready.flag`，其他回执、哨兵与 Git clean 状态均未变化。证据摘要为 `logs/diagnostics/p0-rg-cache-recovery-20260905-124011/result.json`。下一项使用临时不可达 URL 制造可重复的下载中断，先验证失败关闭，再恢复原锁和原始已校验缓存续跑。
+
+受控中断续跑已经通过：第一次运行对不可达 URL 非零退出且未生成 `ready.flag`，既有回执未改变；恢复原锁和已校验缓存后，第二次运行成功恢复全部健康状态。证据补充为 `logs/diagnostics/p0-interruption-retry-20260905-124604/result-addendum.json`。进入 Soft Reset 前必须先使用包含确认后变更、当前 Portable 根目录 Gateway 限定及相应行为测试的新版 `reset-windows.ps1`；旧版不得用于该验收。
 
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
