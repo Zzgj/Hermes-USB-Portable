@@ -172,4 +172,6 @@ Get-Item ".\data\logs\update_receipts\latest.json" -ErrorAction SilentlyContinue
 
 如果沙箱是从旧版 Runtime 复制的，先把当前分支的 `scripts/`、`tests/`、`manifests/` 和启动文件覆盖到沙箱，然后在沙箱根目录执行第 3 节的 Setup 命令和 Git 清洁度检查。只有 Git 状态为 clean 才进入故障注入。
 
+当前 E 盘脱敏沙箱 `E:\HermesPortable-P0-10-Sandbox-20260904-231542` 已在 2026-09-05 完成上述门禁：源实例和沙箱均为 clean，Runtime 权威源码状态已迁移，旧工作树状态已移除，两个已知大小写冲突路径已隐藏；两次 Setup 均确认 Runtime 已完整且无需安装。下一项从损坏 ripgrep 回执的单步重建开始。
+
 不要在日常使用的 U 盘副本上运行 `reset-windows.ps1 -Mode full`，P0 阶段也不要测试真实打印机安装。
