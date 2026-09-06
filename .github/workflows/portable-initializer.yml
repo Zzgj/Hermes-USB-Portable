@@ -102,6 +102,6 @@ jobs:
         run: python3 scripts/build-p0-package.py --output /tmp/p0-package
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Hermes-Portable-P0-RC1
+          name: Hermes-Portable-P0-RC2
           path: /tmp/p0-package/*
           if-no-files-found: error

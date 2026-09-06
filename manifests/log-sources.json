@@ -17,6 +17,15 @@
   ],
   "sources": [
     {
+      "id": "session-cwd-private-backups",
+      "category": "diagnostics",
+      "owner": "portable-workbench",
+      "format": "sqlite",
+      "path": "data/state.db.pre-cwd-repair-*",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
       "id": "hermes-recovery-checkpoints",
       "category": "runtime-state",
       "owner": "portable-workbench",

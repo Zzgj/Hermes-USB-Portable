@@ -13,7 +13,7 @@ def build(root, output):
     files = sorted(p for p in tracked if p and (p in allowed_roots or p.split('/')[0] in {'scripts', 'tests', 'manifests', 'docs'}))
     files = [p for p in files if p != 'scripts/test-p0-soft-reset-sandbox.ps1']
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root).decode().strip()
-    manifest = {'schema_version': 1, 'candidate': 'p0-rc1', 'commit': revision, 'files': []}
+    manifest = {'schema_version': 1, 'candidate': 'p0-rc2', 'commit': revision, 'files': []}
     payloads = {}
     for name in files:
         path = root / name
@@ -26,10 +26,10 @@ def build(root, output):
         manifest['files'].append({'path': name, 'sha256': hashlib.sha256(payload).hexdigest(), 'bytes': len(payload)})
     payloads['package-manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2) + '\n').encode()
     output.mkdir(parents=True, exist_ok=True)
-    archive = output / 'Hermes-Portable-P0-RC1.zip'
+    archive = output / 'Hermes-Portable-P0-RC2.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         for name, payload in sorted(payloads.items()):
-            info = zipfile.ZipInfo('Hermes-Portable-P0-RC1/' + name, (2026, 9, 5, 0, 0, 0))
+            info = zipfile.ZipInfo('Hermes-Portable-P0-RC2/' + name, (2026, 9, 7, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             z.writestr(info, payload)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()

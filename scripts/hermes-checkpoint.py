@@ -63,6 +63,7 @@ def inventory(root):
 def create(root):
     root = Path(root).absolute()
     no_link_ancestors(root)
+    root = root.resolve()
     if not (root / "launch.bat").is_file():
         raise ValueError("Not a portable instance")
     entries = inventory(root)
@@ -100,7 +101,9 @@ def create(root):
 
 def verify(root, checkpoint):
     root, checkpoint = Path(root).absolute(), Path(checkpoint).absolute()
+    no_link_ancestors(root)
     no_link_ancestors(checkpoint)
+    root, checkpoint = root.resolve(), checkpoint.resolve()
     if checkpoint.parent != root / "updates/hermes-checkpoints" or not re.fullmatch(r"[0-9a-f]{32}", checkpoint.name):
         raise ValueError("Checkpoint does not belong to this instance")
     manifest = json.loads((checkpoint / "manifest.json").read_text(encoding="utf-8"))
@@ -147,6 +150,9 @@ def verify(root, checkpoint):
 def prepare_restore(root, checkpoint, transaction):
     """Build verified replacement trees without changing the live directories."""
     root, transaction = Path(root).absolute(), Path(transaction).absolute()
+    no_link_ancestors(root)
+    no_link_ancestors(transaction)
+    root, transaction = root.resolve(), transaction.resolve()
     manifest = verify(root, checkpoint)
     required = sum(entry.get("bytes", 0) for entry in manifest["entries"])
     if shutil.disk_usage(root).free < required + 128 * 1024 * 1024:

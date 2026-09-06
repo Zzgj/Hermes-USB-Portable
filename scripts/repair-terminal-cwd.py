@@ -1,6 +1,7 @@
 """Explicit, narrow repair for a local terminal cwd after a drive-letter change.
 
-Never rewrite sessions, .env, remote paths, or arbitrary strings in YAML.
+Never rewrite conversation messages, .env, remote paths, or arbitrary YAML strings.
+Session cwd metadata is repaired only through a separate confirmed operation.
 """
 import argparse
 import copy
@@ -9,6 +10,8 @@ import os
 from pathlib import Path, PureWindowsPath
 import re
 import shutil
+import sqlite3
+from contextlib import closing
 import tempfile
 import uuid
 
@@ -97,13 +100,76 @@ def repair(root, apply=False):
     print("Start a new chat to verify. Stored session directories were not modified.")
 
 
+def repair_sessions(root, apply=False):
+    """Change only sessions.cwd, under a DB write lock and with a SQLite backup."""
+    from ruamel.yaml import YAML
+
+    root = Path(root).resolve()
+    database = root / "data/state.db"
+    for path in (root / "data", database):
+        if path.exists() and (path.is_symlink() or getattr(path.lstat(), "st_file_attributes", 0) & 0x400):
+            raise ValueError("Linked session storage requires review")
+    if not database.exists():
+        print("No session database to repair.")
+        return
+    config_path = root / "data/config.yaml"
+    config = YAML(typ="safe").load(config_path.read_text(encoding="utf-8-sig")) if config_path.exists() else {}
+    terminal = (config or {}).get("terminal", {}) or {}
+    if terminal.get("backend", terminal.get("env_type", "local")) != "local":
+        print("Remote backend preserved; session metadata unchanged.")
+        return
+    with closing(sqlite3.connect(database.as_uri() + "?mode=rw", uri=True, timeout=3)) as connection:
+        # No migrations, triggers, session body reads or user-provided SQL.
+        if connection.execute("SELECT 1 FROM sqlite_master WHERE type='trigger' AND tbl_name='sessions'").fetchone():
+            raise ValueError("Session triggers require manual review")
+        rows = connection.execute("SELECT id, cwd FROM sessions WHERE cwd IS NOT NULL").fetchall()
+        planned = []
+        for session_id, value in rows:
+            candidate = mapped_cwd(value, str(root))
+            if candidate and Path(candidate).is_dir():
+                planned.append((session_id, value, candidate))
+        print(f"Session cwd repair candidates: {len(planned)}. Chat messages are not modified.")
+        if not planned or not apply:
+            return
+        if input("Back up the private database and repair only session cwd metadata? Type yes: ").strip() != "yes":
+            print("Cancelled; session metadata unchanged.")
+            return
+        backup = database.with_name("state.db.pre-cwd-repair-" + uuid.uuid4().hex)
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for session_id, old, _ in planned:
+                current = connection.execute("SELECT cwd FROM sessions WHERE id=?", (session_id,)).fetchall()
+                if current != [(old,)]:
+                    raise ValueError("Session changed during review")
+            # A separate read connection sees the stable pre-write snapshot while
+            # BEGIN IMMEDIATE excludes competing writers. Handles WAL correctly.
+            with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=3)) as source:
+                with closing(sqlite3.connect(backup)) as saved:
+                    source.backup(saved)
+                    if saved.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                        raise ValueError("SQLite backup verification failed")
+            for session_id, old, new in planned:
+                cursor = connection.execute("UPDATE sessions SET cwd=? WHERE id=? AND cwd=?", (new, session_id, old))
+                if cursor.rowcount != 1:
+                    raise ValueError("Unexpected session update count")
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+    print("SESSION_CWD_REPAIRED. Private SQLite backup retained alongside state.db.")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--sessions", action="store_true")
     args = parser.parse_args()
     try:
-        repair(args.root, args.apply)
+        if args.sessions:
+            repair_sessions(args.root, args.apply)
+        else:
+            repair(args.root, args.apply)
     except Exception:
         # YAML exception text can include secrets from the configuration.
         print("Cwd repair could not complete. Preserve configuration and any adjacent backup; manual review required.")

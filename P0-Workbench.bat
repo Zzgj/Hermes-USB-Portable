@@ -2,7 +2,7 @@
 setlocal
 :menu
 echo.
-echo Hermes Portable P0 RC1 - Acceptance Workbench
+echo Hermes Portable P0 RC2 - Acceptance Workbench
 echo [1] Original launcher
 echo [2] CLI chat
 echo [3] TUI chat
@@ -48,5 +48,8 @@ pause
 goto menu
 :cwdrepair
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\repair-terminal-cwd.ps1" -Root "%~dp0." -Apply
+if errorlevel 1 goto cwdrepair_done
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\repair-terminal-cwd.ps1" -Root "%~dp0." -Apply -Sessions
+:cwdrepair_done
 pause
 goto menu

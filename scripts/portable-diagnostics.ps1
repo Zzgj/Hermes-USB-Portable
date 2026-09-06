@@ -104,7 +104,7 @@ try {
     $contextText = & (Join-Path $runtime 'venv/Scripts/python.exe') -I (Join-Path $PSScriptRoot 'inspect-portable-context.py') $Root 2>$null
     if ($LASTEXITCODE -eq 0) { $context = ($contextText -join "`n") | ConvertFrom-Json }
 } catch {}
-$report = [ordered]@{ schema_version = 1; candidate = 'p0-rc1'; utc = [DateTime]::UtcNow.ToString('o'); core_passed = $passed; hermes_version = $version; hermes_commit = $commit; checks = $checks; capabilities = $capabilities; host_findings = $hostFindings }
+$report = [ordered]@{ schema_version = 1; candidate = 'p0-rc2'; utc = [DateTime]::UtcNow.ToString('o'); core_passed = $passed; hermes_version = $version; hermes_commit = $commit; checks = $checks; capabilities = $capabilities; host_findings = $hostFindings }
 $report.interface_prerequisites = $interfaces
 $report.runtime_context = $context
 $outputDir = Join-Path $Root 'logs/diagnostics'

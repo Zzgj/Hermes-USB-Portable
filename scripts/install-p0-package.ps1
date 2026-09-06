@@ -8,7 +8,7 @@ if ($Target -eq $package.TrimEnd('\', '/')) { throw 'Choose a different installa
 if ($Target -eq [IO.Path]::GetPathRoot($Target).TrimEnd('\', '/')) { throw 'A filesystem root is not an installation target.' }
 if (-not (Test-Path -LiteralPath (Join-Path $Target 'launch.bat'))) { throw 'Target must be an existing Hermes Portable installation.' }
 $manifest = Get-Content -LiteralPath (Join-Path $package 'package-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.schema_version -ne 1 -or $manifest.candidate -ne 'p0-rc1') { throw 'Unsupported package manifest.' }
+if ($manifest.schema_version -ne 1 -or $manifest.candidate -notin @('p0-rc1', 'p0-rc2')) { throw 'Unsupported package manifest.' }
 $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 foreach ($file in $manifest.files) {
     $relative = [string]$file.path
@@ -32,7 +32,7 @@ if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
     })
     if ($active.Count -gt 0) { throw 'Target executables are running. Close the instance before installing.' }
 }
-Write-Host "Install P0 RC1 shell into: $Target"
+Write-Host "Install $($manifest.candidate) shell into: $Target"
 Write-Host 'Close target launchers and Hermes processes before continuing. Runtime, data and knowledge are not copied.'
 if (-not $ConfirmInstall -and (Read-Host 'Type yes to install') -ne 'yes') { exit 0 }
 $backup = Join-Path $Target ('logs/diagnostics/p0-package-backup-' + [Guid]::NewGuid().ToString('N'))

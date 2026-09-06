@@ -57,10 +57,15 @@ an explicit `yes`. It preserves comments and other YAML values and retains a
 byte-verified private backup adjacent to config.yaml. Do not share this backup:
 configuration can contain credentials. Cancelling leaves configuration intact.
 
-Renamed folders, remote backends, arbitrary projects, .env entries and stored
-session directories are not rewritten. Start a new chat after a confirmed repair.
-If only a resumed session still fails, preserve it for diagnosis; don't run
-`uv sync` or modify upstream tests as a substitute for relocation repair.
+Option 9 separately offers session cwd metadata repair with another explicit
+confirmation. It applies the same narrow drive mapping, backs up SQLite before
+mutation, and updates only matching cwd cells in one transaction. Conversation
+messages remain unchanged. The backup contains private sessions; do not share it.
+Close instance processes before applying either repair.
+
+Renamed folders, remote backends, arbitrary projects and .env entries are not
+rewritten. Do not run `uv sync` or modify upstream tests as a substitute for
+relocation repair. The combined RC2 checklist is in P0-RC2-ACCEPTANCE.md.
 
 ## Verified shell rollback
 

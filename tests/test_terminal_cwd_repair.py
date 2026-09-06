@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import sqlite3
+from contextlib import closing
 import unittest
 from unittest.mock import patch
 
@@ -28,6 +30,30 @@ except ImportError:
 
 @unittest.skipUnless(HAS_YAML, "Round-trip integration requires ruamel.yaml")
 class WriteTests(unittest.TestCase):
+    def test_session_metadata_repair_preserves_messages_and_wal_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir()
+            database = root / "data/state.db"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("CREATE TABLE sessions(id TEXT PRIMARY KEY, cwd TEXT)")
+                connection.execute("CREATE TABLE messages(id INTEGER, body TEXT)")
+                connection.execute("INSERT INTO sessions VALUES('session', 'F:/Hermes Test')")
+                connection.execute("INSERT INTO messages VALUES(1, 'PRIVATE_CHAT')")
+                connection.commit()
+                with patch.object(repair, "mapped_cwd", return_value=str(root)), patch("builtins.input", return_value="no"):
+                    repair.repair_sessions(root, True)
+                self.assertEqual(connection.execute("SELECT cwd FROM sessions").fetchone()[0], 'F:/Hermes Test')
+                with patch.object(repair, "mapped_cwd", return_value=str(root)), patch("builtins.input", return_value="yes"):
+                    repair.repair_sessions(root, True)
+                self.assertEqual(connection.execute("SELECT cwd FROM sessions").fetchone()[0], str(root))
+                self.assertEqual(connection.execute("SELECT body FROM messages").fetchone()[0], 'PRIVATE_CHAT')
+            backup = next((root / "data").glob("state.db.pre-cwd-repair-*"))
+            with closing(sqlite3.connect(backup)) as connection:
+                self.assertEqual(connection.execute("SELECT cwd FROM sessions").fetchone()[0], 'F:/Hermes Test')
+                self.assertEqual(connection.execute("SELECT body FROM messages").fetchone()[0], 'PRIVATE_CHAT')
+
     def test_confirmation_backup_and_unrelated_values_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
