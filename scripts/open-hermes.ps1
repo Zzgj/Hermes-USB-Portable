@@ -17,12 +17,17 @@ $available = switch ($Mode) {
     Desktop { $text.Contains('desktop') -and (Test-Path -LiteralPath (Join-Path $source 'desktop/node_modules')) }
 }
 if ($CheckOnly) { [pscustomobject]@{ Mode = $Mode; AssetsDetected = [bool]$available }; exit 0 }
-if (-not $available) { throw "$Mode entry/assets are unavailable in this Hermes installation. No automatic tool install was attempted." }
-$arguments = switch ($Mode) {
+if (-not $available) {
+    Write-Host "$Mode entry/assets are unavailable in this Hermes installation. No automatic tool install was attempted." -ForegroundColor Yellow
+    exit 2
+}
+# Scalar string splatting expands '--cli' into individual characters. Preserve
+# an array even when the selected entrypoint requires exactly one argument.
+$arguments = @(switch ($Mode) {
     CLI { if ($text.Contains('--cli')) { '--cli' } else { 'chat' } }
     TUI { '--tui' }
     Web { 'dashboard'; '--host'; '127.0.0.1' }
     Desktop { 'desktop' }
-}
+})
 & (Join-Path $Root 'launch.bat') @arguments
 exit $LASTEXITCODE

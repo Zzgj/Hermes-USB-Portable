@@ -36,6 +36,7 @@ jobs:
             ".\tests\update-case-collision.Tests.ps1",
             ".\tests\portable-location.Tests.ps1",
             ".\tests\p0-package.Tests.ps1",
+            ".\tests\open-hermes.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
@@ -69,6 +70,7 @@ jobs:
             ".\tests\update-case-collision.Tests.ps1",
             ".\tests\portable-location.Tests.ps1",
             ".\tests\p0-package.Tests.ps1",
+            ".\tests\open-hermes.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
