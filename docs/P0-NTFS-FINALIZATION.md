@@ -82,3 +82,16 @@ Context diagnostics now report legacy cwd variables in .env and count distinct
 session cwd values eligible for drive mapping. The SQLite connection is read-only;
 the report includes no IDs, paths or conversation content. These findings help
 identify which layer needs repair; they do not imply that sessions were repaired.
+
+## Kernel recovery implementation in progress
+
+`hermes-checkpoint.py` currently creates and verifies offline copies of the two
+managed trees (Runtime and Hermes source). It checks hashes and inventories
+before publishing a verified checkpoint. Workspace links are stored as metadata,
+never traversed into the backup; links outside the instance are refused. Data,
+knowledge and sessions are not included. Checkpoints may contain sensitive Git
+configuration and must remain private.
+
+This primitive is not yet wired into update apply: native NTFS junction coverage,
+restoration, process exclusion and recovery of an interrupted restore are still
+release gates. Do not instruct users to rely on it as a completed recovery flow.

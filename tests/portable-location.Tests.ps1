@@ -11,6 +11,8 @@ $python = $pythonCommand.Source
 if ($LASTEXITCODE -ne 0) { throw 'Portable context tests failed.' }
 & $python "$PSScriptRoot/test_terminal_cwd_repair.py"
 if ($LASTEXITCODE -ne 0) { throw 'Terminal cwd repair tests failed.' }
+& $python "$PSScriptRoot/test_hermes_checkpoint.py"
+if ($LASTEXITCODE -ne 0) { throw 'Hermes checkpoint tests failed.' }
 . "$PSScriptRoot/../scripts/interface-capabilities.ps1"
 $interfaces = Get-PortableInterfaceCapabilities $PSScriptRoot
 if ($interfaces.InteractiveChatVerified) { throw 'Asset detection must not claim chat verification.' }

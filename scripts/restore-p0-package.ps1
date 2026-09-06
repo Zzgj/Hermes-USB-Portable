@@ -27,7 +27,10 @@ function Assert-NoLink([string]$Path) {
 Assert-NoLink $Backup
 $manifestPath = Join-Path $Backup 'restore-manifest.json'
 Assert-NoLink $manifestPath
-$entries = @(Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+$parsed = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+# Windows PowerShell 5.1 emits a JSON array as a single pipeline object.
+# Enumerate it explicitly before checking individual entries.
+$entries = @($parsed | ForEach-Object { $_ })
 if (-not $entries.Count) { throw 'Empty restore manifest.' }
 $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 foreach ($entry in $entries) {
