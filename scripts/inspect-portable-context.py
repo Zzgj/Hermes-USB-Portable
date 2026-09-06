@@ -1,7 +1,10 @@
 """Read-only, redacted context checks; never import Hermes or edit user state."""
 import json
+from contextlib import closing
+import importlib.util
 import os
 from pathlib import Path, PureWindowsPath
+import sqlite3
 import sys
 
 
@@ -18,6 +21,9 @@ def inspect(root):
         "PortableInterpreterUsed": Path(sys.prefix).resolve() == (
             root / ".cache/runtimes/windows-x64/venv"
         ).resolve(),
+        "SessionCwdScanSucceeded": True,
+        "SessionCwdRepairCandidates": 0,
+        "LegacyTerminalCwdInEnv": False,
     }
     try:
         config_path = root / "data/config.yaml"
@@ -38,6 +44,30 @@ def inspect(root):
                 )
     except Exception:
         result["ConfigReadable"] = False
+    # Report only presence/counts. Never emit session IDs, paths, prompts or keys.
+    try:
+        env_file = root / "data/.env"
+        if env_file.is_file():
+            result["LegacyTerminalCwdInEnv"] = any(
+                line.strip().removeprefix("export ").startswith(("TERMINAL_CWD=", "MESSAGING_CWD="))
+                for line in env_file.read_text(encoding="utf-8-sig").splitlines()
+            )
+    except Exception:
+        result["ConfigReadable"] = False
+    database = root / "data/state.db"
+    if database.exists():
+        try:
+            spec = importlib.util.spec_from_file_location("cwd_mapping", Path(__file__).with_name("repair-terminal-cwd.py"))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            # mode=ro refuses creation or SQL updates; no Hermes migrations run.
+            with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=2)) as connection:
+                connection.execute("PRAGMA query_only=ON")
+                for (cwd,) in connection.execute("SELECT DISTINCT cwd FROM sessions WHERE cwd IS NOT NULL"):
+                    if module.mapped_cwd(cwd, str(root)) is not None:
+                        result["SessionCwdRepairCandidates"] += 1
+        except Exception:
+            result["SessionCwdScanSucceeded"] = False
     return result
 
 

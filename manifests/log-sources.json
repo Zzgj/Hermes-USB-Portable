@@ -17,6 +17,15 @@
   ],
   "sources": [
     {
+      "id": "shell-restore-undo",
+      "category": "diagnostics",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "logs/diagnostics/p0-shell-restore-undo-*",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
       "id": "terminal-cwd-config-backups",
       "category": "diagnostics",
       "owner": "portable-workbench",

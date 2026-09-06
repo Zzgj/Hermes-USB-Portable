@@ -44,6 +44,19 @@ try {
     $diagnostic = $text | ConvertFrom-Json
     Assert (-not $diagnostic.interface_prerequisites.InteractiveChatVerified) 'Core diagnostics must not certify interactive chat'
     Assert ($null -ne $diagnostic.interface_prerequisites.FileSystem) 'Filesystem support must be reported'
+    $restoreScript = "$PSScriptRoot/../scripts/restore-p0-package.ps1"
+    [IO.File]::WriteAllText("$target/launch.bat", 'user edit')
+    $ErrorActionPreference = 'Continue'
+    & $hostExe -NoProfile -File $restoreScript -Target $target -Backup $saved -ConfirmRestore *> $null
+    $ErrorActionPreference = 'Stop'
+    Assert ($LASTEXITCODE -ne 0) 'Restore must refuse user edits'
+    Assert ([IO.File]::ReadAllText("$target/launch.bat") -eq 'user edit') 'Refused restore preserves user edits'
+    [IO.File]::WriteAllText("$target/launch.bat", 'new shell')
+    & $hostExe -NoProfile -File $restoreScript -Target $target -Backup $saved -ConfirmRestore
+    Assert ($LASTEXITCODE -eq 0) 'Verified shell restore succeeds'
+    Assert ([IO.File]::ReadAllText("$target/launch.bat") -eq 'old shell') 'Old shell restored'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $target $unicodePath))) 'New package file removed recoverably'
+    Assert ([IO.File]::ReadAllText("$target/data/.env") -eq 'SECRET_SENTINEL') 'Shell restore preserves secrets'
     Write-Host 'P0 package and diagnostics tests passed.'
 } finally {
     Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue

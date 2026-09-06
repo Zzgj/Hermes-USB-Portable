@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import sqlite3
+from contextlib import closing
 import types
 import unittest
 from unittest.mock import patch
@@ -52,6 +54,24 @@ class ContextTests(unittest.TestCase):
             (root / "src/hermes-agent/.venv").mkdir(parents=True)
             with patch.dict("sys.modules", {"yaml": types.SimpleNamespace()}):
                 self.assertTrue(probe.inspect(root)["SourceDevelopmentVenvPresent"])
+
+    def test_database_read_only_and_env_presence_redacted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir()
+            database = root / "data/state.db"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("CREATE TABLE sessions (id TEXT, cwd TEXT)")
+                connection.execute("INSERT INTO sessions VALUES ('PRIVATE_SESSION', 'F:/example')")
+                connection.commit()
+            (root / "data/.env").write_text("TERMINAL_CWD=PRIVATE_PATH\nTOKEN=PRIVATE_TOKEN")
+            before = database.read_bytes()
+            with patch.dict("sys.modules", {"yaml": types.SimpleNamespace()}):
+                result = probe.inspect(root)
+            self.assertTrue(result["SessionCwdScanSucceeded"])
+            self.assertTrue(result["LegacyTerminalCwdInEnv"])
+            self.assertNotIn("PRIVATE", str(result))
+            self.assertEqual(database.read_bytes(), before)
 
 
 if __name__ == "__main__":
