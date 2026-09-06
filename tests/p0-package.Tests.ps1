@@ -41,6 +41,9 @@ try {
     $text = Get-Content $report.FullName -Raw
     Assert (-not $text.Contains('SECRET_SENTINEL')) 'Report excludes secrets'
     Assert (-not $text.Contains($target)) 'Report excludes absolute root'
+    $diagnostic = $text | ConvertFrom-Json
+    Assert (-not $diagnostic.interface_prerequisites.InteractiveChatVerified) 'Core diagnostics must not certify interactive chat'
+    Assert ($null -ne $diagnostic.interface_prerequisites.FileSystem) 'Filesystem support must be reported'
     Write-Host 'P0 package and diagnostics tests passed.'
 } finally {
     Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue

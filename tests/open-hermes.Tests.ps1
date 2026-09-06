@@ -15,7 +15,7 @@ try {
     $batch = "@echo off`r`n> `"%~dp0args.txt`" echo %*`r`nexit /b 23`r`n"
     [IO.File]::WriteAllText("$fixture/launch.bat", $batch, [Text.Encoding]::ASCII)
     foreach ($case in @(@('CLI','--cli'), @('TUI','--tui'), @('Web','dashboard --host 127.0.0.1'))) {
-        & $hostExe -NoProfile -ExecutionPolicy Bypass -File $opener -Root $fixture -Mode $case[0]
+        & $hostExe -NoProfile -ExecutionPolicy Bypass -File $opener -Root $fixture -Mode $case[0] -ForegroundWeb
         Assert ($LASTEXITCODE -eq 23) 'Launcher exit code must propagate'
         $actual = [IO.File]::ReadAllText("$fixture/args.txt").Trim()
         Assert ($actual -eq $case[1]) "Argument boundary changed: expected $($case[1]), actual $actual"

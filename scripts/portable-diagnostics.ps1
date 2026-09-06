@@ -4,6 +4,7 @@ $ErrorActionPreference = 'Stop'
 $Root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root)
 $runtime = Join-Path $Root '.cache/runtimes/windows-x64'
 $source = Join-Path $Root 'src/hermes-agent'
+. (Join-Path $PSScriptRoot 'interface-capabilities.ps1')
 function Probe([string]$Executable, [string]$Arguments) {
     if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) { return $false }
     $process = New-Object Diagnostics.Process
@@ -97,12 +98,24 @@ $capabilities = [ordered]@{
     DesktopWorkspace = Test-Path -LiteralPath (Join-Path $source 'desktop/package.json')
 }
 $passed = @($checks.Values | Where-Object { -not $_ }).Count -eq 0
+$interfaces = Get-PortableInterfaceCapabilities $Root
+$context = $null
+try {
+    $contextText = & (Join-Path $runtime 'venv/Scripts/python.exe') -I (Join-Path $PSScriptRoot 'inspect-portable-context.py') $Root 2>$null
+    if ($LASTEXITCODE -eq 0) { $context = ($contextText -join "`n") | ConvertFrom-Json }
+} catch {}
 $report = [ordered]@{ schema_version = 1; candidate = 'p0-rc1'; utc = [DateTime]::UtcNow.ToString('o'); core_passed = $passed; hermes_version = $version; hermes_commit = $commit; checks = $checks; capabilities = $capabilities; host_findings = $hostFindings }
+$report.interface_prerequisites = $interfaces
+$report.runtime_context = $context
 $outputDir = Join-Path $Root 'logs/diagnostics'
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 $output = Join-Path $outputDir ('p0-report-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8) + '.json')
 $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $output -Encoding UTF8
 [pscustomobject]$checks | Format-List
 [pscustomobject]$hostFindings | Format-List
+[pscustomobject]$interfaces | Format-List
+if ($null -ne $context) { $context | Format-List }
+Write-Host 'Core checks do not certify TUI/Web chat. InteractiveChatVerified=False means not tested by this report.'
+if ($interfaces.WorkspaceLinksUnsupported) { Write-Warning 'TUI/Web workspace installation requires a link-capable filesystem. Use NTFS for Windows acceptance.' }
 Write-Host "P0 report: $output"
 if (-not $passed) { exit 1 }

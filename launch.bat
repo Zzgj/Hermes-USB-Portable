@@ -76,6 +76,9 @@ REM ---------------------------------------------------------------------------
 REM Environment isolation - keep everything inside the portable folder
 REM ---------------------------------------------------------------------------
 set "VIRTUAL_ENV=%RUNTIME_DIR%\venv"
+set "PORTABLE_PYTHON=%VIRTUAL_ENV%\Scripts\python.exe"
+REM Seed this process only; persisted configuration/session cwd may override it.
+set "TERMINAL_CWD=%SRC_DIR%\hermes-agent"
 set "HERMES_GIT_BASH_PATH=%RUNTIME_DIR%\git\bin\bash.exe"
 set "PATH=%VIRTUAL_ENV%\Scripts;%RUNTIME_DIR%\python;%RUNTIME_DIR%\python\Scripts;%RUNTIME_DIR%\node;%RUNTIME_DIR%\uv;%RUNTIME_DIR%\bin;%RUNTIME_DIR%\git\cmd;%RUNTIME_DIR%\git\bin;%PATH%"
 set "PYTHONNOUSERSITE=1"
@@ -126,7 +129,7 @@ if /I "%~1"=="hermes" (
 REM If explicit arguments were passed, run Hermes directly (skip menu)
 if not "%ARGS%"=="" (
     call :write_portable_event launcher direct-command started
-    python -c "from hermes_cli.main import main; main()" %ARGS%
+    "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" %ARGS%
     set "DIRECT_EXIT=!errorlevel!"
     if not "!DIRECT_EXIT!"=="0" (
         call :write_portable_event launcher direct-command failed
@@ -261,7 +264,7 @@ REM ---------------------------------------------------------------------------
 :menu_chat
 echo.
 call :write_portable_event launcher chat started
-python -c "from hermes_cli.main import main; main()"
+"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()"
 if errorlevel 1 (
     call :write_portable_event launcher chat failed
 ) else (
@@ -272,7 +275,7 @@ goto :show_menu
 :menu_setup
 echo.
 call :write_portable_event launcher hermes-setup started
-python -c "from hermes_cli.main import main; main()" setup
+"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" setup
 if errorlevel 1 (
     call :write_portable_event launcher hermes-setup failed
 ) else (
@@ -283,7 +286,7 @@ goto :detect_status
 :menu_gateway
 if "!GATEWAY_STATUS!"=="Running (PID !GATEWAY_PID!)" (
     call :write_portable_event launcher gateway-stop started
-    python -c "from hermes_cli.main import main; main()" gateway stop
+    "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway stop
     if errorlevel 1 (
         call :write_portable_event launcher gateway-stop failed
     ) else (
@@ -295,7 +298,7 @@ if "!GATEWAY_STATUS!"=="Running (PID !GATEWAY_PID!)" (
     echo.
     echo %CYAN%Starting gateway in background ...%RESET%
     call :write_portable_event launcher gateway-start started
-    start "" python -c "from hermes_cli.main import main; main()" gateway
+    start "" "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway
     call :write_portable_event launcher gateway-start observed
     timeout /t 2 /nobreak >nul
 )
@@ -371,11 +374,11 @@ goto :show_advanced
 
 :adv_config
 echo.
-python -c "from hermes_cli.main import main; main()" config edit
+"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" config edit
 goto :show_advanced
 
 :adv_restart
-python -c "from hermes_cli.main import main; main()" gateway restart
+"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway restart
 echo.
 echo %BRIGHT_GREEN%Gateway restarted.%RESET%
 pause

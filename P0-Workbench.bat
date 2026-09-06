@@ -11,7 +11,9 @@ echo [5] Desktop - requires installed assets
 echo [6] Export P0 diagnostic report
 echo [7] Setup / relocation repair
 echo [8] Exit
-choice /C 12345678 /N /M "Select: "
+echo [9] Review / repair terminal cwd after drive change
+choice /C 123456789 /N /M "Select: "
+if errorlevel 9 goto cwdrepair
 if errorlevel 8 exit /b 0
 if errorlevel 7 goto repair
 if errorlevel 6 goto diagnostic
@@ -42,5 +44,9 @@ pause
 goto menu
 :repair
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\setup-windows.ps1" -Root "%~dp0."
+pause
+goto menu
+:cwdrepair
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\repair-terminal-cwd.ps1" -Root "%~dp0." -Apply
 pause
 goto menu

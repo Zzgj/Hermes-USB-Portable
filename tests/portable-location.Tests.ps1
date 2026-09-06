@@ -7,6 +7,16 @@ foreach ($name in @('baseLocationProbe','importLocationProbe')) {
 $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
 if ($null -eq $pythonCommand) { $pythonCommand = Get-Command python3 -ErrorAction Stop }
 $python = $pythonCommand.Source
+& $python "$PSScriptRoot/test_portable_context.py"
+if ($LASTEXITCODE -ne 0) { throw 'Portable context tests failed.' }
+& $python "$PSScriptRoot/test_terminal_cwd_repair.py"
+if ($LASTEXITCODE -ne 0) { throw 'Terminal cwd repair tests failed.' }
+. "$PSScriptRoot/../scripts/interface-capabilities.ps1"
+$interfaces = Get-PortableInterfaceCapabilities $PSScriptRoot
+if ($interfaces.InteractiveChatVerified) { throw 'Asset detection must not claim chat verification.' }
+$launcher = Get-Content "$PSScriptRoot/../launch.bat" -Raw
+if ($launcher -match '(?m)^\s*python -c') { throw 'Launcher must use the owned interpreter explicitly.' }
+if (-not $launcher.Contains('set "TERMINAL_CWD=%SRC_DIR%\hermes-agent"')) { throw 'Terminal cwd must be seeded from the current root.' }
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ('p0-location-tests-' + [Guid]::NewGuid().ToString('N'))
 $previous = $env:PYTHONPATH
 try {

@@ -4,6 +4,8 @@
 /src/
 *.flag
 *.log
+__pycache__/
+*.pyc
 
 # Credentials and private configuration
 .env
