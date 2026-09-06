@@ -18,6 +18,11 @@ set "CACHE_DIR=%PORTABLE_ROOT%\.cache"
 set "RUNTIME_DIR=%CACHE_DIR%\runtimes\windows-x64"
 set "SRC_DIR=%PORTABLE_ROOT%\src"
 set "LOG_ROOT=%PORTABLE_ROOT%\logs"
+if exist "%PORTABLE_ROOT%\updates\hermes-restore-active.json" (
+    echo [ERROR] An interrupted Hermes restore must be resolved before launch or setup.
+    echo Run scripts\manage-hermes-checkpoint.ps1 -Mode Undo from PowerShell.
+    exit /b 1
+)
 set "PORTABLE_ROOT_GIT=%PORTABLE_ROOT:\=/%"
 set "GIT_CONFIG_COUNT=2"
 set "GIT_CONFIG_KEY_0=safe.directory"
@@ -397,6 +402,8 @@ if errorlevel 1 (
 )
 call :write_portable_event diagnostics update-plan succeeded
 echo.
+echo A verified copy of Runtime and source will be saved before updating.
+echo This requires extra disk space and time. Close other instance processes first.
 choice /C YN /N /M "Continue with the official Hermes update from origin/main? [Y/N] "
 if errorlevel 2 (
     call :write_portable_event diagnostics update-apply cancelled

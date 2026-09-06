@@ -10,6 +10,8 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import re
 import uuid
 
 MANAGED = (".cache/runtimes/windows-x64", "src/hermes-agent")
@@ -99,7 +101,7 @@ def create(root):
 def verify(root, checkpoint):
     root, checkpoint = Path(root).absolute(), Path(checkpoint).absolute()
     no_link_ancestors(checkpoint)
-    if checkpoint.parent != root / "updates/hermes-checkpoints" or len(checkpoint.name) != 32:
+    if checkpoint.parent != root / "updates/hermes-checkpoints" or not re.fullmatch(r"[0-9a-f]{32}", checkpoint.name):
         raise ValueError("Checkpoint does not belong to this instance")
     manifest = json.loads((checkpoint / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("schema") != 1 or manifest.get("status") != "verified" or manifest.get("scope") != list(MANAGED) or manifest.get("root") != str(root):
@@ -127,28 +129,80 @@ def verify(root, checkpoint):
             target = entry["target"]
             if Path(target).is_absolute() or any(part in ("", ".", "..") or ":" in part or "\\" in part for part in target.split("/")):
                 raise ValueError("Unsafe link target")
+            if type(entry.get("directory")) is not bool or type(entry.get("junction")) is not bool:
+                raise ValueError("Invalid link metadata")
         else:
             raise ValueError("Unknown checkpoint entry")
     for tree in MANAGED:
         if not any(item["path"] == tree and item["kind"] == "directory" for item in manifest["entries"]):
             raise ValueError("Checkpoint managed root missing")
+    kinds = {entry["path"].casefold(): entry["kind"] for entry in manifest["entries"]}
+    for entry in manifest["entries"]:
+        for parent in Path(entry["path"]).parents:
+            if parent.as_posix().casefold() in kinds and kinds[parent.as_posix().casefold()] != "directory":
+                raise ValueError("Checkpoint entry nested below a link or file")
     return manifest
+
+
+def prepare_restore(root, checkpoint, transaction):
+    """Build verified replacement trees without changing the live directories."""
+    root, transaction = Path(root).absolute(), Path(transaction).absolute()
+    manifest = verify(root, checkpoint)
+    required = sum(entry.get("bytes", 0) for entry in manifest["entries"])
+    if shutil.disk_usage(root).free < required + 128 * 1024 * 1024:
+        raise ValueError("Insufficient space to stage restore safely")
+    if transaction.parent != root / "updates/hermes-restores" or not re.fullmatch(r"[0-9a-f]{32}", transaction.name):
+        raise ValueError("Invalid restore transaction")
+    no_link_ancestors(transaction)
+    # mkdir without exist_ok makes this single-use; don't reuse a partial stage.
+    replacement = transaction / "new"
+    replacement.mkdir(parents=True, exist_ok=False)
+    for entry in manifest["entries"]:
+        destination = replacement / entry["path"]
+        if entry["kind"] == "directory":
+            destination.mkdir(parents=True, exist_ok=True)
+        elif entry["kind"] == "file":
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(Path(checkpoint) / "payload" / entry["path"], destination)
+            if digest(destination) != entry["sha256"]:
+                raise ValueError("Restore staging hash mismatch")
+    # Build links last, and never allow a later entry to write through them.
+    for entry in manifest["entries"]:
+        if entry["kind"] != "link":
+            continue
+        destination = replacement / entry["path"]
+        target = root / entry["target"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if os.name == "nt" and entry["junction"]:
+            if re.search(r'["%&|<>^!\r\n]', str(destination) + str(target)):
+                raise ValueError("Junction path requires manual review")
+            subprocess.run([str(Path(os.environ["SystemRoot"]) / "System32/cmd.exe"),
+                            "/d", "/c", "mklink", "/J", str(destination), str(target)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            os.symlink(target, destination, target_is_directory=entry["directory"])
+    (transaction / "prepared.json").write_text(json.dumps({"schema": 1, "checkpoint": Path(checkpoint).name}), encoding="utf-8")
+    return transaction
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("create", "verify"))
+    parser.add_argument("action", choices=("create", "verify", "prepare"))
     parser.add_argument("--root", required=True)
     parser.add_argument("--checkpoint")
+    parser.add_argument("--transaction")
     args = parser.parse_args()
     try:
         if args.action == "create":
             result = create(args.root)
             verify(args.root, result)
             print("HERMES_CHECKPOINT_VERIFIED " + result.name)
-        else:
+        elif args.action == "verify":
             verify(args.root, args.checkpoint)
             print("HERMES_CHECKPOINT_VERIFIED")
+        else:
+            prepare_restore(args.root, args.checkpoint, args.transaction)
+            print("HERMES_RESTORE_PREPARED")
     except Exception:
         print("Checkpoint failed verification. Live files were not restored or deleted; preserve any partial backup.")
         raise SystemExit(1)

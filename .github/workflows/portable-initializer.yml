@@ -42,6 +42,7 @@ jobs:
             ".\tests\p0-package.Tests.ps1",
             ".\tests\open-hermes.Tests.ps1",
             ".\tests\web-controller.Tests.ps1",
+            ".\tests\hermes-restore.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {
@@ -81,6 +82,7 @@ jobs:
             ".\tests\p0-package.Tests.ps1",
             ".\tests\open-hermes.Tests.ps1",
             ".\tests\web-controller.Tests.ps1",
+            ".\tests\hermes-restore.Tests.ps1",
             ".\tests\log-layout.Tests.ps1"
           )
           foreach ($testScript in $testScripts) {

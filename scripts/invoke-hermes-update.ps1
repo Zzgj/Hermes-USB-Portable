@@ -95,6 +95,9 @@ function Test-HermesImport {
 }
 
 $rootPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root).TrimEnd('\', '/')
+if (Test-Path -LiteralPath (Join-Path $rootPath 'updates/hermes-restore-active.json')) {
+    throw 'Interrupted restore detected. Undo it before attempting an update.'
+}
 $runtimeDirectory = Join-Path $rootPath ".cache\runtimes\windows-x64"
 $basePython = Join-Path $runtimeDirectory "python\python.exe"
 $venvPython = Join-Path $runtimeDirectory "venv\Scripts\python.exe"
@@ -139,6 +142,7 @@ $receiptFinalized = $false
 $updateChannel = $null
 $officialOriginVerified = $false
 $collisionTransaction = $null
+$checkpointId = $null
 
 # Keep Git's ownership exception process-scoped and limited to the managed checkout.
 $env:GIT_CONFIG_COUNT = "1"
@@ -246,6 +250,14 @@ try {
     Write-PortableJsonAtomic -Path $portableReceiptPath -Value $pendingReceipt -Depth 12
     $receiptWritten = $true
 
+    Write-Host '[portable-update] Creating verified Runtime/source recovery point before update. Close other instance processes.'
+    $checkpointOutput = @(& (Join-Path $scriptDirectory 'manage-hermes-checkpoint.ps1') -Mode Create -Root $rootPath -ConfirmOperation)
+    if ($LASTEXITCODE -ne 0) { throw 'Recovery point creation failed; official update was not started.' }
+    foreach ($line in $checkpointOutput) {
+        if ([string]$line -match '^HERMES_CHECKPOINT_VERIFIED ([0-9a-f]{32})$') { $checkpointId = $Matches[1] }
+    }
+    if ($null -eq $checkpointId) { throw 'Verified recovery point identifier missing; refusing update.' }
+    Write-Host "[portable-update] Recovery checkpoint: $checkpointId"
     Write-Host "[portable-update] Delegating to the official Hermes updater."
     Write-Host "[portable-update] No safety-bypass arguments are being forwarded."
     $collisionTransaction = Protect-HermesUpdateCollision -GitExecutable $gitExecutable -SourceDirectory $sourceDirectory -TargetRef $updateChannel -BackupDirectory $diagnosticsDirectory
@@ -376,6 +388,7 @@ else {
 $portableReceipt = [ordered]@{
     schema_version = 1
     operation = "hermes-update"
+    recovery_checkpoint = $checkpointId
     status = $status
     started_at_utc = $startedAtUtc
     finished_at_utc = [DateTime]::UtcNow.ToString("o")

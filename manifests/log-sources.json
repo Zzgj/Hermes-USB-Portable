@@ -17,6 +17,24 @@
   ],
   "sources": [
     {
+      "id": "hermes-recovery-checkpoints",
+      "category": "runtime-state",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "updates/hermes-checkpoints",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
+      "id": "hermes-recovery-transactions",
+      "category": "runtime-state",
+      "owner": "portable-workbench",
+      "format": "mixed",
+      "path": "updates/hermes-restores",
+      "canonical": true,
+      "may_contain_sensitive_data": true
+    },
+    {
       "id": "shell-restore-undo",
       "category": "diagnostics",
       "owner": "portable-workbench",

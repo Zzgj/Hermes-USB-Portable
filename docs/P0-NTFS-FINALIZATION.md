@@ -92,6 +92,20 @@ never traversed into the backup; links outside the instance are refused. Data,
 knowledge and sessions are not included. Checkpoints may contain sensitive Git
 configuration and must remain private.
 
-This primitive is not yet wired into update apply: native NTFS junction coverage,
-restoration, process exclusion and recovery of an interrupted restore are still
-release gates. Do not instruct users to rely on it as a completed recovery flow.
+Update apply now requires a verified checkpoint before invoking the official
+updater and records its ID in the portable receipt. The manager refuses running
+instance executables. Checkpoint creation is read-only with respect to the live
+trees; insufficient space or changes during copying abort the update.
+
+`manage-hermes-checkpoint.ps1 -Mode Restore -Root <root> -CheckpointId <id>`
+requires confirmation, verifies/stages payloads, and then exchanges only the two
+managed directories after Python has exited. Original directories remain in the
+transaction's `old` directory. User data is not rolled back; this avoids erasing
+new conversations, but application-level data migrations may need separate review.
+
+An active restore marker blocks launch, Setup and update. `-Mode Undo` restores
+the pre-attempt trees using the on-disk journal, without requiring Python to run.
+The journal is written before any exchange. Automated fixtures interrupt every
+rename boundary and check data sentinels. Native Windows junction creation and
+staging are included in CI. These changes still require successful native CI and
+the final combined real-instance recovery acceptance before a release claim.

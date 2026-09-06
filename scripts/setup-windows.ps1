@@ -15,6 +15,9 @@ $ErrorActionPreference = "Stop"
 # Resolve against PowerShell's caller location before deriving paths or changing
 # directory. Relative executable paths otherwise break during version recording.
 $Root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root)
+if (Test-Path -LiteralPath (Join-Path $Root 'updates/hermes-restore-active.json')) {
+    throw 'Interrupted Hermes restore detected. Run manage-hermes-checkpoint.ps1 -Mode Undo before Setup.'
+}
 
 $RuntimeFilesystemScript = Join-Path $PSScriptRoot "runtime-filesystem.ps1"
 if (-not (Test-Path -LiteralPath $RuntimeFilesystemScript -PathType Leaf)) {
