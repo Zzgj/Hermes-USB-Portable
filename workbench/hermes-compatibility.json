@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "desktop_contract": 6,
+  "release_ready": false,
+  "baselines": [
+    {
+      "commit": "28044757aabd34010bd9f5f3e3f82b0906b46241",
+      "role": "development",
+      "verified": ["linux-isolated-auth", "gateway-ready", "unknown-method", "empty-session-create-close", "stale-session-interrupt"],
+      "not_verified": ["windows", "chat-stream", "approval", "active-interrupt", "reconnect", "portable-lifecycle"]
+    },
+    {
+      "commit": "29112bef099274229cadff79cdff7bf7b99c4b77",
+      "role": "bootstrap",
+      "verified": [],
+      "not_verified": ["p2-integration"]
+    },
+    {
+      "commit": "f58fcc8118d9db092ad60d363d4a28520e08ac5a",
+      "role": "historical-usb-observation",
+      "verified": [],
+      "not_verified": ["current-usb-identity", "p2-integration"]
+    }
+  ]
+}

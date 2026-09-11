@@ -1,0 +1,19 @@
+[
+  {
+    "id": "p2-fixture-a",
+    "name": "测试卡片 A（无实际 Skill）",
+    "goal": "仅用于本地页面验证，不执行文件操作。",
+    "method": {"kind": "skill", "name": "p2-fixture-no-such-skill", "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    "state": "published",
+    "inputs": [{"id": "source", "label": "测试输入目录", "required": true}],
+    "evidence": [{"outcome": "passed"}]
+  },
+  {
+    "id": "p2-fixture-b",
+    "name": "测试卡片 B（无实际 Bundle）",
+    "goal": "用于验证换卡片会清空参数。",
+    "method": {"kind": "bundle", "name": "p2-fixture-no-such-bundle", "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+    "state": "draft",
+    "inputs": [{"id": "target", "label": "测试目标目录", "required": true}]
+  }
+]

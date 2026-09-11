@@ -12,6 +12,9 @@ RC2 是集中测试候选，不代表 P0 已通过最终验收。不需要重装
 `Hermes-Portable-P0-RC2.zip` 和同名 `.sha256`。把包解压到独立目录，
 例如 `C:\Hermes-P0-RC2-Package`，不要直接解压覆盖运行实例。
 
+必须使用本仓库可信 Actions 制品；GitHub 自动生成的 Source code ZIP
+不含 `package-manifest.json`，不能替代安装包。SHA-256 只校验完整性。
+
 关闭实例全部聊天、Web、Gateway、Workbench 窗口，在包内执行：
 
 ```powershell

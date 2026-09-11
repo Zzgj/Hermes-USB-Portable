@@ -21,11 +21,11 @@ Run its dependency-free behavior tests with Windows PowerShell 5.1 or PowerShell
 .\tests\log-layout.Tests.ps1
 ```
 
-See [`docs/portable-initializer.md`](../docs/portable-initializer.md) for output files, safety behavior, and exit codes.
+See [`docs/p0/portable-initializer.md`](../docs/p0/portable-initializer.md) for output files, safety behavior, and exit codes.
 
-For the current Windows 10/exFAT regression, receipt migration, and official update acceptance sequence, use [`docs/WINDOWS-P0-TEST-GUIDE.md`](../docs/WINDOWS-P0-TEST-GUIDE.md). It keeps Runtime/user state in place and separates non-destructive checks from later disposable-copy recovery tests.
+For the current P0 RC2 integrated acceptance sequence, use [`docs/p0/ACCEPTANCE.md`](../docs/p0/ACCEPTANCE.md). It keeps Runtime/user state in place and separates non-destructive checks from later disposable-copy recovery tests.
 
-Generated Workbench logs are grouped under `logs/`. Hermes-owned logs/receipts and component state remain at their canonical portable paths and are listed in `manifests/log-sources.json`. See [`docs/log-layout.md`](../docs/log-layout.md) for the complete mapping and sharing precautions.
+Generated Workbench logs are grouped under `logs/`. Hermes-owned logs/receipts and component state remain at their canonical portable paths and are listed in `manifests/log-sources.json`. See [`docs/p0/log-layout.md`](../docs/p0/log-layout.md) for the complete mapping and sharing precautions.
 
 ## Windows Runtime Component Lock
 

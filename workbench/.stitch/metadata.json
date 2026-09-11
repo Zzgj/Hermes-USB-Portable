@@ -1,0 +1,110 @@
+{
+  "projectId": "311402794707550434",
+  "title": "Hermes Portable AI Workbench",
+  "deviceType": "DESKTOP",
+  "Last Sync Time": "2026-09-07T02:28:23.186Z",
+  "screens": {
+    "skills": {
+      "id": "ba84a2a420bb4a5fb40330d694c36f99",
+      "label": "Skills 管理中心",
+      "sourceScreen": "projects/311402794707550434/screens/ba84a2a420bb4a5fb40330d694c36f99",
+      "dimensions": {
+        "width": "2560",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 996,
+        "id": "ba84a2a420bb4a5fb40330d694c36f99",
+        "sourceScreen": "projects/311402794707550434/screens/ba84a2a420bb4a5fb40330d694c36f99",
+        "width": 1280,
+        "x": 7744
+      },
+      "visuallyAudited": true
+    },
+    "chat": {
+      "id": "479d3d2d65054e9a970c2b2f7cca28bf",
+      "label": "AI 智能助手对话",
+      "sourceScreen": "projects/311402794707550434/screens/479d3d2d65054e9a970c2b2f7cca28bf",
+      "dimensions": {
+        "width": "2560",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 1024,
+        "id": "479d3d2d65054e9a970c2b2f7cca28bf",
+        "sourceScreen": "projects/311402794707550434/screens/479d3d2d65054e9a970c2b2f7cca28bf",
+        "width": 1280,
+        "x": 6400
+      },
+      "visuallyAudited": true
+    },
+    "onboarding": {
+      "id": "d3ecd37a8ba4449d86dbcc2329f71327",
+      "label": "首次启动初始化向导",
+      "sourceScreen": "projects/311402794707550434/screens/d3ecd37a8ba4449d86dbcc2329f71327",
+      "dimensions": {
+        "width": "2560",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 1024,
+        "id": "d3ecd37a8ba4449d86dbcc2329f71327",
+        "sourceScreen": "projects/311402794707550434/screens/d3ecd37a8ba4449d86dbcc2329f71327",
+        "width": 1280,
+        "x": 1024
+      },
+      "visuallyAudited": true
+    },
+    "home": {
+      "id": "fe5cfbabbfaf430d85a99825bbc7e739",
+      "label": "工作台首页",
+      "sourceScreen": "projects/311402794707550434/screens/fe5cfbabbfaf430d85a99825bbc7e739",
+      "dimensions": {
+        "width": "3040",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 996,
+        "id": "fe5cfbabbfaf430d85a99825bbc7e739",
+        "sourceScreen": "projects/311402794707550434/screens/fe5cfbabbfaf430d85a99825bbc7e739",
+        "width": 1280,
+        "x": 2368
+      },
+      "visuallyAudited": true
+    },
+    "repository": {
+      "id": "0358247ffd0d4bff9fefc5a3ddbb734f",
+      "label": "本地资源仓库",
+      "sourceScreen": "projects/311402794707550434/screens/0358247ffd0d4bff9fefc5a3ddbb734f",
+      "dimensions": {
+        "width": "2560",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 1024,
+        "id": "0358247ffd0d4bff9fefc5a3ddbb734f",
+        "sourceScreen": "projects/311402794707550434/screens/0358247ffd0d4bff9fefc5a3ddbb734f",
+        "width": 1280,
+        "x": 3712
+      },
+      "visuallyAudited": true
+    },
+    "tasks": {
+      "id": "69ce5265c8aa4bf9914e4aa6f57340e0",
+      "label": "任务执行进度中心",
+      "sourceScreen": "projects/311402794707550434/screens/69ce5265c8aa4bf9914e4aa6f57340e0",
+      "dimensions": {
+        "width": "2560",
+        "height": "2048"
+      },
+      "canvasPosition": {
+        "height": 996,
+        "id": "69ce5265c8aa4bf9914e4aa6f57340e0",
+        "sourceScreen": "projects/311402794707550434/screens/69ce5265c8aa4bf9914e4aa6f57340e0",
+        "width": 1280,
+        "x": 5056
+      },
+      "visuallyAudited": true
+    }
+  }
+}

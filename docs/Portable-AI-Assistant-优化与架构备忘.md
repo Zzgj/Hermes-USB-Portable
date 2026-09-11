@@ -5,10 +5,10 @@
 | 项目 | 内容 |
 |---|---|
 | 文档状态 | 活文档（持续维护） |
-| 当前版本 | v0.9 |
+| 当前版本 | v0.10 |
 | 建立日期 | 2026-09-02 |
-| 最近更新 | 2026-09-04 |
-| 当前阶段 | P0 基线实现中 |
+| 最近更新 | 2026-09-09 |
+| 当前阶段 | P2 开发；P0 RC2 待最终实机验收 |
 | 进度清单 | [`docs/PROJECT-PLAN.md`](PROJECT-PLAN.md) |
 | 基础项目 | [techjarves/Hermes-USB-Portable](https://github.com/techjarves/Hermes-USB-Portable) |
 | 参考项目 | [techjarves/Local-Hermes-Portable](https://github.com/techjarves/Local-Hermes-Portable)、[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)、[yuluyangguang1/codex-portable](https://github.com/yuluyangguang1/codex-portable) |
@@ -581,6 +581,18 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 - 选择：系统/自定义代理为基础，可选便携 Mihomo Core；Clash Verge 仅作为外部高级方案。
 - 原因：减少体积、系统修改、权限、WebView/TUN 和维护责任。
 
+### ADR-005：复用 Hermes 执行能力，工作台只做适配与便携保障
+
+- 日期：2026-09-09；用户明确确认。
+- 项目三层：Hermes Agent 与配置/Skills、适配 Hermes 的 Web UI、U 盘便携外壳。
+- 优先上游接口、配置、提示词与 Skills/MCP，不默认修改内核或维护长期源码补丁分支。
+- P0 基础和已有证据保留，最终实机验收不跳过；P2 保留真实 UI/服务/升级适配，停止独立工作流执行引擎扩展。
+- P3 改为配置集成、Skill 复用和两个不同场景验证；打印机只是可选案例，驱动制品仓库按需后置。
+- 用户进一步确认：Agent/Skill 内容配置交由 Hermes 自身进行；Codex 聚焦 P0/P2 和必要管理 UI/验收适配，不重复搭建 Agent。配置目标、安装与权限需用户确认，配置前先备份；当前仅记录分工，未执行配置。
+- 模拟步骤仅作 UI 夹具；运行状态和审批来自实际协议。业务回滚依赖具体工具验证，不由 UI 保证。
+- 上文打印机专用先决条件、自定义流程执行与通用回滚的历史规划由本 ADR 取代，历史内容保留供追溯。
+- 当前任务与验收标准见 [项目计划](PROJECT-PLAN.md)，不以本次范围调整宣称完成。
+
 ## 10. 后续更新规范
 
 每次修改本备忘时：
@@ -593,6 +605,12 @@ P0 当前验证证据：初始化器与组件锁测试在 GitHub Actions `window
 6. 将讨论中的事实、建议和待验证推测明确分开。
 
 ## 11. 变更日志
+
+### v0.10 — 2026-09-09
+
+- ADR-005 明确 Hermes、Web 工作台与便携外壳三层职责，停止独立执行引擎扩展。
+- P3 内容配置由 Hermes 负责，Codex 保留接口/UI 与验收支持；方案确认不是实现完成。
+- 主界面、独立测试实例、自动检查/确认安装及低风险首场景已由用户确认，详见项目计划 D-01～04。
 
 ### v0.9 — 2026-09-04
 

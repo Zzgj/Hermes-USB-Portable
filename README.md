@@ -42,7 +42,7 @@ Development is on `feat/portable-initializer`. The verified P0 baseline currentl
 
 The custom Stitch workbench UI, full CLI/TUI/Desktop/WebUI entry set, model/proxy manager, private Obsidian integration, driver repository workflow, and real printer installation are planned work and are not implemented yet. The inherited launchers remain available, but cross-platform portability and host-write behavior have not yet completed the new project audit.
 
-See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order. The current USB acceptance sequence is in the [Windows 10/exFAT P0 test guide](docs/WINDOWS-P0-TEST-GUIDE.md).
+See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order. The current USB acceptance sequence is in the [P0 RC2 acceptance guide](docs/p0/ACCEPTANCE.md).
 
 ---
 
@@ -129,7 +129,7 @@ hermes-portable/
         └── linux-arm64/
 ```
 
-Hermes-owned logs and update receipts remain under `data/logs/`, while Runtime and source-state manifests remain next to the components they describe. The [portable log layout](docs/log-layout.md) and its catalog expose all of these locations as one logical source set without breaking upstream paths.
+Hermes-owned logs and update receipts remain under `data/logs/`, while Runtime and source-state manifests remain next to the components they describe. The [portable log layout](docs/p0/log-layout.md) and its catalog expose all of these locations as one logical source set without breaking upstream paths.
 
 ---
 
@@ -261,4 +261,4 @@ The first install uses an audited stable Release as its bootstrap baseline. Late
 *   **[uv](https://github.com/astral-sh/uv)** — Blazing fast package installer and resolver.
 # P0 RC2 集中验收版本
 
-本分支提供源码测试包：Windows 双 PowerShell CI 通过后，在 Actions 下载 `Hermes-Portable-P0-RC2` artifact。解压并校验后按 [集中验收说明](docs/P0-RC2-ACCEPTANCE.md) 部署到现有测试实例；使用 `P0-Workbench.bat` 进入集中菜单。无需重新格式化或复制 U 盘。它是候选版，尚未代表整个 P0 完成；历史 RC1 说明不再作为本轮操作入口。
+本分支提供源码测试包：Windows 双 PowerShell CI 通过后，在 Actions 下载 `Hermes-Portable-P0-RC2` artifact。解压并校验后按 [集中验收说明](docs/p0/ACCEPTANCE.md) 部署到现有测试实例；使用 `P0-Workbench.bat` 进入集中菜单。无需重新格式化或复制 U 盘。它是候选版，尚未代表整个 P0 完成；历史 RC1 说明不再作为本轮操作入口。

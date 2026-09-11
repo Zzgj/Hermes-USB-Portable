@@ -65,7 +65,7 @@ Close instance processes before applying either repair.
 
 Renamed folders, remote backends, arbitrary projects and .env entries are not
 rewritten. Do not run `uv sync` or modify upstream tests as a substitute for
-relocation repair. The combined RC2 checklist is in P0-RC2-ACCEPTANCE.md.
+relocation repair. The combined RC2 checklist is in [ACCEPTANCE.md](ACCEPTANCE.md).
 
 ## Verified shell rollback
 

@@ -1,0 +1,6 @@
+import {copy,liveCopy} from '../data/mockData';import {useChat} from '../hooks/useWorkbench';import {Panel} from '../components/Panel';import {Link} from 'react-router-dom';
+interface ChatPageProps {readonly demo?:boolean;}
+export function ChatPage(_:ChatPageProps){const chat=useChat();return <><div className="page-heading"><div><h1>{copy.chatTitle}</h1><p>{copy.chatIntro}</p></div><button className="button" onClick={chat.reset}>{copy.newChat}</button></div>
+ <div className="grid xl:grid-cols-[3fr_1fr] gap-5"><section className="panel chat-panel"><div role="log" aria-live="polite" className="messages">{chat.messages.map((m,i)=><p key={i} className={`message ${m.role==='user'?'user':''}`}>{m.text}</p>)}</div>
+ <form onSubmit={chat.submit} className="composer"><label className="sr-only" htmlFor="message">{copy.messageLabel}</label><textarea id="message" maxLength={4000} value={chat.input} onChange={chat.change} placeholder={copy.placeholder}/><button disabled={!chat.input.trim()} className="button primary">{copy.send}</button></form></section>
+ <Panel title={copy.context}><p>{copy.contextBody}</p><Link className="button mt-4" to="/chat/live">{liveCopy.title}</Link></Panel></div></>;}

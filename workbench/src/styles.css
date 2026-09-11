@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Semantic aliases of the imported Stitch palette; no CDN fonts at runtime. */
+:root {--canvas:theme('colors.surface');--panel:theme('colors.surface-container-lowest');--ink:theme('colors.on-surface');--muted:theme('colors.on-surface-variant');--line:theme('colors.outline-variant');--rail:theme('colors.surface-container');}
+.dark {--canvas:theme('colors.primary');--panel:theme('colors.primary-container');--ink:theme('colors.inverse-on-surface');--muted:theme('colors.primary-fixed-dim');--line:theme('colors.surface-tint');--rail:theme('colors.on-primary-fixed');color-scheme:dark;}
+@layer base {
+ body {@apply m-0 font-sans bg-canvas dark:bg-canvas text-ink dark:text-ink text-sm;}
+ button,input,textarea,select {font:inherit;}
+ button,a,input,textarea,select {@apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary dark:focus-visible:outline-secondary-container;}
+ button:disabled {@apply opacity-50 cursor-not-allowed;}
+ h1 {@apply text-2xl font-semibold tracking-tight;}
+ th,td {@apply text-left py-4 px-3 border-b border-line dark:border-line;}
+ th {@apply text-xs font-semibold text-muted dark:text-muted;}
+ table {@apply w-full whitespace-nowrap;}
+}
+@layer components {
+ .shell {@apply min-h-screen;}
+ .sidebar {@apply w-sidebar_width fixed inset-y-0 left-0 bg-rail dark:bg-rail border-r border-line dark:border-line overflow-y-auto;}
+ .brand {@apply h-20 flex items-center gap-3 px-5 font-semibold text-primary dark:text-primary-fixed;}
+ .brand small {@apply block mt-1 text-[10px] tracking-widest text-muted dark:text-muted;}
+ .brand-mark {@apply rounded-xl w-9 h-9 flex items-center justify-center text-on-primary dark:text-on-primary bg-primary-container dark:bg-primary-container text-lg;}
+ .sidebar nav {@apply px-3 space-y-1;}
+ .nav-item {@apply flex items-center gap-3 py-3 px-4 rounded-lg text-muted dark:text-muted hover:bg-panel dark:hover:bg-panel;}
+ .nav-item.active {@apply bg-secondary-container dark:bg-secondary-container text-on-secondary-fixed dark:text-on-secondary-fixed font-semibold;}
+ .nav-item span {@apply inline-block w-5 text-lg;}
+ .workspace {@apply ml-sidebar_width min-h-screen flex flex-col;}
+ .topbar {@apply min-h-16 px-7 py-3 border-b border-line dark:border-line flex justify-between gap-3 items-center flex-wrap;}
+ .notice {@apply px-7 py-2 border-b border-line dark:border-line bg-surface-container-low dark:bg-rail text-muted dark:text-muted text-xs;}
+ main {@apply p-7 flex-1;}
+ .footer {@apply px-7 py-2 mt-8 border-t border-line dark:border-line font-mono text-xs text-muted dark:text-muted;}
+ .page-heading {@apply flex flex-wrap justify-between items-start gap-4 mb-7;}
+ .page-heading p {@apply text-muted dark:text-muted mt-2 leading-relaxed;}
+ .panel {@apply rounded-xl border border-line dark:border-line bg-panel dark:bg-panel min-w-0;}
+ .panel-title {@apply px-5 py-4 border-b border-line dark:border-line text-base font-semibold;}
+ .shortcut {@apply panel block p-5 hover:border-secondary dark:hover:border-secondary-container transition-colors;}
+ .button {@apply inline-flex items-center justify-center px-4 py-2 rounded-lg border border-line dark:border-line bg-panel dark:bg-panel text-ink dark:text-ink whitespace-nowrap;}
+ .button.primary {@apply bg-primary-container dark:bg-secondary-container text-on-primary dark:text-on-secondary-fixed border-primary-container dark:border-secondary-container;}
+ .badge {@apply inline-block rounded-lg px-2 py-1 bg-rail dark:bg-rail text-muted dark:text-muted text-xs font-medium;}
+ .status-succeeded,.status-rolled-back {@apply bg-secondary-container dark:bg-secondary-container text-on-secondary-fixed dark:text-on-secondary-fixed;}
+ .status-running,.status-waiting-approval {@apply bg-tertiary-fixed dark:bg-tertiary-fixed text-on-tertiary-fixed dark:text-on-tertiary-fixed;}
+ .status-failed {@apply bg-error-container dark:bg-error-container text-on-error-container dark:text-on-error-container;}
+ .approval {@apply border-tertiary-container dark:border-tertiary-container;}
+ .timeline {@apply space-y-5;}
+ .timeline li {@apply flex gap-4 items-center rounded-lg p-3 border border-line dark:border-line;}
+ .timeline li[aria-current="step"] {@apply border-secondary dark:border-secondary-container;}
+ .step-number {@apply rounded-full w-7 h-7 flex items-center justify-center bg-rail dark:bg-rail font-mono;}
+ .chat-panel {@apply flex flex-col min-h-[500px];}
+ .messages {@apply p-5 space-y-5 flex-1 max-h-[55vh] overflow-y-auto;}
+ .message {@apply whitespace-pre-wrap break-words rounded-xl p-4 max-w-[85%] border border-line dark:border-line leading-relaxed;}
+ .message.user {@apply ml-auto bg-primary-container dark:bg-rail text-on-primary dark:text-ink;}
+ .composer {@apply border-t border-line dark:border-line p-4 flex flex-col sm:flex-row items-end gap-3;}
+ .composer textarea,.search,.workflow-input {@apply border border-line dark:border-line rounded-lg bg-canvas dark:bg-canvas text-ink dark:text-ink p-3 w-full;}
+ .composer textarea {@apply resize-y min-h-20;}
+ .search {@apply max-w-lg;}
+ .skip-link {@apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:p-3 focus:bg-panel dark:focus:bg-panel;}
+}
+@media(max-width:900px){.sidebar{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line)}.sidebar nav{display:flex;overflow-x:auto;padding-bottom:12px}.nav-item{white-space:nowrap}.brand{height:60px}.workspace{margin-left:0}main{padding:20px}.topbar,.notice,.footer{padding-left:20px;padding-right:20px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
