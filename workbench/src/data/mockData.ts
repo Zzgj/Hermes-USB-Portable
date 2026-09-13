@@ -38,6 +38,9 @@ export const liveCopy={
  profiles:'服务配置列表（Profile）',profilesHelp:'点击后读取当前服务可枚举的配置名称、模型和技能数量，不读取会话正文、不切换配置。列表可能包含同一 Hermes 安装下的其他 Profile；断线后仅供参考。',loadProfiles:'读取配置列表',profilesLoading:'正在读取配置',noProfiles:'服务没有返回配置。',defaultProfile:'默认配置',profileModel:'模型',profileProvider:'提供方',profileSkills:'技能数量',notConfigured:'未配置',
  skills:'当前服务可用 Skills',skillsHelp:'只读缓存快照，受平台和禁用设置过滤；不是完整安装清单或已验证能力库。变更后可能需要重新启动服务；断线后仅供参考。',loadSkills:'读取可用 Skills',skillsLoading:'正在读取 Skills',noSkills:'服务未返回可用 Skills；不代表没有安装。',
  sessions:'已有会话索引',listSessions:'读取最近 50 条会话',listing:'正在读取',emptySessions:'没有可显示的会话',untitled:'未命名会话',messages:'条消息',sessionHelp:'仅在点击后读取当前服务的会话索引，不加载完整正文、不恢复执行。返回的预览片段不会保留或展示。上游恢复会话可能自动续跑，恢复入口仍在接入。',
+ resumeWarning:'恢复会话可能继续未完成的工具执行。必须在聊天页面明确确认后才可恢复；工作台不自动恢复或重放历史消息。',
+ profileSideEffects:'此列表为只读枚举，不切换配置或修改设置。Profile 切换可能影响模型、工具和权限；切换操作仍需在 Hermes 原生入口完成。',
+ skillSideEffects:'此列表为只读缓存快照，不安装或禁用 Skill。Skill 变更后可能需要重启服务才生效。',
  title:'真实连接实验',warning:'开发入口：只连接你主动指定的本机 Hermes。发送消息可能调用已配置模型及工具，产生费用或系统操作；不是模拟。当前尚未达到集中测试发布标准。',
  demo:'返回模拟聊天',connection:'本机服务连接',port:'本机端口',token:'临时服务令牌（不是模型 API Key）',connect:'连接并建立测试会话',disconnect:'断开测试会话',
  phases:{idle:'未连接',connecting:'等待服务握手',session:'正在建立会话',ready:'已连接 · 可以发送消息',closed:'连接已关闭',failed:'连接或会话失败'},
@@ -58,6 +61,22 @@ export const capabilityCopy={
  exportLabel:'导出本页草稿',exportHelp:'仅保存卡片定义，不包含本次输入参数、执行记录或验证证据。文件由浏览器下载；离页前请自行保存。',
  title:'我的能力',intro:'有验证依据的方法，才是可复用的能力。当前为开发入口，尚未连接实例能力库。',
  importTitle:'导入卡片草稿',importHelp:'只读取你选择的 JSON 文件（卡片数组，最大 64 KiB）；不上传、不安装 Skill、不导入验证状态。成功导入将替换本页草稿；离页或刷新会清空。不要填写密钥。',importLabel:'选择卡片 JSON',loading:'正在读取草稿',error:'导入或参数校验失败；未执行任务。',empty:'尚无能力卡片。不会用示例冒充已经验证的工作。',drafts:'本页草稿',draft:'草稿 · 未验证',method:'引用方法',fingerprint:'声明的内容指纹（尚未与实际 Skill 核对）',required:'（必填）',optional:'（可选）',review:'核对本次参数',reviewTitle:'本次参数预览',executionPending:'真实方法、依赖和环境核对尚未接入，当前不能执行或发布为已验证能力。',execute:'交给 Hermes 执行（待接入）',
+};
+export const executionCopy={
+ title:'能力执行 · 实验',instanceCatalog:'实例能力目录',loadCatalog:'读取实例 Skill 目录',catalogLoading:'正在读取实例目录',catalogHelp:'从当前连接的本机管理服务读取 Skill 子树指纹。仅在已连接且服务就绪时可用；不执行 Skill、不读取正文。',catalogEmpty:'尚未读取实例目录。导入的卡片指纹无法与实际 Skill 核对。',catalogLoaded:'已读取实例 Skill 定义，可以核对导入卡片的指纹。',
+ fingerprintMatch:'指纹匹配：导入卡片的声明与当前实例一致。',fingerprintMismatch:'指纹不匹配：实例中的 Skill 已变更。请重新导出草稿后再试。',fingerprintMissing:'当前实例未找到此 Skill。可能未安装或目录不同。',bundleUnsupported:'Bundle 暂不支持执行；未核实成员完整性前保持不可用。',
+ reviewScope:'执行范围与风险',reviewScopeHelp:'以下信息来自卡片定义和实例目录，未知项明确标注。确认后将通过当前会话发送 prompt.submit，可能调用模型和工具，产生费用或系统操作。',applicability:'适用环境',applicabilityUnknown:'未知（目录不判断平台、禁用状态或依赖）',costWarning:'费用：确认后启动真实模型轮次，可能产生 API 费用。',toolWarning:'工具操作：模型可能请求执行工具；所有工具调用须经 Hermes 审批机制确认。',
+ confirmExecute:'确认并交给 Hermes 执行',confirmCheckbox:'我已核对本轮目标、参数和指纹；理解执行可能产生费用和工具操作，且模型轮次完成不等于业务验证通过。',
+ phases:{observing:'正在观察模型轮次…',complete:'模型轮次完成（业务结果未验证）',failed:'本轮失败',interrupted:'本轮已中断（不代表回滚）',unknown:'连接中断，运行结果未知；不能视为已取消或成功。',verified:'指纹已核对，等待确认执行。',mismatch:'指纹不匹配，不能执行。',missing:'实例中未找到此 Skill，不能执行。',idle:''},
+ goToChat:'返回聊天查看回复或审批',clearExecution:'清除执行状态',notConnected:'未连接实例。请在连接实验页建立会话后再执行能力卡片。',approvalPending:'服务正在等待审批。请返回聊天页面处理。',
+};
+export const evidenceCopy={
+ title:'验证证据 · 实验',loadEvidence:'读取实例验证记录',evidenceLoading:'正在读取验证记录',evidenceHelp:'从当前连接的本机管理服务读取验证证据记录。记录绑定方法指纹、环境指纹和会话 ID；不包含密钥或完整工具参数。外部导入的证据一律标记为未授信，不直接视为已验证。',
+ evidenceEmpty:'尚未读取验证记录。验证状态未知，不默认为已通过。',evidenceLoaded:'已读取验证记录。注意：模型轮次完成不等于业务验证通过。',
+ statusDraft:'草稿 · 未验证',statusUnverified:'未验证 · 未找到匹配证据',statusVerified:'已验证 · 最新证据全部通过',statusReverify:'需重新验证 · 方法或环境已变更',statusUnknown:'验证状态未知 · 尚未读取证据或环境指纹',
+ importedUntrusted:'导入的外部证据一律标记为未授信（trusted:false）。不能仅凭外部记录宣称已验证。',
+ learnAssociation:'学习产出关联',learnAssociationHelp:'学习请求提交后，模型可能产出或变更 Skill 文件。重新读取实例目录可检查变更；产出文件仍需 Hermes 审阅和重新验证，不自动发布。',
+ reReadCatalog:'重新读取实例目录',learnSubmitted:'学习请求已提交。模型轮次完成后，可重新读取实例目录检查是否有新增或变更的 Skill。',
 };
 export const taskCopy={
  title:'任务中心',help:'只展示当前工作台连接观察到的 Hermes 轮次与工具活动，不生成虚构步骤或进度。',chat:'返回真实聊天与审批',empty:'尚未观察到任务。请在真实聊天中连接服务并主动发送消息。',lifetime:'记录只保留在当前页签内存，切换页面保留，刷新或重新连接会清空；不是完整持久化任务库。',verification:'模型轮次完成不代表业务验证通过；工具调用结束不代表成功，停止也不撤销已发生的修改。',round:'会话轮次',session:'运行会话',noTools:'没有观察到工具事件，不推断工具是否执行。',demo:'打开模拟流程测试页',
@@ -88,4 +107,19 @@ export const catalogs: Record<string,{title:string;description:string;items:read
   terminal:{title:'终端与备用入口',description:'保留上游工具入口，不通过解析终端文本获取核心状态。',items:['CLI','TUI','Web Dashboard','Desktop'].map(name=>({name,detail:'请继续使用 P0-Workbench；浏览器启动接口待接入',tag:'未接入'}))},
 };
 export const updates = [{name:'Hermes 内核',description:'沿用官方更新器；展示提交、回执和恢复点。'},{name:'Portable 外壳',description:'独立更新通道；校验整包，保留 Runtime 与用户数据。'}];
+export const updateCopy={
+ kernelTitle:'Hermes 内核更新',shellTitle:'Portable 外壳更新',
+ channelKernel:'内核 · 官方更新器',channelShell:'外壳 · 独立包',
+ checkButton:'检查更新',checking:'正在检查…',upToDate:'已是最新版本',available:'有可用更新',notAvailable:'暂无更新',incompatible:'兼容性未知，需手动确认',offline:'离线或网络不可达',failed:'检查失败',
+ current:'当前版本',latest:'最新版本',retryAfter:'下次可重试时间',
+ planButton:'查看更新计划',installButton:'确认安装',installConfirmed:'我已阅读变更说明和兼容性状态；理解更新可能修改文件，且失败可能需要手动恢复。',
+ backup:'备份当前版本',changelog:'变更摘要',compatibility:'兼容性门禁',gatePassed:'已通过',gateUnknown:'未知 · 不自动应用',gateBlocked:'阻断 · 不允许安装',
+ offlineBackoff:'离线时指数退避，不反复请求网络。',
+ noAutoApply:'检查和通知不自动安装；安装必须经用户明确确认。',
+ kernelHelp:'内核更新复用 Hermes 官方 `hermes update`；更新前生成只读计划，成功后保留官方回执和 Portable 摘要。失败不自动重试或回退。',
+ shellHelp:'外壳更新使用独立包；校验整包哈希、保留 Runtime 和用户数据。不升级内核或 Hermes 源码。',
+ entryTitle:'备用入口与能力检测',entryHelp:'检测已安装的 Hermes 入口（CLI/TUI/Desktop/Web）。工作台不替代这些入口，仅在它们可用时提供快捷导航。',
+ entryCheckButton:'检测入口',entryChecking:'正在检测…',entryEmpty:'未检测到可用入口。',entryAvailable:'检测到以下入口：',
+ centerTitle:'更新中心',yes:'是',no:'否',mockChangelog:'模拟变更摘要 · 待接入真实更新计划接口',
+};
 export const wizardSteps = ['选择便携目录','磁盘与权限检查','准备运行环境','API 与代理','知识库与资源','最终健康检查'];

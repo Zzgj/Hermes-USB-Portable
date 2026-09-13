@@ -10,7 +10,7 @@ export function App(_:AppProps){
  // Keep controls mounted: their in-memory management credential must survive internal navigation.
  // Hidden content is not interactive; no connection or service is started merely by mounting it.
  return <Shell><div hidden={location.pathname!=='/chat/live'}><LiveChatPage chat={chat}/></div><Routes>
-  <Route path="/" element={<HomePage/>}/><Route path="/capabilities" element={<CapabilitiesPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/chat/live" element={null}/>
+  <Route path="/" element={<HomePage/>}/><Route path="/capabilities" element={<CapabilitiesPage chat={chat}/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/chat/live" element={null}/>
   <Route path="/tasks" element={<LiveTasksPage chat={chat}/>}/><Route path="/tasks/demo" element={<TasksPage/>}/>
   {Object.keys(catalogs).map(kind=><Route key={kind} path={`/${kind}`} element={<CatalogPage key={kind} kind={kind}/>}/>)}
   <Route path="/settings" element={<SettingsPage/>}/><Route path="/onboarding" element={<OnboardingPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/>

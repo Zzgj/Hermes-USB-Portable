@@ -1,6 +1,33 @@
 // Browser-only fixture. Inject into an owned test page; reload restores native WebSocket.
 (() => {
   window.__p2RpcRequests = [];
+  window.__p2FetchRequests = [];
+
+  const FIXTURE_CARD = {
+    id: 'fixture-card', name: 'Fixture capability', goal: 'Test capability execution chain',
+    method: { kind: 'skill', name: 'fixture-skill', fingerprint: 'a'.repeat(64) },
+    inputs: [{ id: 'source', label: 'Source', required: true }],
+    state: 'draft',
+  };
+  const FIXTURE_EVIDENCE = {
+    capabilityId: 'fixture-card', methodFingerprint: 'a'.repeat(64), environmentFingerprint: 'b'.repeat(64),
+    sessionId: 'p2-browser', verifiedAt: '2026-09-13T00:00:00Z', outcome: 'passed',
+    checks: [{ id: 'fixture-check', passed: true }],
+  };
+
+  window.fetch = async (url, options) => {
+    const urlStr = String(url);
+    window.__p2FetchRequests.push({ url: urlStr, options });
+
+    if (urlStr.includes('/api/capabilities/catalog')) {
+      return new Response(JSON.stringify({ availability: 'unknown', cards: [FIXTURE_CARD] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (urlStr.includes('/api/capabilities/evidence')) {
+      return new Response(JSON.stringify([FIXTURE_EVIDENCE]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('', { status: 404 });
+  };
+
   window.WebSocket = class extends EventTarget {
     constructor() {
       super(); this.closed = false; this.seq = 0; window.__p2Socket = this;

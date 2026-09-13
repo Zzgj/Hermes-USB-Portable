@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 const source=await readFile(new URL('../src/domain/capability.ts',import.meta.url),'utf8');
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const {decodeCapability,decodeVerification,capabilityStatus,bindCapabilityInputs,importCapabilityDrafts,exportCapabilityDrafts,fetchCapabilityDrafts}=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+const {decodeCapability,decodeVerification,capabilityStatus,bindCapabilityInputs,importCapabilityDrafts,exportCapabilityDrafts,fetchCapabilityDrafts,readInstanceCatalogCards,readInstanceEvidence,importVerificationDrafts,environmentFingerprint}=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 const hash='a'.repeat(64),env='b'.repeat(64);
 const card=decodeCapability({id:'files',name:'Test files',goal:'Organize disposable files',method:{kind:'skill',name:'file-sort',fingerprint:hash},state:'published',inputs:[{id:'source',label:'Source',required:true}]});
 const evidence=decodeVerification({capabilityId:'files',methodFingerprint:hash,environmentFingerprint:env,sessionId:'test-session',verifiedAt:'2026-09-09T00:00:00Z',outcome:'passed',checks:[{id:'expected-files',passed:true}]});
@@ -62,4 +62,82 @@ test('draft import and export enforce UTF-8 bytes, counts and unique identities'
  assert.throws(()=>importCapabilityDrafts(raw));assert.throws(()=>exportCapabilityDrafts(cards));
  assert.throws(()=>exportCapabilityDrafts([]));assert.throws(()=>exportCapabilityDrafts([card,card]));
  assert.throws(()=>exportCapabilityDrafts(Array.from({length:101},(_,i)=>({...card,id:`c${i}`}))));
+});
+test('readInstanceCatalogCards builds a loopback URL with port+token and forces drafts',async()=>{
+ const send=async(url,options)=>{
+  assert.equal(url,'http://127.0.0.1:9119/api/capabilities/catalog');
+  assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');
+  assert.equal(options.headers.Authorization,'Bearer fixture-token');
+  return new Response(JSON.stringify({availability:'unknown',cards:[{...card,secret:'discard'}]}));
+ };
+ const result=await readInstanceCatalogCards({port:9119,token:'fixture-token'},new AbortController().signal,send);
+ assert.equal(result.length,1);assert.equal(result[0].state,'draft');assert.equal(result[0].secret,undefined);
+});
+test('readInstanceCatalogCards rejects invalid port or empty token',async()=>{
+ const ok=async()=>new Response(JSON.stringify({availability:'unknown',cards:[card]}));
+ await assert.rejects(readInstanceCatalogCards({port:0,token:'x'},new AbortController().signal,ok));
+ await assert.rejects(readInstanceCatalogCards({port:70000,token:'x'},new AbortController().signal,ok));
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:''},new AbortController().signal,ok));
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:'x'.repeat(4097)},new AbortController().signal,ok));
+});
+test('readInstanceCatalogCards bounds response size and rejects wrong availability',async()=>{
+ const huge=async()=>new Response('x'.repeat(70001));
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:'x'},new AbortController().signal,huge));
+ const wrong=async()=>new Response(JSON.stringify({availability:'verified',cards:[card]}));
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:'x'},new AbortController().signal,wrong));
+ const nonArray=async()=>new Response(JSON.stringify({availability:'unknown',cards:'not-array'}));
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:'x'},new AbortController().signal,nonArray));
+});
+test('readInstanceCatalogCards surfaces abort and network failure as CATALOG_FAILED',async()=>{
+ const controller=new AbortController();controller.abort();
+ await assert.rejects(readInstanceCatalogCards({port:9119,token:'x'},controller.signal,async()=>{throw new Error('network');}));
+});
+test('importVerificationDrafts forces trusted:false and never accepts external trust',()=>{
+ const imported=importVerificationDrafts(JSON.stringify([{...evidence,trusted:true,secret:'discard'}]));
+ assert.equal(imported.length,1);assert.equal(imported[0].trusted,false);assert.equal(imported[0].secret,undefined);
+ assert.equal(imported[0].capabilityId,'files');assert.equal(imported[0].methodFingerprint,hash);
+});
+test('importVerificationDrafts rejects oversized, non-array, or malformed records',()=>{
+ assert.throws(()=>importVerificationDrafts('x'.repeat(131073)));
+ assert.throws(()=>importVerificationDrafts('{}'));
+ assert.throws(()=>importVerificationDrafts(JSON.stringify(Array.from({length:501},()=>evidence))));
+ assert.throws(()=>importVerificationDrafts(JSON.stringify([{...evidence,checks:[]}])));assert.throws(()=>importVerificationDrafts(JSON.stringify([{...evidence,verifiedAt:'bad'}])));
+});
+test('readInstanceEvidence builds a loopback URL with port+token and returns untrusted records',async()=>{
+ const send=async(url,options)=>{
+  assert.equal(url,'http://127.0.0.1:9119/api/capabilities/evidence');
+  assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');
+  assert.equal(options.headers.Authorization,'Bearer fixture-token');
+  return new Response(JSON.stringify([{...evidence,trusted:true,secret:'discard'}]));
+ };
+ const result=await readInstanceEvidence({port:9119,token:'fixture-token'},new AbortController().signal,send);
+ assert.equal(result.length,1);assert.equal(result[0].trusted,false);assert.equal(result[0].secret,undefined);
+});
+test('readInstanceEvidence rejects invalid port or empty token and bounds response size',async()=>{
+ const ok=async()=>new Response(JSON.stringify([evidence]));
+ await assert.rejects(readInstanceEvidence({port:0,token:'x'},new AbortController().signal,ok));
+ await assert.rejects(readInstanceEvidence({port:9119,token:''},new AbortController().signal,ok));
+ const huge=async()=>new Response('x'.repeat(140001));
+ await assert.rejects(readInstanceEvidence({port:9119,token:'x'},new AbortController().signal,huge));
+});
+test('readInstanceEvidence surfaces abort and network failure as EVIDENCE_FAILED',async()=>{
+ const controller=new AbortController();controller.abort();
+ await assert.rejects(readInstanceEvidence({port:9119,token:'x'},controller.signal,async()=>{throw new Error('network');}));
+});
+test('environmentFingerprint is deterministic and stable for the same catalog',async()=>{
+ const card2=decodeCapability({id:'net',name:'Net check',goal:'Check network',method:{kind:'skill',name:'net-check',fingerprint:env},state:'published',inputs:[]});
+ const catalog=[card,{...card,id:'unused'}];
+ const fp1=await environmentFingerprint(catalog);const fp2=await environmentFingerprint(catalog);
+ assert.equal(fp1,fp2);assert.match(fp1,/^[a-f0-9]{64}$/);
+ const reordered=[{...card,id:'unused'},card];
+ const fp3=await environmentFingerprint(reordered);
+ assert.equal(fp1,fp3);
+});
+test('environmentFingerprint changes when a skill fingerprint changes',async()=>{
+ const changed=decodeCapability({id:'files2',name:'Changed',goal:'Changed',method:{kind:'skill',name:'file-sort',fingerprint:env},state:'published',inputs:[]});
+ const fp1=await environmentFingerprint([card]);const fp2=await environmentFingerprint([changed]);
+ assert.notEqual(fp1,fp2);
+});
+test('environmentFingerprint rejects an empty catalog',async()=>{
+ await assert.rejects(environmentFingerprint([]));
 });

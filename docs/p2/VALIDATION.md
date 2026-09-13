@@ -1,5 +1,65 @@
 # P2 首轮前端验证
 
+最新增量（2026-09-13 D 批）：`npm test` 共 151 项（149 通过，2 项 Windows 大小写/文件占用预存失败），
+16 个组件检查和生产构建通过（60 模块）。
+
+D 批增量（持久化、合成测试夹具、跨模块集成测试）：
+- **P2-19 相关：localStorage 持久化层**：新增 `capability-storage.ts` 域模块（saveDrafts/loadDrafts/clearDrafts/saveEvidence/loadEvidence/clearEvidence）。
+  仅持久化卡片定义（投影为 draft 状态）和证据记录（强制 trusted:false），不持久化执行输入、审批、令牌或会话内容。
+  版本化存储键防止 schema 漂移；损坏负载返回空数组而非崩溃。
+- **合成浏览器测试夹具扩展**：扩展 `browser-rpc-fixture.js`，新增 `fetch` 拦截模拟 `/api/capabilities/catalog` 和
+  `/api/capabilities/evidence` HTTP 响应，以及 fixture 卡片和证据数据，覆盖能力卡片执行链路。
+- **跨模块集成单元测试**：新增 `capability-integration.test.mjs`，6 项测试覆盖完整执行链路
+  （指纹匹配+验证证据+完成阶段=complete；指纹不匹配+环境变更=reverify；缺失技能=missing；
+  断流期间断连=unknown；环境指纹顺序无关稳定性；失败证据保持 reverify）。
+
+最新增量（2026-09-13 C 批）：`npm test` 共 136 项（134 通过，2 项 Windows 大小写/文件占用预存失败），
+16 个组件检查和生产构建通过（60 模块）。
+
+C 批增量（配置、更新及交付收尾）：
+- **P2-15 双通道更新 UI**：新增 `update-check.ts` 域模块（UpdateChannel/CheckOutcome/UpdateSummary/UpdatePlan 类型，
+  指数退避 nextRetryDelay 60s–3600s、decodeUpdateCheck/deriveUpdateOutcome/shouldRetry/decodeUpdatePlan/canInstall 函数）。
+  重写 `SettingsPage.tsx`：ChannelPanel 组件展示内核/外壳双通道检查→计划→安装确认流程，兼容性门禁 blocked 时禁用安装，
+  离线/失败时指数退避不反复请求。全部 UI 文案在 `mockData.ts` 的 `updateCopy` 中，无静态 JSX 文本。
+- **P2-09 多入口检测**：新增 `entry-detect.ts` 域模块（EntryKind/EntryStatus 类型，entryLabel/decodeEntryStatus/decodeEntryList 函数，
+  拒绝重复和超限列表）。`SettingsPage.tsx` 新增 EntryPanel 组件（检测按钮 + 结果列表 + aria-busy），当前模拟返回空列表，
+  未连接真实后端。
+- **P2-12/13 最小配置入口**：`LiveChatPage.tsx` 的 Profile/Skill 面板已展示只读枚举 + 接口副作用警告
+  （`profileSideEffects`/`skillSideEffects`），不切换配置或修改设置，不造平行配置体系。
+- **P2-05/08 会话恢复安全**：新增 `resume-safety.ts` 域模块（ResumeWarning 类型，deriveResumeWarning 函数）。
+  `LiveChatPage.tsx` 查看历史正文时显示 `deriveResumeWarning` 派生的恢复警告，明确标注"不自动恢复或重放"。
+- **P2-11 无障碍**：`Panel.tsx` 新增 `aria-busy` 属性支持；`SettingsPage.tsx` 的 ChannelPanel/EntryPanel 在检查/安装时
+  设置 `aria-busy`；CSS 已有 skip-link、focus-visible、`@media(max-width:900px)` 响应式和 `prefers-reduced-motion`。
+- **P2-14 打包策略**：新增文件均为前端源码（`workbench/src/domain/*.ts`），Vite 打包到 `dist/`，已被 `package-policy.mjs`
+  的 `workbench/dist/**` 模式覆盖，无需修改白名单。`release_ready` 保持 false。
+- 新增 9 项 `update-check.test.mjs` 测试（退避边界、解码校验、结果映射、重试逻辑、安装门禁、入口标签、入口解码、
+  入口列表去重、恢复警告），全部通过。未调用真实更新服务或入口检测；浏览器交互和 Windows 实机仍待完成。
+
+最新增量（2026-09-13 B 批）：`npm test` 共 127 项（125 通过，2 项 Windows 大小写/文件占用预存失败），
+16 个组件检查和生产构建通过。
+
+验证证据与学习产出关联增量（B 批）：新增 `importVerificationDrafts`、`readInstanceEvidence` 和
+`environmentFingerprint` 三个函数。外部导入的验证证据一律标记 `trusted:false`，不直接授信；
+实例证据通过 `/api/capabilities/evidence` 端点读取，Bearer 认证、禁用 Cookie/重定向/缓存、
+流式限额 140 KiB。环境指纹从实例 Skill 目录的名称和指纹排序后 SHA-256 生成，方法或环境变更
+触发 `capabilityStatus` 返回 `reverify`。`useLiveChat` 新增 `loadInstanceEvidence`、
+`cardVerification` 和证据状态管理；`loadInstanceCatalog` 成功后计算环境指纹。执行完成后展示
+"学习产出关联"提示，引导用户重新读取实例目录检查 Skill 变更。新增 8 项测试覆盖导入信任投影、
+读取 URL 认证、响应限额、环境指纹稳定性和变更检测。后端 `/api/capabilities/evidence` 端点
+尚未在 control-server 实现；客户端在端点不可用时返回 `EVIDENCE_FAILED`。未调用真实模型或工具；
+浏览器交互、Windows 和真实端到端验收仍待完成。release_ready 保持 false。
+
+最新增量（2026-09-13 A 批）：`npm test` 共 119 项（117 通过，2 项 Windows 大小写/文件占用预存失败），
+16 个组件检查和生产构建通过。
+
+能力卡片执行闭环增量（A 批）：新增 `capability-execution.ts` 域模块，实现指纹重核、提示构造和执行阶段推导。
+`readInstanceCatalogCards` 通过本机管理服务绝对地址（127.0.0.1:port）读取实例 Skill 子树指纹，
+不信任导入卡片声明的指纹；执行前按方法名重核 match/mismatch/missing。
+确认后通过当前会话 `prompt.submit` 发送，不经 `command.dispatch`；不自动发送、重发或批准。
+切换卡片清空执行状态；断线时 streaming 归为 unknown，不视为取消或成功；迟到响应不能完成新请求。
+Bundle 未核实成员完整性，保持不可用。新增 13 项执行逻辑测试和 4 项实例目录读取测试全部通过。
+未调用真实模型或工具；浏览器交互、Windows 和真实端到端验收仍待完成。release_ready 保持 false。
+
 最新增量（2026-09-11）：`npm test` 共 102 项通过，16 个组件检查和生产构建通过。
 
 实例 Skill 目录增量：认证管理接口只扫描启动时固定的 home/skills，不加载用户代码，

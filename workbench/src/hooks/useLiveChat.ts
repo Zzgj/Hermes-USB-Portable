@@ -7,6 +7,8 @@ import {decodeAvailableSkills,type AvailableSkill} from '../domain/skills';
 import {decodeProfiles,profileListRequest,type ProfileSummary} from '../domain/profiles';
 import {readTranscript,type SessionTranscript} from '../domain/session-history';
 import {learningMatches,type LearnDraft} from '../domain/learn';
+import {readInstanceCatalogCards,readInstanceEvidence,environmentFingerprint,importVerificationDrafts,capabilityStatus,type Capability,type ImportedEvidence} from '../domain/capability';
+import {verifyMethodFingerprint,buildExecutionPrompt,deriveExecutionPhase,type ExecutionState} from '../domain/capability-execution';
 export function useLiveChat(){
  const [port,setPort]=useState('9119'),[token,setToken]=useState(''),[input,setInput]=useState('');
  const [phase,setPhase]=useState<'idle'|'connecting'|'session'|'ready'|'closed'|'failed'>('idle');
@@ -20,12 +22,17 @@ export function useLiveChat(){
  const [profiles,setProfiles]=useState<readonly ProfileSummary[]>([]),[profilesLoading,setProfilesLoading]=useState(false),[profilesLoaded,setProfilesLoaded]=useState(false);
  const profilesBusy=useRef(false);
  const [learnDraft,setLearnDraft]=useState<LearnDraft|null>(null),[learnConfirmed,setLearnConfirmed]=useState(false);
+ const [instanceCards,setInstanceCards]=useState<readonly Capability[]>([]),[catalogLoading,setCatalogLoading]=useState(false),[catalogLoaded,setCatalogLoaded]=useState(false);
+ const catalogBusy=useRef(false),catalogRequest=useRef<AbortController|null>(null);
+ const [execution,setExecution]=useState<ExecutionState|null>(null);
+ const [evidence,setEvidence]=useState<readonly ImportedEvidence[]>([]),[evidenceLoading,setEvidenceLoading]=useState(false),[evidenceLoaded,setEvidenceLoaded]=useState(false);
+ const evidenceBusy=useRef(false),evidenceRequest=useRef<AbortController|null>(null),envFingerprint=useRef<string|null>(null);
  const [transcript,setTranscript]=useState<SessionTranscript|null>(null),[transcriptLoading,setTranscriptLoading]=useState(false);
  const transcriptRequest=useRef<AbortController|null>(null),historyAccess=useRef<{port:number;token:string}|null>(null);
  const [history,setHistory]=useState<readonly ChatRecord[]>([]),[turn,setTurn]=useState<ChatTurn|null>(null);
  const connection=useRef<ReturnType<typeof connectHermes>|null>(null),session=useRef<SessionIdentity|null>(null);
  const epoch=useRef(0),current=useRef<ChatTurn|null>(null),sequence=useRef(-1);
- const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;};
+ const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;catalogRequest.current?.abort();catalogRequest.current=null;catalogBusy.current=false;setInstanceCards([]);setCatalogLoading(false);setCatalogLoaded(false);setExecution(null);setEvidence([]);setEvidenceLoading(false);setEvidenceLoaded(false);evidenceBusy.current=false;evidenceRequest.current=null;envFingerprint.current=null;};
  useEffect(()=>()=>{end();},[]);
  const disconnect=()=>{end();setPhase('closed');setToken('');setStopping(false);setApproval(false);setTranscriptLoading(false);setTranscript(null);setLearnDraft(null);setLearnConfirmed(false);};
  const connectTo=({port:targetPort,token:targetToken}:{port:number;token:string})=>{
@@ -119,9 +126,10 @@ export function useLiveChat(){
    if(epoch.current===generation){approvalBusy.current=false;setResponding(false);}
   });
  };
- const submitText=(text:string,display=text)=>{
+ const submitText=(text:string,display=text,opts?:{readonly preserveExecution?:boolean})=>{
   const identity=session.current,client=connection.current;
   if(!text||phase!=='ready'||!identity||!client||current.current?.status==='streaming')return;
+  if(!opts?.preserveExecution)setExecution(null);
   const previous=current.current;
   setHistory(old=>appendChatPrompt(old,previous,display));
   current.current=beginTurn(identity.runtimeId,sequence.current);setTurn(current.current);setInput('');setError(false);
@@ -138,9 +146,54 @@ export function useLiveChat(){
   setLearnDraft(draft);setLearnConfirmed(false);
  };
  const submitLearning=()=>{
-  if(!learnDraft||!learnConfirmed||phase!=='ready'||current.current?.status==='streaming'||!learningMatches(learnDraft,historyAccess.current))return;
+  if(!learnDraft||!learnConfirmed||phase!='ready'||current.current?.status==='streaming'||!learningMatches(learnDraft,historyAccess.current))return;
   submitText(learnDraft.prompt,`/learn\n${learnDraft.source}\n${learnDraft.scope}`);setLearnDraft(null);setLearnConfirmed(false);
  };
+ const loadInstanceCatalog=()=>{
+  const access=historyAccess.current,generation=epoch.current;
+  if(!access||phase!='ready'||catalogBusy.current)return;
+  catalogBusy.current=true;setCatalogLoading(true);setError(false);
+  const controller=new AbortController();catalogRequest.current=controller;const timer=setTimeout(()=>controller.abort(),15000);
+  void readInstanceCatalogCards({port:access.port,token:access.token},controller.signal).then(async cards=>{
+   if(epoch.current!==generation)return;
+   setInstanceCards(cards);setCatalogLoaded(true);setExecution(null);
+   try{envFingerprint.current=await environmentFingerprint(cards);}catch{envFingerprint.current=null;}
+  }).catch(()=>{if(epoch.current===generation)setError(true);}).finally(()=>{
+   clearTimeout(timer);
+   if(epoch.current===generation){catalogBusy.current=false;setCatalogLoading(false);}
+  });
+ };
+ const prepareExecution=(card:Capability,params:Readonly<Record<string,string>>)=>{
+  if(phase!='ready'||!instanceCards.length||card.method.kind!='skill')return;
+  const check=verifyMethodFingerprint(card,instanceCards);
+  const prompt=buildExecutionPrompt(card,params);
+  setExecution({capabilityId:card.id,check,prompt,confirmed:false});
+ };
+ const confirmExecution=()=>{
+  const exec=execution;
+  if(!exec||exec.confirmed||phase!='ready'||current.current?.status==='streaming'||exec.check.status!='match')return;
+  setExecution({...exec,confirmed:true});
+  submitText(exec.prompt,`[能力] ${exec.capabilityId}`,{preserveExecution:true});
+ };
+ const clearExecution=()=>setExecution(null);
+ const loadInstanceEvidence=()=>{
+  const access=historyAccess.current,generation=epoch.current;
+  if(!access||phase!='ready'||evidenceBusy.current||!instanceCards.length)return;
+  evidenceBusy.current=true;setEvidenceLoading(true);setError(false);
+  const controller=new AbortController();evidenceRequest.current=controller;const timer=setTimeout(()=>controller.abort(),15000);
+  void readInstanceEvidence({port:access.port,token:access.token},controller.signal).then(records=>{
+   if(epoch.current!==generation)return;
+   setEvidence(records);setEvidenceLoaded(true);
+  }).catch(()=>{if(epoch.current===generation)setError(true);}).finally(()=>{
+   clearTimeout(timer);
+   if(epoch.current===generation){evidenceBusy.current=false;setEvidenceLoading(false);}
+  });
+ };
+ const cardVerification=(card:Capability):'draft'|'unverified'|'verified'|'reverify'|'unknown'=>{
+  if(!envFingerprint.current||!evidenceLoaded)return 'unknown';
+  return capabilityStatus(card,evidence,envFingerprint.current);
+ };
+ const executionPhase=deriveExecutionPhase(execution,turn,phase!='ready');
  const stop=()=>{
   const identity=session.current,client=connection.current,generation=epoch.current;
   if(!identity||!client||phase!=='ready'||stopping)return;setStopping(true);
@@ -151,6 +204,8 @@ export function useLiveChat(){
  };
  return {port,token,input,phase,error,approval,requests,responding,respond,stopping,history,turn,sessions,listing,listed,listSessions,skills,skillsLoading,skillsLoaded,loadSkills,profiles,profilesLoading,profilesLoaded,loadProfiles,transcript,transcriptLoading,viewTranscript,hideTranscript,
   learnDraft,learnConfirmed,acceptLearnDraft,submitLearning,confirmLearning:(value:boolean)=>setLearnConfirmed(value),dismissLearning:()=>{setLearnDraft(null);setLearnConfirmed(false);},
+  instanceCards,catalogLoading,catalogLoaded,loadInstanceCatalog,execution,executionPhase,prepareExecution,confirmExecution,clearExecution,
+  evidence,evidenceLoading,evidenceLoaded,loadInstanceEvidence,cardVerification,
   busy:turn?.status==='streaming',connect:(event:FormEvent)=>{event.preventDefault();connectTo({port:Number(port),token});},connectTo,disconnect,submit:(event:FormEvent)=>{event.preventDefault();submitText(input.trim());},stop,
   changePort:(e:ChangeEvent<HTMLInputElement>)=>setPort(e.target.value),changeToken:(e:ChangeEvent<HTMLInputElement>)=>setToken(e.target.value),changeInput:(e:ChangeEvent<HTMLTextAreaElement>)=>setInput(e.target.value)};
 }
