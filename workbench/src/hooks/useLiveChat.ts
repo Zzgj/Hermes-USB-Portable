@@ -1,12 +1,14 @@
 import {useEffect,useRef,useState,type ChangeEvent,type FormEvent} from 'react';
 import {connectHermes,decodeSession,decodeInterrupt,type SessionIdentity} from '../domain/rpc';
-import {beginTurn,reduceChatEvent,appendChatPrompt,type ChatRecord,type ChatTurn} from '../domain/chat-events';
+import {beginTurn,reduceChatEvent,appendChatPrompt,type ChatRecord,type ChatTurn,type CapabilityInvocation} from '../domain/chat-events';
 import {decodeApproval,approvalParams,approvalResolved,type ApprovalRequest} from '../domain/approval';
 import {decodeSessionList,type StoredSession} from '../domain/session-list';
 import {decodeAvailableSkills,type AvailableSkill} from '../domain/skills';
 import {decodeProfiles,profileListRequest,type ProfileSummary} from '../domain/profiles';
 import {readTranscript,type SessionTranscript} from '../domain/session-history';
 import {learningMatches,type LearnDraft} from '../domain/learn';
+import type {PreparedCapability} from '../domain/capability-run';
+import {learningSourceFromTurn} from '../domain/learning-source';
 export function useLiveChat(){
  const [port,setPort]=useState('9119'),[token,setToken]=useState(''),[input,setInput]=useState('');
  const [phase,setPhase]=useState<'idle'|'connecting'|'session'|'ready'|'closed'|'failed'>('idle');
@@ -20,12 +22,15 @@ export function useLiveChat(){
  const [profiles,setProfiles]=useState<readonly ProfileSummary[]>([]),[profilesLoading,setProfilesLoading]=useState(false),[profilesLoaded,setProfilesLoaded]=useState(false);
  const profilesBusy=useRef(false);
  const [learnDraft,setLearnDraft]=useState<LearnDraft|null>(null),[learnConfirmed,setLearnConfirmed]=useState(false);
+ const [selectedLearningSource,setSelectedLearningSource]=useState('');
+ const learningRevision=useRef(0);
+ const invalidateLearning=()=>{learningRevision.current++;setLearnDraft(null);setLearnConfirmed(false);};
  const [transcript,setTranscript]=useState<SessionTranscript|null>(null),[transcriptLoading,setTranscriptLoading]=useState(false);
  const transcriptRequest=useRef<AbortController|null>(null),historyAccess=useRef<{port:number;token:string}|null>(null);
  const [history,setHistory]=useState<readonly ChatRecord[]>([]),[turn,setTurn]=useState<ChatTurn|null>(null);
  const connection=useRef<ReturnType<typeof connectHermes>|null>(null),session=useRef<SessionIdentity|null>(null);
  const epoch=useRef(0),current=useRef<ChatTurn|null>(null),sequence=useRef(-1);
- const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;};
+ const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;learningRevision.current++;setSelectedLearningSource('');};
  useEffect(()=>()=>{end();},[]);
  const disconnect=()=>{end();setPhase('closed');setToken('');setStopping(false);setApproval(false);setTranscriptLoading(false);setTranscript(null);setLearnDraft(null);setLearnConfirmed(false);};
  const connectTo=({port:targetPort,token:targetToken}:{port:number;token:string})=>{
@@ -119,22 +124,24 @@ export function useLiveChat(){
    if(epoch.current===generation){approvalBusy.current=false;setResponding(false);}
   });
  };
- const submitText=(text:string,display=text)=>{
+ const submitText=(text:string,display=text,capability?:CapabilityInvocation)=>{
   const identity=session.current,client=connection.current;
-  if(!text||phase!=='ready'||!identity||!client||current.current?.status==='streaming')return;
+  if(!text||phase!=='ready'||!identity||!client||current.current?.status==='streaming')return false;
   const previous=current.current;
   setHistory(old=>appendChatPrompt(old,previous,display));
-  current.current=beginTurn(identity.runtimeId,sequence.current);setTurn(current.current);setInput('');setError(false);
+  current.current=beginTurn(identity.runtimeId,sequence.current,capability);setTurn(current.current);setInput('');setError(false);
   const generation=epoch.current;
   void client.request('prompt.submit',{session_id:identity.runtimeId,text}).catch(()=>{
    if(epoch.current!==generation)return;
    // A timeout can leave a live server-side turn. Require reconnect rather than permitting duplicate sends.
    end();setPhase('failed');setError(true);
   });
+  return true;
  };
  const draftEpoch=epoch.current;
+ const draftRevision=learningRevision.current;
  const acceptLearnDraft=(draft:LearnDraft)=>{
-  if(epoch.current!==draftEpoch||phase!=='ready'||!learningMatches(draft,historyAccess.current)||current.current?.status==='streaming'){setError(true);return;}
+  if(epoch.current!==draftEpoch||learningRevision.current!==draftRevision||phase!=='ready'||!learningMatches(draft,historyAccess.current)||current.current?.status==='streaming'){setError(true);return;}
   setLearnDraft(draft);setLearnConfirmed(false);
  };
  const submitLearning=()=>{
@@ -150,6 +157,15 @@ export function useLiveChat(){
   }).catch(()=>{if(epoch.current===generation){setStopping(false);setError(true);}});
  };
  return {port,token,input,phase,error,approval,requests,responding,respond,stopping,history,turn,sessions,listing,listed,listSessions,skills,skillsLoading,skillsLoaded,loadSkills,profiles,profilesLoading,profilesLoaded,loadProfiles,transcript,transcriptLoading,viewTranscript,hideTranscript,
+  selectedLearningSource,invalidateLearning,selectLearningSource:(selected:ChatTurn)=>{
+   if(phase!=='ready'||current.current?.status==='streaming'||!(selected===current.current||history.some(record=>record.role==='assistant'&&record.turn===selected)))return false;
+   try{const source=learningSourceFromTurn(selected);invalidateLearning();setSelectedLearningSource(source);return true;}catch{setError(true);return false;}
+  },
+  connectionEpoch:epoch.current,submitCapability:(draft:PreparedCapability)=>{
+   const access=historyAccess.current;
+   if(!access||draft.epoch!==epoch.current||draft.port!==access.port||draft.token!==access.token)return false;
+   return submitText(draft.prompt,`Capability ${draft.cardId}\nSHA256 ${draft.fingerprint}\n${draft.prompt}`,{cardId:draft.cardId,methodFingerprint:draft.fingerprint});
+  },
   learnDraft,learnConfirmed,acceptLearnDraft,submitLearning,confirmLearning:(value:boolean)=>setLearnConfirmed(value),dismissLearning:()=>{setLearnDraft(null);setLearnConfirmed(false);},
   busy:turn?.status==='streaming',connect:(event:FormEvent)=>{event.preventDefault();connectTo({port:Number(port),token});},connectTo,disconnect,submit:(event:FormEvent)=>{event.preventDefault();submitText(input.trim());},stop,
   changePort:(e:ChangeEvent<HTMLInputElement>)=>setPort(e.target.value),changeToken:(e:ChangeEvent<HTMLInputElement>)=>setToken(e.target.value),changeInput:(e:ChangeEvent<HTMLTextAreaElement>)=>setInput(e.target.value)};

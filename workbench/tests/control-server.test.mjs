@@ -4,9 +4,9 @@ import {mkdtemp,writeFile,mkdir,rm,symlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {startControlServer} from '../scripts/control-server.mjs';
-async function setup(t,startInstance,prepareLearn,readCatalog){
+async function setup(t,startInstance,prepareLearn,readCatalog,prepareCapability){
  const root=await mkdtemp(join(tmpdir(),'hermes-control-')),assets=join(root,'assets');await mkdir(assets);await writeFile(join(assets,'index.html'),'<h1>fixture</h1>');
- const service=await startControlServer({assets,startInstance,prepareLearn,readCatalog});t.after(async()=>{await service.close();await rm(root,{recursive:true,force:true});});
+ const service=await startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability});t.after(async()=>{await service.close();await rm(root,{recursive:true,force:true});});
  const call=(path,options={})=>fetch(service.origin+path,{...options,headers:{Origin:service.origin,Authorization:`Bearer ${service.token}`,...options.headers}});
  return {service,call,root,assets};
 }
@@ -15,6 +15,14 @@ test('API rejects missing token or foreign Origin without starting anything',asy
  assert.equal((await fetch(service.origin+'/api/status')).status,403);
  assert.equal((await call('/api/start',{method:'POST',headers:{Origin:'https://foreign.invalid'}})).status,403);
  assert.equal((await call('/api/start',{method:'GET'})).status,404);assert.equal(starts,0);
+});
+test('capability preparation is instance-bound and rejects missing auth or arbitrary paths',async t=>{
+ let calls=0;const {call,service}=await setup(t,async()=>({state:'ready',connection:Promise.resolve({port:1234,token:'fixture'}),stop:async()=>{}}),undefined,undefined,async value=>{calls++;assert.deepEqual(value,{card:{id:'fixture'},values:{}});return {kind:'capability'};});
+ const options={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card:{id:'fixture'},values:{}})};
+ assert.equal((await call('/api/capabilities/prepare',options)).status,409);await call('/api/start',{method:'POST'});
+ assert.equal((await fetch(service.origin+'/api/capabilities/prepare',options)).status,403);
+ assert.equal((await call('/api/capabilities/prepare',{...options,body:JSON.stringify({card:{},values:{},home:'/arbitrary'})})).status,400);
+ const result=await (await call('/api/capabilities/prepare',options)).json();assert.equal(result.connection.token,'fixture');assert.equal(calls,1);
 });
 test('catalog requires an authenticated ready instance and accepts no target path',async t=>{
  let calls=0;const {call,service}=await setup(t,async()=>({state:'ready',connection:Promise.resolve({port:1234,token:'fixture'}),stop:async()=>{}}),undefined,async(...args)=>{assert.equal(args.length,0);calls++;return {cards:[],availability:'unknown'};});

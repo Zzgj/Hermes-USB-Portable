@@ -16,13 +16,13 @@
 
 ## 开发方式
 
-在本目录运行 `npm install`，随后 `npm run dev`。默认只监听 `127.0.0.1:5173`。
+先检查已有依赖；新环境缺依赖时，在本目录按锁文件运行 `npm ci`，随后 `npm run dev`。默认只监听 `127.0.0.1:5173`。
 `npm run build` 先做 TypeScript 检查，再生成 `dist/`；`npm run preview` 只用于本机预览。
 `npm run validate` 检查组件 AST 与只读 Props。开发验证结果另行记录，不把代码存在视为测试通过。
 
 工程参考 [Vite 文档](https://vite.dev/guide/) 和 [Tailwind 3 Vite 接入](https://v3.tailwindcss.com/docs/guides/vite)。
 构建使用相对资源路径、HashRouter，已增加仅绑定 localhost 的实验管理服务与 Windows 启动入口，
-见 [实验启动说明](../docs/p2/EXPERIMENTAL-LAUNCH.md)。不能双击 dist/index.html 替代服务启动。
+见 [工程手册的实验启动章节](../docs/p2/ENGINEERING.md#launch)。不能双击 dist/index.html 替代服务启动。
 便携启动仍待 Windows 验收，当前包是开发快照而非 RC。
 
 执行能力复用 Hermes；本工程不另建 Agent/工作流引擎。任务模拟仅作 UI 夹具。

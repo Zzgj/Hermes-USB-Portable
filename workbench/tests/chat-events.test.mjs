@@ -7,6 +7,18 @@ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext
 const {beginTurn,reduceChatEvent,appendChatPrompt}=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 const event=(seq,text,type='message.delta',status)=>({kind:'event',sessionId:'demo',seq,type,payload:{text,status}});
 const tool=(seq,id,type='tool.start',extra={})=>({...event(seq,''),type,payload:{tool_id:id,name:'terminal',...extra}});
+test('capability association is projected, survives terminal events and is not reused by ordinary chat',()=>{
+ const identity={cardId:'card',methodFingerprint:'a'.repeat(64),token:'not retained'};
+ const initial=beginTurn('demo',-1,identity);identity.cardId='modified outside';
+ assert.equal(initial.capability.cardId,'card');assert.equal('token' in initial.capability,false);
+ const ended=reduceChatEvent(initial,{...event(1,'done','message.complete','complete'),payload:{text:'done',status:'complete',capability:{cardId:'forged'}}});
+ assert.deepEqual(ended.capability,initial.capability);
+ assert.deepEqual(appendChatPrompt([],ended,'next')[0].turn.capability,initial.capability);
+ assert.equal(beginTurn('demo').capability,undefined);
+});
+test('malformed capability identities fail before a turn is created',()=>{
+ for(const value of [{cardId:'',methodFingerprint:'a'.repeat(64)},{cardId:'card',methodFingerprint:'not-a-hash'},{cardId:'x'.repeat(129),methodFingerprint:'a'.repeat(64)}])assert.throws(()=>beginTurn('demo',0,value));
+});
 test('next prompt preserves prior failure and tool evidence without modifying history',()=>{
  const history=appendChatPrompt([],null,'first');
  let turn=reduceChatEvent(beginTurn('demo'),tool(1,'a'));

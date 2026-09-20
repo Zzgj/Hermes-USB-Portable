@@ -7,8 +7,8 @@ import {prepareLearning,type LearnDraft} from '../domain/learn';
 import {learnCopy} from '../data/mockData';
 import {fetchCapabilityDrafts} from '../domain/capability';
 import {catalogCopy} from '../data/mockData';
-interface ServiceControlsProps {readonly canConnect:boolean;readonly onConnected:(connection:ManagedConnection)=>void;readonly onStopped:()=>void;readonly onLearnPrepared?:(draft:LearnDraft)=>void;}
-export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepared}:ServiceControlsProps){
+interface ServiceControlsProps {readonly canConnect:boolean;readonly onConnected:(connection:ManagedConnection)=>void;readonly onStopped:()=>void;readonly onLearnPrepared?:(draft:LearnDraft)=>void;readonly onManagementToken?:(token:string)=>void;}
+export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepared,onManagementToken}:ServiceControlsProps){
  const [input,setInput]=useState(''),[state,setState]=useState<ControlState|'unknown'>('unknown'),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false),[confirmed,setConfirmed]=useState(false);
  const credential=useRef(''),pending=useRef<AbortController|null>(null);
  const [learnSource,setLearnSource]=useState(''),[learnScope,setLearnScope]=useState('');
@@ -47,16 +47,17 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
   try{
    const result=await controlRequest(action,token,controller.signal);
    if(pending.current!==controller)return;
+   onManagementToken?.(token);
    setState(result.state);setConfirmed(false);
    if(result.connection)onConnected(result.connection);
    if(action==='stop'&&result.state==='idle')onStopped();
-  }catch{if(pending.current===controller){setState('unknown');setFailed(true);}}
+  }catch{if(pending.current===controller){onManagementToken?.('');setState('unknown');setFailed(true);}}
   finally{clearTimeout(timer);if(pending.current===controller){pending.current=null;setBusy(false);}}
  };
  const authenticated=!!(input.trim()||credential.current);
  return <Panel title={serviceCopy.title} className="mb-5">
   <p>{serviceCopy.help}</p><p role="status">{busy?serviceCopy.pending:serviceCopy.states[state]}</p>
-  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{setInput(event.target.value);credential.current='';setState('unknown');}}/></label>
+  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{setInput(event.target.value);credential.current='';onManagementToken?.('');setState('unknown');}}/></label>
   <div className="flex flex-wrap gap-3 my-4">
    <button className="button" disabled={busy||!authenticated} onClick={()=>void run('status')}>{serviceCopy.check}</button>
    <button className="button primary" disabled={busy||!authenticated||state!=='idle'||!canConnect} onClick={()=>void run('start')}>{serviceCopy.start}</button>

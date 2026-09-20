@@ -3,7 +3,7 @@ import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {realpath,readFile,stat} from 'node:fs/promises';
 import {join,relative,extname,isAbsolute} from 'node:path';
 
-export async function startControlServer({assets,startInstance,prepareLearn,readCatalog}) {
+export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
  let origin,instance=null,busy=false,closing=false,pending=Promise.resolve();
@@ -29,8 +29,9 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
      if(busy||instance?.state!=='ready'){json(response,409,{error:'NOT_READY'});return;}
      busy=true;pending=(async()=>{try{json(response,200,await readCatalog());}catch{json(response,400,{error:'CATALOG_FAILED'});}finally{busy=false;}})();await pending;return;
     }
-    if(url.pathname==='/api/learn/prepare'&&request.method==='POST'){
-     if(typeof prepareLearn!=='function'){json(response,404,{error:'UNAVAILABLE'});return;}
+    if(['/api/learn/prepare','/api/capabilities/prepare'].includes(url.pathname)&&request.method==='POST'){
+     const learning=url.pathname==='/api/learn/prepare',prepare=learning?prepareLearn:prepareCapability;
+     if(typeof prepare!=='function'){json(response,404,{error:'UNAVAILABLE'});return;}
      if(busy||instance?.state!=='ready'){json(response,409,{error:'NOT_READY'});return;}
      if(request.headers['content-type']!=='application/json'||request.headers['transfer-encoding']||!Number.isInteger(Number(request.headers['content-length']))||Number(request.headers['content-length'])>16384||Number(request.headers['content-length'])<1){request.resume();json(response,400,{error:'INVALID_REQUEST'});return;}
      busy=true;
@@ -38,11 +39,13 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
       try{
        const chunks=[];let bytes=0;for await(const chunk of request){bytes+=chunk.length;if(bytes>16384)throw new Error();chunks.push(chunk);}
        const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks)));
-       if(!input||Array.isArray(input)||Object.keys(input).sort().join(',')!=='scope,source'||typeof input.source!=='string'||typeof input.scope!=='string'||!input.source.trim()||!input.scope.trim()||input.source.length>4000||input.scope.length>4000)throw new Error();
-       const prepared=await prepareLearn(input);
+       if(!input||Array.isArray(input))throw new Error();
+       if(learning&&(Object.keys(input).sort().join(',')!=='scope,source'||typeof input.source!=='string'||typeof input.scope!=='string'||!input.source.trim()||!input.scope.trim()||input.source.length>4000||input.scope.length>4000))throw new Error();
+       if(!learning&&Object.keys(input).sort().join(',')!=='card,values')throw new Error();
+       const prepared=await prepare(input);
        if(instance?.state!=='ready')throw new Error();
        json(response,200,{prepared,connection:await instance.connection});
-      }catch{json(response,400,{error:'LEARN_PREPARATION_FAILED'});}finally{busy=false;}
+      }catch{json(response,400,{error:learning?'LEARN_PREPARATION_FAILED':'CAPABILITY_PREPARATION_FAILED'});}finally{busy=false;}
      })();await pending;return;
     }
     if(url.pathname==='/api/status'&&request.method==='GET'){

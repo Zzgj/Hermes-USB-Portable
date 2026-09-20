@@ -10,6 +10,7 @@ import {startControlServer} from './control-server.mjs';
 import {startHermesInstance} from './hermes-instance.mjs';
 import {prepareLearn} from './prepare-learn.mjs';
 import {readSkillCatalog} from './skill-catalog.mjs';
+import {prepareCapability} from './prepare-capability.mjs';
 
 export function parseLaunchArgs(args){
  const {values}=parseArgs({args,options:{root:{type:'string'},python:{type:'string'},source:{type:'string'},home:{type:'string'},git:{type:'string'},experimental:{type:'boolean'}}});
@@ -39,7 +40,7 @@ export async function launch(args){
  const baseline=inspectBaseline(options.source,values.root?join(values.root,'.cache','runtimes','windows-x64','git','cmd','git.exe'):values.git);
  if(baseline.tracked_changes)throw new Error('SOURCE_REVIEW_REQUIRED');
  console.log(`P2 experimental source: ${baseline.commit} (${baseline.status}; not release-qualified)`);
- const control=await startControlServer({assets,startInstance:()=>startHermesInstance(options),prepareLearn:request=>prepareLearn(options,request),readCatalog:()=>readSkillCatalog(options.home)});
+ const control=await startControlServer({assets,startInstance:()=>startHermesInstance(options),prepareLearn:request=>prepareLearn(options,request),readCatalog:()=>readSkillCatalog(options.home),prepareCapability:request=>prepareCapability(options.home,request)});
  console.log(`P2 manager: ${control.origin} (backend not started)`);
  console.log('Use the browser controls to start/stop. Type OPEN to reopen, or EXIT to stop this manager and its instance.');
  const input=createInterface({input:process.stdin,output:process.stdout});let stopping=false;

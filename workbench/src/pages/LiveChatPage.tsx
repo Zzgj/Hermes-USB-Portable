@@ -4,13 +4,13 @@ import {ServiceControls} from '../components/ServiceControls';
 import {LiveTurn} from '../components/LiveTurn';
 import type {useLiveChat} from '../hooks/useLiveChat';
 import {liveCopy,learnCopy} from '../data/mockData';
-interface LiveChatPageProps {readonly chat:ReturnType<typeof useLiveChat>;}
-export function LiveChatPage({chat}:LiveChatPageProps){
+interface LiveChatPageProps {readonly chat:ReturnType<typeof useLiveChat>;readonly onManagementToken?:(token:string)=>void;}
+export function LiveChatPage({chat,onManagementToken}:LiveChatPageProps){
  const connected=chat.phase==='ready'||chat.phase==='connecting'||chat.phase==='session';
  return <>
   <div className="page-heading"><div><h1>{liveCopy.title}</h1><p>{liveCopy.warning}</p></div><Link className="button" to="/chat">{liveCopy.demo}</Link></div>
   <p className="mb-4">{liveCopy.navigationHelp}</p><Link className="button mb-4" to="/tasks">{liveCopy.tasks}</Link>
-  <ServiceControls canConnect={!connected} onConnected={chat.connectTo} onStopped={chat.disconnect} onLearnPrepared={chat.acceptLearnDraft}/>
+  <ServiceControls canConnect={!connected} onConnected={chat.connectTo} onStopped={chat.disconnect} onLearnPrepared={chat.acceptLearnDraft} onManagementToken={onManagementToken} selectedLearningSource={chat.selectedLearningSource} onLearnInvalidated={chat.invalidateLearning}/>
   {chat.learnDraft&&<Panel title={learnCopy.reviewTitle} className="mb-4"><p>{learnCopy.reviewHelp}</p>
    <dl className="my-3 whitespace-pre-wrap break-words"><dt>{learnCopy.source}</dt><dd>{chat.learnDraft.source}</dd><dt>{learnCopy.scope}</dt><dd>{chat.learnDraft.scope}</dd><dt>{learnCopy.fingerprint}</dt><dd className="break-all">{chat.learnDraft.fingerprint}</dd></dl>
    <details><summary>{learnCopy.prompt}</summary><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">{chat.learnDraft.prompt}</pre></details>
