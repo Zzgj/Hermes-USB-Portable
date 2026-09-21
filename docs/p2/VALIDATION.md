@@ -1,5 +1,20 @@
 # P2 验证记录
 
+## 2026-09-21 dff159b 定向审查修复
+
+- 审查对象：aecd17d22e225e1ecae7b9ce3744cdad8218c8e3..dff159bed2c275d1b6a9c7c0c04c5b7bddf58bda。
+- 修复基线：8fe984314d1290e9f980b1ab002cdb4eb9118f29，先在 detached worktree 修复验证；用户随后授权修复并推送，核对远端仍为同一基线后将受控补丁应用到 feat/portable-initializer。未发布安装包或更新真实实例。
+- 原提交的 RPC/管理服务混用、确认只信缓存指纹、更新定时器模拟结果、虚构恢复状态接线已在整合基线替换或撤下；仅静态复核，不声称完成浏览器竞态验收。
+- 本次修复：证据写入前按 schema 投影（含嵌套 checks），拒绝非法记录且不覆盖旧值；存储读取拒绝时安全返回空；保留并排除 trusted:false 证据，禁止其授予 verified；兼容性 unknown 不允许安装；没有观察到未完成工具也保留恢复可能继续执行警告。
+- 浏览器夹具改为严格同源/测试管理令牌/GET/精确路径，尊重已取消信号，不记录请求令牌；无真实后端的 evidence/prepare 明确 404，未知请求不透传。该夹具不是卡片执行整合测试。
+- 测试先红后绿：领域针对性回归初次 42 项中 5 项失败，修复后 42 项通过；夹具新增 2 项初次均失败，修复后通过。
+- 最终 Linux / Node v24.15.0：npm test 172/172，npm run validate 16 个组件，npm run build，git diff --check，逐条退出码均 0。
+- 补丁应用回原开发工作区后再次独立运行 npm test、npm run validate、npm run build，分别为 172/172、16 个组件、构建通过，退出码均 0；未使用旧 dist 冒充本次产物。
+- 全量测试包含真实 loopback 管理 HTTP 路由与合成实例回调，不启动真实 Hermes/模型；存储测试为内存 backend，安装/目录测试使用临时合成文件，不读取个人实例。
+- 未验证：真实浏览器端到端、真实 Hermes/Skill 执行及模型审批、Windows/U盘；历史失败不能由本次 Linux 结果关闭。
+- 遗留边界：environmentFingerprint 仍只是未接入的目录摘要，不能作为机器/依赖证明；localStorage 模块未接 UI，也不是实例库；可信证据采集、真实更新和恢复后端仍未完成。不通过补功能扩大此次审核范围。
+- 审核结论：原交付需返工，本次上述修复自动回归通过，整合业务闭环待环境验证；release_ready:false 不变。
+
 ## 2026-09-21 单分支整合验证（当前优先）
 
 - 整合 dff159b 与 190cc89 到 feat/portable-initializer，保留双方提交历史。

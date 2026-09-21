@@ -8,6 +8,8 @@ export interface Capability {
  readonly state:'draft'|'published';
 }
 export interface VerificationEvidence {
+ /** Explicitly untrusted records must never grant verification. Absence is not proof of provenance. */
+ readonly trusted?:false;
  readonly capabilityId:string;
  readonly methodFingerprint:string;
  readonly environmentFingerprint:string;
@@ -35,12 +37,12 @@ export function decodeVerification(value:unknown):VerificationEvidence {
   if(!object(check)||!text(check.id,256)||seen.has(check.id)||typeof check.passed!=='boolean')throw new Error('Invalid verification check');
   seen.add(check.id);return {id:check.id,passed:check.passed};
  });
- return {capabilityId:value.capabilityId,methodFingerprint:value.methodFingerprint,environmentFingerprint:value.environmentFingerprint,sessionId:value.sessionId,verifiedAt:value.verifiedAt,outcome:value.outcome as 'passed'|'failed',checks};
+ return {capabilityId:value.capabilityId,methodFingerprint:value.methodFingerprint,environmentFingerprint:value.environmentFingerprint,sessionId:value.sessionId,verifiedAt:value.verifiedAt,outcome:value.outcome as 'passed'|'failed',checks,...(value.trusted===false?{trusted:false as const}:{})};
 }
 /** Metadata alone grants neither trust nor permission; callers must source evidence from validated records. */
 export function capabilityStatus(card:Capability,evidence:readonly VerificationEvidence[],environmentFingerprint:string):'draft'|'unverified'|'verified'|'reverify'{
  if(card.state==='draft')return 'draft';
- const records=evidence.filter(row=>row.capabilityId===card.id);
+ const records=evidence.filter(row=>row.capabilityId===card.id&&row.trusted!==false);
  if(!records.length)return 'unverified';
  const matching=records.filter(row=>row.methodFingerprint===card.method.fingerprint&&row.environmentFingerprint===environmentFingerprint);
  if(!matching.length)return 'reverify';
@@ -125,7 +127,8 @@ export async function readInstanceEvidence(connection:{readonly port:number;read
   return importVerificationDrafts(raw);
  }catch{throw new Error('EVIDENCE_FAILED');}
 }
-/** Derive the environment fingerprint from the instance catalog: a stable hash over Skill names and their fingerprints. */
+/** Legacy catalog digest only, NOT a machine/dependency/environment attestation.
+ * Not connected to production verification; identical catalogs across machines share this digest. */
 export async function environmentFingerprint(catalog:readonly Capability[]):Promise<string>{
  if(!catalog.length)throw new Error('Empty catalog');
  const parts=catalog.map(card=>`${card.method.name}:${card.method.fingerprint}`).sort().join('\n');

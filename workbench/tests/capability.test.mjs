@@ -124,6 +124,13 @@ test('readInstanceEvidence surfaces abort and network failure as EVIDENCE_FAILED
  const controller=new AbortController();controller.abort();
  await assert.rejects(readInstanceEvidence({port:9119,token:'x'},controller.signal,async()=>{throw new Error('network');}));
 });
+test('imported untrusted evidence cannot grant verified status',()=>{
+ const imported=importVerificationDrafts(JSON.stringify([evidence]));
+ assert.equal(capabilityStatus(card,imported,env),'unverified');
+ assert.equal(capabilityStatus(card,imported.map(decodeVerification),env),'unverified');
+ assert.equal(capabilityStatus(card,[{...evidence,trusted:false}],env),'unverified');
+});
+
 test('environmentFingerprint is deterministic and stable for the same catalog',async()=>{
  const card2=decodeCapability({id:'net',name:'Net check',goal:'Check network',method:{kind:'skill',name:'net-check',fingerprint:env},state:'published',inputs:[]});
  const catalog=[card,{...card,id:'unused'}];

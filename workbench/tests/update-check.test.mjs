@@ -47,7 +47,8 @@ test('shouldRetry allows first attempt and respects backoff',()=>{
 test('decodeUpdatePlan validates fields and canInstall blocks on gate',()=>{
  const plan=decodeUpdatePlan({targetVersion:'0.22.0',backup:true,changelogSummary:'fix',compatibilityGate:'unknown'},'kernel');
  assert.equal(plan.channel,'kernel');assert.equal(plan.compatibilityGate,'unknown');
- assert.equal(canInstall(plan),true);
+ assert.equal(canInstall(plan),false);
+ assert.equal(canInstall({...plan,compatibilityGate:'passed'}),true);
  const blocked=decodeUpdatePlan({targetVersion:'0.22.0',backup:true,changelogSummary:'fix',compatibilityGate:'blocked'},'kernel');
  assert.equal(canInstall(blocked),false);
  assert.equal(canInstall(null),false);
@@ -78,8 +79,8 @@ test('deriveResumeWarning warns about incomplete tools',()=>{
  assert.equal(warn.sessionId,'sess-1');assert.equal(warn.mayContinueExecution,true);
  assert.ok(warn.warning.includes('可能继续未完成的工具执行'));
  const safe=deriveResumeWarning('sess-2','2026-09-13T10:00:00Z',false);
- assert.equal(safe.mayContinueExecution,false);
- assert.ok(safe.warning.includes('不自动发送'));
+ assert.equal(safe.mayContinueExecution,true);
+ assert.ok(safe.warning.includes('不代表'));
  assert.throws(()=>deriveResumeWarning('','2026-09-13T10:00:00Z',false));
  assert.throws(()=>deriveResumeWarning('sess','bad-date',false));
 });

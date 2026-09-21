@@ -1,4 +1,6 @@
-// Browser-only fixture. Inject into an owned test page; reload restores native WebSocket.
+// Synthetic RPC/catalog fixture only; NOT a capability execution integration fixture.
+// Inject into an owned test page using fixture-manager-token; never use real credentials.
+// Unknown/unimplemented endpoints fail closed; reload restores native fetch/WebSocket.
 (() => {
   window.__p2RpcRequests = [];
   window.__p2FetchRequests = [];
@@ -9,21 +11,18 @@
     inputs: [{ id: 'source', label: 'Source', required: true }],
     state: 'draft',
   };
-  const FIXTURE_EVIDENCE = {
-    capabilityId: 'fixture-card', methodFingerprint: 'a'.repeat(64), environmentFingerprint: 'b'.repeat(64),
-    sessionId: 'p2-browser', verifiedAt: '2026-09-13T00:00:00Z', outcome: 'passed',
-    checks: [{ id: 'fixture-check', passed: true }],
-  };
-
-  window.fetch = async (url, options) => {
-    const urlStr = String(url);
-    window.__p2FetchRequests.push({ url: urlStr, options });
-
-    if (urlStr.includes('/api/capabilities/catalog')) {
+  window.fetch = async (input, options = {}) => {
+    const request = input instanceof Request ? input : null;
+    const url = new URL(request ? request.url : String(input), window.location.origin);
+    const method = (options.method ?? request?.method ?? 'GET').toUpperCase();
+    const headers = new Headers(options.headers ?? request?.headers);
+    const signal = options.signal ?? request?.signal;
+    if (signal?.aborted) throw new DOMException('Fixture request aborted', 'AbortError');
+    window.__p2FetchRequests.push({url: url.href, method});
+    if (url.origin !== window.location.origin || headers.get('Authorization') !== 'Bearer fixture-manager-token') return new Response('', {status: 403});
+    if (url.pathname === '/api/capabilities/catalog' && !url.search) {
+      if (method !== 'GET') return new Response('', {status: 405});
       return new Response(JSON.stringify({ availability: 'unknown', cards: [FIXTURE_CARD] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-    if (urlStr.includes('/api/capabilities/evidence')) {
-      return new Response(JSON.stringify([FIXTURE_EVIDENCE]), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('', { status: 404 });
   };

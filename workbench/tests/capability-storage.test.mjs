@@ -107,6 +107,26 @@ test('clearEvidence removes persisted records',t=>{
  assert.equal(backend.getItem('hermes-p2-capability-evidence-v1'),null);
 });
 
+test('saveEvidence projects nested fields before writing and rejects invalid records',t=>{
+ const backend=makeBackend();
+ const original=globalThis.localStorage;
+ globalThis.localStorage=backend;
+ t.after(()=>{globalThis.localStorage=original;});
+ saveEvidence([{...evidenceRecord,trusted:false,token:'private-token',checks:[{id:'check',passed:true,secret:'private-check'}]}]);
+ const raw=backend.getItem('hermes-p2-capability-evidence-v1');
+ assert.ok(!raw.includes('private-'));
+ assert.throws(()=>saveEvidence([{...evidenceRecord,outcome:'invented',trusted:false}]));
+ assert.equal(backend.getItem('hermes-p2-capability-evidence-v1'),raw);
+});
+
+test('storage read denial degrades to empty without modifying storage',t=>{
+ const original=globalThis.localStorage;
+ globalThis.localStorage={getItem(){throw new Error('denied');},setItem(){assert.fail('unexpected write');},removeItem(){assert.fail('unexpected removal');}};
+ t.after(()=>{globalThis.localStorage=original;});
+ assert.deepEqual(loadDrafts(),[]);
+ assert.deepEqual(loadEvidence(),[]);
+});
+
 test('saveEvidence rejects oversized arrays',t=>{
  const backend=makeBackend();
  const original=globalThis.localStorage;

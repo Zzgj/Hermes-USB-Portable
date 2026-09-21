@@ -1,6 +1,6 @@
 /** Dual-channel update model: Hermes kernel uses the official updater; the Portable shell uses an independent package channel.
  Neither channel auto-applies; both require explicit user confirmation after a read-only check.
- Compatibility unknown does not auto-block but must be surfaced. Offline backoff prevents hammering the network. */
+ Compatibility must pass before installation; unknown is not permission. Offline backoff prevents hammering the network. */
 export type UpdateChannel='kernel'|'shell';
 export type CheckOutcome='idle'|'checking'|'up-to-date'|'available'|'not-available'|'incompatible'|'offline'|'failed';
 export interface UpdateSummary{
@@ -57,5 +57,5 @@ export function decodeUpdatePlan(value:unknown,channel:UpdateChannel):UpdatePlan
  return {channel,targetVersion:value.targetVersion,backup:value.backup,changelogSummary:value.changelogSummary,compatibilityGate:value.compatibilityGate as 'passed'|'unknown'|'blocked'};
 }
 export function canInstall(plan:UpdatePlan|null):boolean{
- return !!plan&&plan.compatibilityGate!=='blocked';
+ return !!plan&&plan.compatibilityGate==='passed';
 }
