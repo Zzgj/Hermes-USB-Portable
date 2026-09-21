@@ -1,5 +1,9 @@
 import type {RpcMessage} from './rpc';
 type Event=Extract<RpcMessage,{kind:'event'}>;
+export interface CapabilityInvocation {
+ readonly cardId:string;
+ readonly methodFingerprint:string;
+}
 export interface ToolActivity {
  readonly id:string;
  readonly name:string;
@@ -7,6 +11,7 @@ export interface ToolActivity {
  readonly duration?:number;
 }
 export interface ChatTurn {
+ readonly capability?:CapabilityInvocation;
  readonly sessionId:string;
  readonly seq:number;
  readonly text:string;
@@ -21,9 +26,10 @@ export function appendChatPrompt(history:readonly ChatRecord[],previous:ChatTurn
  if(!text.trim()||previous?.status==='streaming')throw new Error('Cannot append an unfinished turn');
  return [...history,...(previous?[{role:'assistant' as const,turn:previous}]:[]),{role:'user',text}];
 }
-export function beginTurn(sessionId:string,seq=-1):ChatTurn {
+export function beginTurn(sessionId:string,seq=-1,capability?:CapabilityInvocation):ChatTurn {
  if(!sessionId)throw new Error('Session identity required');
- return {sessionId,seq,text:'',status:'streaming',truncated:false,tools:[],toolsTruncated:false};
+ if(capability&&(typeof capability.cardId!=='string'||!capability.cardId.trim()||capability.cardId.length>128||typeof capability.methodFingerprint!=='string'||!/^[a-f0-9]{64}$/.test(capability.methodFingerprint)))throw new Error('Invalid capability identity');
+ return {sessionId,seq,text:'',status:'streaming',truncated:false,tools:[],toolsTruncated:false,...(capability?{capability:{cardId:capability.cardId,methodFingerprint:capability.methodFingerprint}}:{})};
 }
 /** Plain text only. Never render backend HTML/ANSI, execute payloads or mix sessions. */
 export function reduceChatEvent(turn:ChatTurn,event:Event):ChatTurn {

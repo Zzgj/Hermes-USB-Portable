@@ -57,6 +57,8 @@ export const navigation = [
   {path:'/onboarding',label:'初始化向导',icon:'→'},
 ] as const;
 export const catalogCopy={title:'实例 Skill 草稿目录',help:'只读取此实例 home 下的 skills 文件，按目录内容计算指纹，不执行 Skill。导出后可到能力卡片页导入；不包含脚本正文、验证记录或授权。禁用状态、平台和依赖可用性尚未核验；无 Skill、链接、冲突或超限时不导出。',export:'读取并导出未验证草稿'};
+export const taskCapabilityCopy={learn:'整理为可复用技能',card:'本轮能力卡片 ID',fingerprint:'提交时核验的方法指纹',verification:'业务验证',unverified:'未取得独立业务验证证据；模型回复和工具调用结束不会自动改变此状态。',export:'下载任务观测报告',exportHelp:'手动下载当前页签最多 100 轮的状态快照（上限 256 KiB）。包含会话 ID、卡片 ID、方法指纹及工具名称/状态，不含对话正文、输入参数、工具结果或令牌。报告不是可信验证证书；分享前仍需核对标识信息。',exportError:'无法导出报告：记录可能超限。没有上传任何内容。'};
+export const capabilityRunCopy={help:'先在真实聊天页通过管理器连接实例。当前仅支持单 Skill：核对目录指纹不代表依赖、平台或业务结果已验证；Hermes 必须读取方法并检查条件，不能静默替换。',prepare:'核对实例方法并审阅请求',confirm:'我确认发送本次请求，可能产生模型费用和工具操作；保留逐项审批，不授予永久权限。',submit:'重新核验并发送一次',sent:'请求已交给当前会话，尚未验证业务结果。请在聊天页查看工具审批，或在任务中心查看实际状态。',chat:'打开真实聊天与审批'};
 export const capabilityCopy={
  exportLabel:'导出本页草稿',exportHelp:'仅保存卡片定义，不包含本次输入参数、执行记录或验证证据。文件由浏览器下载；离页前请自行保存。',
  title:'我的能力',intro:'有验证依据的方法，才是可复用的能力。当前为开发入口，尚未连接实例能力库。',
@@ -110,6 +112,8 @@ export const updates = [{name:'Hermes 内核',description:'沿用官方更新器
 export const updateCopy={
  kernelTitle:'Hermes 内核更新',shellTitle:'Portable 外壳更新',
  channelKernel:'内核 · 官方更新器',channelShell:'外壳 · 独立包',
+ unavailable:'更新接口尚未接入，当前版本及是否有更新均未检测。不会自动安装。',
+ entryUnavailable:'入口检测尚未接入，不能判断是否已安装。请使用 P0-Workbench 中的原生入口。',
  checkButton:'检查更新',checking:'正在检查…',upToDate:'已是最新版本',available:'有可用更新',notAvailable:'暂无更新',incompatible:'兼容性未知，需手动确认',offline:'离线或网络不可达',failed:'检查失败',
  current:'当前版本',latest:'最新版本',retryAfter:'下次可重试时间',
  planButton:'查看更新计划',installButton:'确认安装',installConfirmed:'我已阅读变更说明和兼容性状态；理解更新可能修改文件，且失败可能需要手动恢复。',

@@ -1,217 +1,70 @@
-# P2 阶段开发进度与内容指南
+# P2 当前进度与任务
 
-> 本文档汇总 A/B/C/D 四批开发任务的进度、交付内容、安全约束和审核要点，供 Codex 审查时快速定位代码和设计决策。
+更新：2026-09-21。**单分支整合完成，P2 功能仍在开发，非 RC。**
 
-## 1. 基线信息
+唯一分支：`feat/portable-initializer`，已整合 dff159b 与 190cc89。
+本文件是任务状态唯一入口；证据见 [VALIDATION](VALIDATION.md)，协作见 [HANDOFF](HANDOFF.md)。
 
-| 项目 | 值 |
-|---|---|
-| 接手 Git HEAD | `aecd17d`（`chore: checkpoint P2 development for model handoff`） |
-| 分支 | `feat/portable-initializer` |
-| 接手日期 | 2026-09-13 |
-| 工作机 | Windows（当前开发机） |
-| 接手时测试基线 | 102 项测试，16 个组件 |
-| 当前测试状态 | 151 项测试（149 通过，2 项 Windows 预存失败） |
-| `release_ready` | `false`（未变更） |
+## 先做什么
 
-## 2. 任务批次总览
+1. S0 现场保存与两线整合已完成；两处 TypeScript 构建错误已修复。
+2. S1 卡片管理服务接线、提交前重核和学习来源已接入；浏览器/真实接口整合仍待复验。
+3. S2 学习产出关联、可信证据、实例环境与受控持久化尚未完成。
+4. S3 配置/真实双通道更新/原生入口、会话恢复、视觉与无障碍待完成。
+5. S4 满足开发门槛后生成集中包，Windows/U 盘缺环境时明确待验。
 
-| 批次 | 覆盖 P2 任务 | 交付性质 | 状态 |
-|---|---|---|---|
-| A 批 | P2-16/17 | 真实能力卡片最小闭环（指纹重核→确认→prompt.submit） | 域逻辑+UI+测试已实现 |
-| B 批 | P2-18/19 | 验证证据与学习产出关联 | 域逻辑+UI+测试已实现 |
-| C 批 | P2-15/09/12/13/05/08/11/14 | 双通道更新/入口检测/恢复安全/无障碍/打包验证 | 域逻辑+UI+测试已实现 |
-| D 批 | P2-19 相关 | localStorage 持久化层/合成测试夹具扩展/跨模块集成测试 | 域逻辑+测试已实现 |
+双方只用同一分支，顺序交接精确 SHA，不同时开发和推送。
 
-> 所有 P2 任务在 `PROJECT-PLAN.md` 中仍标记为 `[-]`（实现中），未升级为 `[x]`（已完成并有可核对证据）。
+## 当前任务清单
 
-## 3. 各批次交付详情
+以下描述整合后的实现范围；已通过构建不等于真实功能闭环或最终验收。
+P2-17 保留提交前重核逻辑，仍需浏览器与目标实例验证。
 
-### A 批：真实能力卡片最小闭环（P2-16/17）
+### 任务清单
 
-**目标**：实现从能力卡片选择到 Hermes 执行的最小闭环，使用 `prompt.submit` 而非 `command.dispatch`。
+- [-] **P2-01** 从 Stitch 导出/同步 UI 文件、设计 token、页面清单和交互说明到仓库。六屏已有历史读取与视觉核对记录，颜色/样式仍待校准；映射见 [工程手册](ENGINEERING.md#design)。
+- [-] **P2-02** 前端构建、便携包、安装/恢复。已有开发快照与白名单校验，未形成 RC；安装恢复不等于业务任务回滚。
+- [-] **P2-03** 适配 `hermes serve` 的方法、事件与版本契约。Linux 隔离探针已有证据；目标 Windows 与真实模型/工具链路待验。
+- [-] **P2-04** 自有服务启动、单实例、健康检查、安全停止及断线状态。Linux 已部分验证；Windows 进程树与重连待验，不自动重放消息。
+- [-] **P2-05** 对话、流式输出、工具活动、历史会话、日志和错误摘要部分已实现。历史索引与最近 50 条正文只读入口已接入，隔离 HTTP 探针通过；浏览器整合及会话恢复待完成，恢复可能继续执行，必须明确确认与状态核对。
+- [-] **P2-06** `/tasks` 已接当前连接的轮次/工具事件、审批等待和中断状态，内部导航保留连接，合成协议浏览器测试通过；模拟流程移至 `/tasks/demo`。真实模型整合与持久化历史待完成，不自建调度器或伪造百分比。
+- [-] **P2-07** 适配 Hermes 审批，展示实际提供的原因、命令、范围与风险；未知字段明确提示。已有单次批准/拒绝，真实执行待验；不另建授权系统。
+- [-] **P2-08** 展示真实取消、超时、失败与恢复结果；取消不等于撤销。只在具体工具/Skill 支持并验证时显示业务恢复成功，不实现通用一键回滚。
+- [ ] **P2-09** 集成原 CLI/TUI/Desktop/Web 备用入口与能力检测；P0 入口已有基础，P2 集成待验。
+- [-] **P2-10** 两种模拟流程验证 UI 不绑定业务；保留打印机/文档归档夹具，不再开发独立执行引擎。真实复用验收归 P3。
+- [-] **P2-11** 无障碍、键盘、高 DPI、中英文与错误恢复；已有基础样式，完整矩阵未验。
+- [-] **P2-12** 盘点 Agent/Profile、提示词、Skills、MCP 的上游接口和版本限制；初步源码矩阵见 [接口清单](ENGINEERING.md#interfaces)，完整字段/敏感信息审计和隔离验证待完成。与 P1 共用配置适配，不另造配置格式。
+- [-] **P2-13** 最小配置入口接线：可用 Skills 缓存快照、排除会话读取的 Profile 摘要已接实验页，隔离接口探针通过；选择配置/Skill 与完整真实整合仍待完成。完整创建、搜索、安装和发布管理在 P3 分批接入。
+- [-] **P2-14** 汇总集中测试包、哈希、完整操作清单与已知限制；当前清单草案见 [P2 验收](ACCEPTANCE.md)，不得把开发快照标为正式交付。
+- [ ] **P2-15** 接入已确认的双通道更新 UI：自动检查与通知、明确确认后安装，内核复用上游更新器、外壳复用便携安装/恢复；兼容性未知不静默应用。当前设置页仅占位。频率、离线退避与更新来源在实现时固化并验证，P4 扩展成熟化而非重复建设。
 
-**新增文件**：
-- `workbench/src/domain/capability-execution.ts` — 指纹重核、提示构造、执行阶段推导
-- `workbench/tests/capability-execution.test.mjs` — 13 项测试
+### 能力复用入口增量（开发中，尚未完成真实闭环）
 
-**修改文件**：
-- `workbench/src/domain/capability.ts` — 新增 `readInstanceCatalogCards`
-- `workbench/src/hooks/useLiveChat.ts` — 新增 `loadInstanceCatalog`/`prepareExecution`/`confirmExecution`/`clearExecution`/`executionPhase`
-- `workbench/src/pages/CapabilitiesPage.tsx` — 重写为执行闭环 UI
-- `workbench/src/data/mockData.ts` — 新增 `executionCopy`
-- `workbench/src/App.tsx` — 向 CapabilitiesPage 传入 chat prop
-- `workbench/tests/capability.test.mjs` — 扩展 4 项测试
+- [-] **P2-16** 建立“我的能力”卡片入口：已实现定义模型、草稿 JSON 导入/导出、名称/目标/输入项/Skill 或 Bundle 引用及声明指纹展示；新增固定实例 home/skills 子树指纹目录导出，不执行或自动发布。适用环境、依赖、实例库持久化与真实验证证据待接入。卡片不包含自有流程调度逻辑。
+- [-] **P2-17** 卡片执行适配：已接单 Skill 的参数预览、当前实例指纹核验、请求审阅、确认后二次核验与 prompt.submit；实例身份/连接代次不匹配拒绝，切换卡片取消准备，当前会话保存卡片 ID/方法指纹及请求。Bundle 不支持，依赖/适用性由 Hermes 在读取方法后实际检查；浏览器防重放、真实 Skill 执行与持久化结果关联待验。Precheck/Execute/Verify 不由 UI 自动推进成成功。
+- [-] **P2-18** 从执行记录发起“整理为可复用技能”：已用指纹锁定的上游纯提示构造器准备学习请求，展示来源、范围及全文，经确认后提交当前连接；不经可能执行快捷命令的 command.dispatch。隔离构造器探针和合成浏览器确认链通过。实际 Skill 文件产出、变更审阅、重新验证及证据持久化仍待完成；提示词不是文件写入沙箱。
+- [-] **P2-19** 草稿、待验证、已验证、需重新验证已有纯数据判断规则，绑定方法指纹与环境；导入/导出一律为草稿，不携带外部验证证据。可信证据采集、持久化和完整状态 UI 待接入；方法变更不继承旧验证，保留历史成功记录仍需实现。
 
-**关键设计决策**：
-- 执行通过 `prompt.submit` 发送自然语言提示，不使用 `command.dispatch`
-- 指纹核对按方法名比对，结果为 match/mismatch/missing
-- 执行阶段：idle/verified/mismatch/missing/observing/complete/failed/interrupted/unknown
-- 断流期间 streaming 状态推导为 unknown（不允许迟到的响应完成另一个请求）
-- `preserveExecution` 避免发送 prompt.submit 时清空执行状态
+P2 交付上述 UI/协议适配与测试证据，P3 负责真实方法内容和跨电脑复验。
+“一次成功，多次复用”是目标，不表示一次成功后永远有效；草稿与外部未验证 Skills 单独展示。
 
-### B 批：验证证据与学习产出关联（P2-18/19）
+### P2 验收条件（含能力复用入口）
 
-**目标**：实现验证证据的读取、导入和卡片验证状态派生；环境指纹检测方法/环境变更。
+- Workbench 不依赖解析 TUI 文本获取核心状态。
+- 真实聊天、工具活动、审批和取消通过整合验证；模拟与真实界面明确区分。
+- 配置与 Skill 入口复用 Hermes 已有能力；任务状态只能来自实际事件，缺少信息不伪造。
+- 只有实际支持并验证的恢复才显示成功，不以模拟回滚作为业务恢复验收。
+- Workbench 崩溃不会损坏 Hermes 数据，用户仍能使用原 CLI/TUI。
+- 能力卡片与实际 Skill/Bundle、版本及证据一致；生成 Skill 不等于验证通过，卡片输入不复制旧机凭据或授权。
+- `/learn` 的发起、草稿产出、失败和写入确认有可核对状态；失败经验进入排错参考，不自动标为成功方法。
 
-**修改文件**：
-- `workbench/src/domain/capability.ts` — 新增 `ImportedEvidence` 接口、`importVerificationDrafts`、`readInstanceEvidence`、`environmentFingerprint`
-- `workbench/src/hooks/useLiveChat.ts` — 新增 `loadInstanceEvidence`、`cardVerification`、evidence 状态管理
-- `workbench/src/pages/CapabilitiesPage.tsx` — 新增验证证据面板和学习产出关联提示
-- `workbench/src/data/mockData.ts` — 新增 `evidenceCopy`
-- `workbench/tests/capability.test.mjs` — 扩展 8 项测试
 
-**关键设计决策**：
-- 外部导入的证据一律 `trusted:false`，不接受外部声明的 trust 字段
-- 环境指纹 = SHA-256(sorted `skillName:fingerprint` pairs)，方法或环境变更触发 `reverify`
-- `readInstanceEvidence` 统一抛 `EVIDENCE_FAILED`，不泄露原始错误
-- 证据读取限额 140 KiB，导入限额 128 KiB / 500 条
 
-### C 批：配置/更新/恢复安全/无障碍/打包收尾（P2-15/09/12/13/05/08/11/14）
+## 进度报告规则
 
-**目标**：实现双通道更新 UI、入口检测、会话恢复安全检查、Profile/Skill 副作用警告、无障碍改进和打包策略验证。
-
-**新增文件**：
-- `workbench/src/domain/update-check.ts` — 双通道更新模型（指数退避、兼容性门禁）
-- `workbench/src/domain/entry-detect.ts` — 入口检测模型（CLI/TUI/Desktop/Web）
-- `workbench/src/domain/resume-safety.ts` — 会话恢复安全检查
-- `workbench/tests/update-check.test.mjs` — 9 项测试
-
-**修改文件**：
-- `workbench/src/pages/SettingsPage.tsx` — 重写为双通道更新 UI + 入口检测面板
-- `workbench/src/pages/LiveChatPage.tsx` — 新增恢复安全警告 + Profile/Skill 副作用警告
-- `workbench/src/components/Panel.tsx` — 新增 `aria-busy` 支持
-- `workbench/src/data/mockData.ts` — 新增 `updateCopy`、`liveCopy` 扩展
-
-**关键设计决策**：
-- 双通道：内核（官方 `hermes update`）和外壳（独立包）独立检查/计划/安装
-- 指数退避 60s–3600s + 随机抖动，离线/失败不反复请求网络
-- 兼容性门禁 blocked 时禁止安装
-- 会话恢复可能继续未完成的工具执行，必须明确确认；不自动恢复或重放
-- Profile/Skill 面板展示接口副作用警告（只读枚举，不造平行配置体系）
-- 打包策略验证：新增前端源码均由 Vite 打包到 `dist/`，已被 `workbench/dist/**` 覆盖
-
-### D 批：localStorage 持久化/合成测试夹具/跨模块集成测试
-
-**目标**：实现卡片草稿和证据的浏览器持久化；扩展合成浏览器测试夹具覆盖能力卡片执行链路；补充跨模块集成测试。
-
-**新增文件**：
-- `workbench/src/domain/capability-storage.ts` — localStorage 持久化层
-- `workbench/tests/capability-storage.test.mjs` — 9 项测试
-- `workbench/tests/capability-integration.test.mjs` — 6 项跨模块集成测试
-
-**修改文件**：
-- `workbench/tests/browser-rpc-fixture.js` — 新增 fetch 拦截模拟 catalog/evidence 端点
-
-**关键设计决策**：
-- 仅持久化卡片定义（投影为 draft 状态）和证据记录（强制 `trusted:false`）
-- 不持久化执行输入、审批、令牌或会话内容
-- 版本化存储键（`-v1` 后缀）防止 schema 漂移——旧版本负载被拒绝而非迁移
-- 损坏负载返回空数组而非抛异常
-- 限额：卡片 65KB，证据 128KB / 500 条
-
-## 4. 全部变更文件清单
-
-### 新增文件（10 个）
-
-| 文件路径 | 说明 | 批次 |
-|---|---|---|
-| `workbench/src/domain/capability-execution.ts` | 指纹重核/提示构造/执行阶段推导 | A |
-| `workbench/src/domain/capability-storage.ts` | localStorage 持久化层 | D |
-| `workbench/src/domain/entry-detect.ts` | 入口检测域模块 | C |
-| `workbench/src/domain/resume-safety.ts` | 会话恢复安全检查 | C |
-| `workbench/src/domain/update-check.ts` | 双通道更新域模块 | C |
-| `workbench/tests/capability-execution.test.mjs` | 13 项执行逻辑测试 | A |
-| `workbench/tests/capability-integration.test.mjs` | 6 项跨模块集成测试 | D |
-| `workbench/tests/capability-storage.test.mjs` | 9 项持久化层测试 | D |
-| `workbench/tests/update-check.test.mjs` | 9 项更新/入口/恢复测试 | C |
-| `docs/p2/RETURN-REPORT.md` | 回交报告 | 全部 |
-
-### 修改文件（11 个）
-
-| 文件路径 | 说明 | 批次 |
-|---|---|---|
-| `workbench/src/domain/capability.ts` | 新增 readInstanceCatalogCards/importVerificationDrafts/readInstanceEvidence/environmentFingerprint | A+B |
-| `workbench/src/hooks/useLiveChat.ts` | 新增目录读取/执行/证据/验证状态管理 | A+B |
-| `workbench/src/pages/CapabilitiesPage.tsx` | 重写为执行闭环 UI + 证据面板 | A+B |
-| `workbench/src/pages/SettingsPage.tsx` | 重写为双通道更新 UI + 入口检测 | C |
-| `workbench/src/pages/LiveChatPage.tsx` | 新增恢复安全警告 + 副作用警告 | C |
-| `workbench/src/components/Panel.tsx` | 新增 aria-busy 支持 | C |
-| `workbench/src/data/mockData.ts` | 新增 executionCopy/evidenceCopy/updateCopy/liveCopy 扩展 | A+B+C |
-| `workbench/src/App.tsx` | 向 CapabilitiesPage 传入 chat prop | A |
-| `workbench/tests/capability.test.mjs` | 扩展 12 项测试 | A+B |
-| `workbench/tests/browser-rpc-fixture.js` | 新增 fetch 拦截 | D |
-| `docs/PROJECT-PLAN.md` | 更新 P2 任务状态 | 全部 |
-
-## 5. 安全约束遵循情况
-
-| 约束 | 遵循情况 |
-|---|---|
-| 只读请求不使用 command.dispatch | ✅ 全部通过 prompt.submit 发送自然语言提示 |
-| 不自动发送/审批/发布 | ✅ confirmExecution 需要手动确认复选框 + 按钮点击 |
-| 断流/迟到/重复安全 | ✅ epoch 守卫、catalogBusy/evidenceBusy 防并发、AbortController 可取消、断流 streaming→unknown |
-| 不修改个人配置 | ✅ 未修改 .claude/settings.json 或 .trae/rules |
-| 同步打包白名单 | ✅ 新增文件均由 Vite 打包到 dist/，已被 workbench/dist/** 覆盖 |
-| release_ready 保持 false | ✅ 未变更 |
-| 外部证据强制 trusted:false | ✅ importVerificationDrafts 和 saveEvidence 均强制投影 |
-| 不泄露原始错误 | ✅ readInstanceEvidence 统一抛 EVIDENCE_FAILED |
-
-## 6. 测试结果
-
-| 测试范围 | 总数 | 通过 | 失败 | 说明 |
-|---|---|---|---|---|
-| `npm test`（全量） | 151 | 149 | 2 | 2 项为 Windows 预存失败（installer.test.mjs:40 文件 rename、skill-catalog.test.mjs:16 大小写不敏感） |
-| `capability-execution.test.mjs` | 13 | 13 | 0 | — |
-| `capability.test.mjs`（扩展部分） | 12 | 12 | 0 | — |
-| `update-check.test.mjs` | 9 | 9 | 0 | — |
-| `capability-storage.test.mjs` | 9 | 9 | 0 | — |
-| `capability-integration.test.mjs` | 6 | 6 | 0 | — |
-| `npm run validate` | 16 | 16 | 0 | AST 结构检查 |
-| `npm run build` | 60 模块 | — | 0 | dist 输出正常 |
-
-## 7. 未完成项与外部阻塞
-
-### 被真实 Hermes 实例阻塞
-- P2-03/05/06/07/08/13/16/17/18/19 的真实模型/工具/审批/恢复/执行链路验证
-- `/api/capabilities/evidence` 后端端点未实现
-- `/api/sessions/{id}/messages` 后端端点未实现
-- `/api/ws` WebSocket 后端端点未实现
-
-### 被 Windows 实机阻塞
-- P2-04 Windows 进程树与重连
-
-### 被 .stitch 设计文件阻塞
-- P2-01 视觉校准（仓库中不存在 .stitch 文件）
-
-### 被上游源码授权阻塞
-- P2-12 完整字段/敏感信息审计
-
-### 需要前置门禁全通过
-- P2-14 集中测试包
-
-### 需要真实浏览器+辅助技术
-- P2-11 完整键盘/读屏/高 DPI 矩阵验证
-- D 批 localStorage 持久化的真实浏览器行为验证
-
-## 8. Codex 审查要点
-
-以下是需要重点审查的设计决策和代码位置：
-
-1. **A 批 `capability-execution.ts`**：`deriveExecutionPhase` 的 match→verified 映射是否正确；断流 streaming→unknown 是否覆盖所有边界
-2. **A 批 `useLiveChat.ts`**：`confirmExecution` 的发送条件（match + 已确认 + 非 streaming）是否充分；`preserveExecution` 是否避免发送时清空
-3. **B 批 `capability.ts`**：`importVerificationDrafts` 强制 trusted:false 的投影逻辑；`environmentFingerprint` 的排序和 SHA-256 计算是否正确
-4. **C 批 `SettingsPage.tsx`**：ChannelPanel 的 check→plan→install 流程是否安全（不自动安装、需确认）；`updateCopy` 文案是否完整
-5. **C 批 `resume-safety.ts`**：`deriveResumeWarning` 的 `hasIncompleteTools` 保守 false 是否合理
-6. **D 批 `capability-storage.ts`**：版本化存储键策略；损坏负载安全降级；限额是否合理
-7. **D 批 `browser-rpc-fixture.js`**：fetch 拦截的 URL 匹配逻辑是否过于宽松
-8. **D 批 `capability-integration.test.mjs`**：跨模块测试的组合是否覆盖关键边界
-
-## 9. 文档索引
-
-| 文档 | 说明 |
-|---|---|
-| [MODEL-HANDOFF.md](MODEL-HANDOFF.md) | 接力交接文档，含 A/B/C 批开发计划 |
-| [RETURN-REPORT.md](RETURN-REPORT.md) | 回交报告，含完成项/未完成项/验证证据/审查项 |
-| [VALIDATION.md](VALIDATION.md) | 测试与验证结果记录 |
-| [PROJECT-PLAN.md](../PROJECT-PLAN.md) | 项目计划，含 P2 全部任务状态 |
-| [PROGRESS-GUIDE.md](PROGRESS-GUIDE.md) | 本文档 |
+- P2-09/15 在外部提交有 UI/域逻辑，但真实后端未接，本机主线仍是占位，保持未完成。
+- P2-18 学习来源传递与失效处理已接入；实际草稿产出、审阅及证据仍有开发缺口。
+- P2-19 的 localStorage 工具模块不是便携持久化设计；需先核定目录、字段与信任边界。
+- 不把 151 测试与 115 测试相加作为交付数量，也不依据它们报精确完成百分比。
+- 历史浏览器验证不覆盖后续修改；当前证据见 [VALIDATION](VALIDATION.md)。
+- 达成 [ACCEPTANCE](ACCEPTANCE.md) 后再更新发布资格，不能为了构建包手改门禁。

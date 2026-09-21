@@ -1,66 +1,80 @@
-# P2 首轮前端验证
+# P2 验证记录
 
-最新增量（2026-09-13 D 批）：`npm test` 共 151 项（149 通过，2 项 Windows 大小写/文件占用预存失败），
-16 个组件检查和生产构建通过（60 模块）。
+## 2026-09-21 单分支整合验证（当前优先）
 
-D 批增量（持久化、合成测试夹具、跨模块集成测试）：
-- **P2-19 相关：localStorage 持久化层**：新增 `capability-storage.ts` 域模块（saveDrafts/loadDrafts/clearDrafts/saveEvidence/loadEvidence/clearEvidence）。
-  仅持久化卡片定义（投影为 draft 状态）和证据记录（强制 trusted:false），不持久化执行输入、审批、令牌或会话内容。
-  版本化存储键防止 schema 漂移；损坏负载返回空数组而非崩溃。
-- **合成浏览器测试夹具扩展**：扩展 `browser-rpc-fixture.js`，新增 `fetch` 拦截模拟 `/api/capabilities/catalog` 和
-  `/api/capabilities/evidence` HTTP 响应，以及 fixture 卡片和证据数据，覆盖能力卡片执行链路。
-- **跨模块集成单元测试**：新增 `capability-integration.test.mjs`，6 项测试覆盖完整执行链路
-  （指纹匹配+验证证据+完成阶段=complete；指纹不匹配+环境变更=reverify；缺失技能=missing；
-  断流期间断连=unknown；环境指纹顺序无关稳定性；失败证据保持 reverify）。
+- 整合 dff159b 与 190cc89 到 feat/portable-initializer，保留双方提交历史。
+- Linux：npm test 167/167 通过；npm run validate 16 个组件通过；npm run build 通过，均退出码 0。
+- 修复 ServiceControls 学习来源接线和 learn 文案的两处 TypeScript 错误。
+- 新增学习来源投影/未完成轮次边界及设置页服务端渲染测试；未接后端显示不可用，不假报检查成功。
+- 采用管理服务准备和提交前二次重核；外部独立模块/测试保留不代表已经接通业务。
+- 未执行浏览器整合、真实模型、Windows/U 盘验收；历史探针未重跑。
+- release_ready 仍为 false，遗留问题与下一批见 HANDOFF；本轮不发布安装包。
+- 以下均为此前代码现场/历史记录，不代表当前仍未合并或构建失败。
 
-最新增量（2026-09-13 C 批）：`npm test` 共 136 项（134 通过，2 项 Windows 大小写/文件占用预存失败），
-16 个组件检查和生产构建通过（60 模块）。
+## 2026-09-21 Git 检查点复核
 
-C 批增量（配置、更新及交付收尾）：
-- **P2-15 双通道更新 UI**：新增 `update-check.ts` 域模块（UpdateChannel/CheckOutcome/UpdateSummary/UpdatePlan 类型，
-  指数退避 nextRetryDelay 60s–3600s、decodeUpdateCheck/deriveUpdateOutcome/shouldRetry/decodeUpdatePlan/canInstall 函数）。
-  重写 `SettingsPage.tsx`：ChannelPanel 组件展示内核/外壳双通道检查→计划→安装确认流程，兼容性门禁 blocked 时禁用安装，
-  离线/失败时指数退避不反复请求。全部 UI 文案在 `mockData.ts` 的 `updateCopy` 中，无静态 JSX 文本。
-- **P2-09 多入口检测**：新增 `entry-detect.ts` 域模块（EntryKind/EntryStatus 类型，entryLabel/decodeEntryStatus/decodeEntryList 函数，
-  拒绝重复和超限列表）。`SettingsPage.tsx` 新增 EntryPanel 组件（检测按钮 + 结果列表 + aria-busy），当前模拟返回空列表，
-  未连接真实后端。
-- **P2-12/13 最小配置入口**：`LiveChatPage.tsx` 的 Profile/Skill 面板已展示只读枚举 + 接口副作用警告
-  （`profileSideEffects`/`skillSideEffects`），不切换配置或修改设置，不造平行配置体系。
-- **P2-05/08 会话恢复安全**：新增 `resume-safety.ts` 域模块（ResumeWarning 类型，deriveResumeWarning 函数）。
-  `LiveChatPage.tsx` 查看历史正文时显示 `deriveResumeWarning` 派生的恢复警告，明确标注"不自动恢复或重放"。
-- **P2-11 无障碍**：`Panel.tsx` 新增 `aria-busy` 属性支持；`SettingsPage.tsx` 的 ChannelPanel/EntryPanel 在检查/安装时
-  设置 `aria-busy`；CSS 已有 skip-link、focus-visible、`@media(max-width:900px)` 响应式和 `prefers-reduced-motion`。
-- **P2-14 打包策略**：新增文件均为前端源码（`workbench/src/domain/*.ts`），Vite 打包到 `dist/`，已被 `package-policy.mjs`
-  的 `workbench/dist/**` 模式覆盖，无需修改白名单。`release_ready` 保持 false。
-- 新增 9 项 `update-check.test.mjs` 测试（退避边界、解码校验、结果映射、重试逻辑、安装门禁、入口标签、入口解码、
-  入口列表去重、恢复警告），全部通过。未调用真实更新服务或入口检测；浏览器交互和 Windows 实机仍待完成。
+- 本机 WIP：115/115 Node 测试通过，16 个组件检查通过。
+- 生产构建仍有前次记录的两处 TypeScript 错误；保存检查点不代表构建/发布通过。
+- fetch 后原远端开发分支仍为 dff159b；使用独立 handoff/p2-local-checkpoint-20260921 保存，不强推或合并。
+- 未执行真实模型、Windows/U 盘测试，未修复或关闭 dff159b 审查问题。
 
-最新增量（2026-09-13 B 批）：`npm test` 共 127 项（125 通过，2 项 Windows 大小写/文件占用预存失败），
-16 个组件检查和生产构建通过。
+## 2026-09-20 交接现场核查（历史）
 
-验证证据与学习产出关联增量（B 批）：新增 `importVerificationDrafts`、`readInstanceEvidence` 和
-`environmentFingerprint` 三个函数。外部导入的验证证据一律标记 `trusted:false`，不直接授信；
-实例证据通过 `/api/capabilities/evidence` 端点读取，Bearer 认证、禁用 Cookie/重定向/缓存、
-流式限额 140 KiB。环境指纹从实例 Skill 目录的名称和指纹排序后 SHA-256 生成，方法或环境变更
-触发 `capabilityStatus` 返回 `reverify`。`useLiveChat` 新增 `loadInstanceEvidence`、
-`cardVerification` 和证据状态管理；`loadInstanceCatalog` 成功后计算环境指纹。执行完成后展示
-"学习产出关联"提示，引导用户重新读取实例目录检查 Skill 变更。新增 8 项测试覆盖导入信任投影、
-读取 URL 认证、响应限额、环境指纹稳定性和变更检测。后端 `/api/capabilities/evidence` 端点
-尚未在 control-server 实现；客户端在端点不可用时返回 `EVIDENCE_FAILED`。未调用真实模型或工具；
-浏览器交互、Windows 和真实端到端验收仍待完成。release_ready 保持 false。
+范围：本机 aecd17d + 未提交 P2 增量，不是 dff159b。Linux / Node v24.15.0。
+本轮仅整理文档与必要引用/打包白名单，不合并或修复业务代码。
+- npm test：115/115 通过。
+- npm run validate：16 个组件通过。
+- npm run build：退出码 2；ServiceControlsProps 缺少 selectedLearningSource 接线，
+  taskCapabilityCopy 缺少 learn 字段，均见 HANDOFF。
+- 没有浏览器整合、真实模型、Windows/U 盘验收，也未重新运行历史隔离探针。
+- 文档归并后：13 份文档的本地链接与包白名单检查通过；旧文档路径不再允许打包。
+  package/installer 的 9 项针对性回归通过；这些测试使用合成文件，不是实际安装验收。
+  所有文档采用明确白名单随开发包携带，没有改为允许任意 docs 路径。
+  git diff --check 通过。本轮没有使用旧 dist 生成交付包，不能推导发布通过。
 
-最新增量（2026-09-13 A 批）：`npm test` 共 119 项（117 通过，2 项 Windows 大小写/文件占用预存失败），
-16 个组件检查和生产构建通过。
+## dff159b 独立审查（前次记录，非本轮复跑）
 
-能力卡片执行闭环增量（A 批）：新增 `capability-execution.ts` 域模块，实现指纹重核、提示构造和执行阶段推导。
-`readInstanceCatalogCards` 通过本机管理服务绝对地址（127.0.0.1:port）读取实例 Skill 子树指纹，
-不信任导入卡片声明的指纹；执行前按方法名重核 match/mismatch/missing。
-确认后通过当前会话 `prompt.submit` 发送，不经 `command.dispatch`；不自动发送、重发或批准。
-切换卡片清空执行状态；断线时 streaming 归为 unknown，不视为取消或成功；迟到响应不能完成新请求。
-Bundle 未核实成员完整性，保持不可用。新增 13 项执行逻辑测试和 4 项实例目录读取测试全部通过。
-未调用真实模型或工具；浏览器交互、Windows 和真实端到端验收仍待完成。release_ready 保持 false。
+151/151 Node 测试、16 个组件检查和生产构建通过；六项审查问题见 [HANDOFF](HANDOFF.md)。
+没有整合进本机 WIP；外部报告中的 Windows 失败仍待原生环境复核。
+不把两套测试数量相加，不把该提交通过结果用来遮盖当前构建失败。
 
-最新增量（2026-09-11）：`npm test` 共 102 项通过，16 个组件检查和生产构建通过。
+## 历史批次记录（保留证据，不覆盖上述当前状态）
+
+2026-09-13 任务关联增量：115 项测试、16 个组件检查及生产构建通过。
+卡片提交现在将 cardId/methodFingerprint 作为本轮结构化元数据保存，工具和消息事件不能
+覆盖它；前一轮归档保留关联，下一次普通聊天不继承。任务中心直接显示关联和“业务未验证”。
+新增手动任务观测报告导出：最多 100 轮/256 KiB，只投影会话、状态、卡片指纹、工具标识/状态，
+不输出回复正文、输入参数、工具结果或令牌，明确 trusted_verification:false。
+4 项测试覆盖关联投影/终态/不继承、错误身份拒绝、报告隐私投影及限额/不变性。
+报告只是可携带诊断快照，不是可信证据持久化、恢复入口或验证证书；新增报告下载和任务元数据
+展示尚未做浏览器/Windows 验证，不沿用前一批按钮测试作本次 UI 通过证据。
+
+2026-09-13 卡片客户端增量：111 项测试、16 个组件检查和生产构建通过。
+新增 4 项客户端测试覆盖固定认证端点、字段投影、UTF8 限额、错误身份/响应拒绝；
+导入新文件立即清空旧审阅，并在读取期间拒绝执行；更换管理令牌/管理请求失败清除共享令牌。
+
+browser-act 独立会话 p2-cap-run，生产构建配合合成管理器及 RPC：
+- 准备后只有 session.create，未确认时发送按钮禁用。
+- 勾选确认后同一按钮同步点击两次，累计只有一次 prompt.submit，审阅清空且显示已提交。
+- 人为延迟准备响应并切换卡片，释放迟到响应后不显示旧审阅、不追加提交，参数清空。
+- 确认的第二次核验响应被延迟时触发 WebSocket close，随后释放响应，提交总数仍为 1，
+  显示错误且清空审阅。
+测试浏览器与合成管理器均已关闭，没有真实模型/工具或个人 Skill 操作。
+这些交互证据来自上述导入/令牌收紧补丁之前的构建；补丁已编译及自动回归，新增边界交互仍需补测。
+未覆盖真正重连至另一实例、实际 Skill 读取执行、Windows 或业务验证，不能宣布全闭环通过。
+
+2026-09-13 开发增量：单 Skill 请求准备与确认提交已接代码；107 项测试、16 个组件检查、
+TypeScript 与生产构建通过。新增 4 项准备器测试及 1 项管理接口测试，覆盖方法变化、参数
+边界、Bundle 拒绝、只读准备、认证与实例就绪门禁；尚不覆盖前端防重复提交整合行为。
+管理接口只接受 card/values，重读固定实例的 Skill 子树并匹配指纹，不接受浏览器扫描路径。
+前端先审阅，确认时再核验一次，检查前后请求、方法指纹、端口/令牌和连接代次；同一在途
+操作不重复发送。提交后进入现有真实聊天/任务事件链，用户请求记录含卡片 ID 和方法指纹。
+使用普通任务 prompt 明确要求 Hermes 用工具读取指定 Skill；不是斜杠命令分发或预先加载方法。
+Skill 不可用时要求停止/说明，不自动替换。提示不是安全沙箱，也不能原子锁定 Agent 读取时
+的目录内容；实际执行、审批和业务证据仍需整合验证。Bundle、持久化、发布均未完成。
+本增量尚无浏览器或 Windows 证据，不将编译/单元测试当作完整闭环验收。
+
+此前增量（2026-09-11）：`npm test` 共 102 项通过，16 个组件检查和生产构建通过。
 
 实例 Skill 目录增量：认证管理接口只扫描启动时固定的 home/skills，不加载用户代码，
 按定义及脚本等完整子树计算指纹。管理面板新增导出未验证草稿入口，导出后可在能力页导入。
@@ -181,7 +195,7 @@ startInstance 与 WebSocket 使用无副作用夹具，没有启动真实 Hermes
 仍需安装器、完整清单、最终内容核对及 Windows 验收，后续代码变化需重新构建打包。
 
 真实管理器集成探测也已通过：认证健康、错误令牌拒绝、单实例拦截、受控停止和锁释放均 true，
-详见 [服务生命周期](SERVICE-LIFECYCLE.md)。仅在 Linux 隔离环境验证，没有模型或工具操作。
+详见 [服务生命周期](ENGINEERING.md#lifecycle)。仅在 Linux 隔离环境验证，没有模型或工具操作。
 
 后续控制 HTTP 集成探测也通过：未认证启动拒绝、API 启动就绪、显式本机 Origin 的 WebSocket
 握手成功、外站 Origin 拒绝、API 停止回到 idle、锁释放。测试客户端模拟浏览器 Origin，
@@ -213,7 +227,7 @@ startInstance 与 WebSocket 使用无副作用夹具，没有启动真实 Hermes
 
 新增 WebSocket 假传输测试覆盖：open 不等于 ready、就绪后发送、断线清理、忽略迟到事件、
 损坏报文、握手超时、主动关闭，以及连接前拒绝远程地址。尚未证明浏览器与真实服务的整合。
-RPC 单元测试使用合成报文。另有 Linux 隔离服务探针验证认证拒绝、ready 和未知方法错误，退出码 0；详见 [协议证据](HERMES-PROTOCOL.md)。仍不能证明会话、取消和网络恢复已可用。
+RPC 单元测试使用合成报文。另有 Linux 隔离服务探针验证认证拒绝、ready 和未知方法错误，退出码 0；详见 [协议证据](ENGINEERING.md#protocol)。仍不能证明会话、取消和网络恢复已可用。
 
 后续空会话增量已通过：创建、隔离 cwd、关闭、重复关闭 false、关闭后取消错误 4001。
 未提交 prompt，尚未验证流式回复、运行中取消、审批或断线恢复。隔离服务已退出。

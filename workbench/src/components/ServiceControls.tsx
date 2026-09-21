@@ -7,11 +7,20 @@ import {prepareLearning,type LearnDraft} from '../domain/learn';
 import {learnCopy} from '../data/mockData';
 import {fetchCapabilityDrafts} from '../domain/capability';
 import {catalogCopy} from '../data/mockData';
-interface ServiceControlsProps {readonly canConnect:boolean;readonly onConnected:(connection:ManagedConnection)=>void;readonly onStopped:()=>void;readonly onLearnPrepared?:(draft:LearnDraft)=>void;}
-export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepared}:ServiceControlsProps){
+interface ServiceControlsProps {readonly canConnect:boolean;readonly onConnected:(connection:ManagedConnection)=>void;readonly onStopped:()=>void;readonly onLearnPrepared?:(draft:LearnDraft)=>void;readonly onManagementToken?:(token:string)=>void;readonly selectedLearningSource?:string;readonly onLearnInvalidated?:()=>void;readonly learningEnabled?:boolean;}
+export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepared,onManagementToken,selectedLearningSource='',onLearnInvalidated,learningEnabled=true}:ServiceControlsProps){
  const [input,setInput]=useState(''),[state,setState]=useState<ControlState|'unknown'>('unknown'),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false),[confirmed,setConfirmed]=useState(false);
  const credential=useRef(''),pending=useRef<AbortController|null>(null);
  const [learnSource,setLearnSource]=useState(''),[learnScope,setLearnScope]=useState('');
+ const learningRequest=useRef<AbortController|null>(null),invalidateCallback=useRef(onLearnInvalidated);
+ invalidateCallback.current=onLearnInvalidated;
+ const invalidatePreparation=()=>{
+  const controller=learningRequest.current;controller?.abort();learningRequest.current=null;
+  if(controller&&pending.current===controller){pending.current=null;setBusy(false);}
+  invalidateCallback.current?.();
+ };
+ useEffect(()=>{invalidatePreparation();setLearnSource(selectedLearningSource);},[selectedLearningSource]);
+ useEffect(()=>{invalidatePreparation();},[canConnect,learningEnabled]);
  const exportCatalog=async()=>{
   const token=input.trim()||credential.current;if(pending.current||!token||state!=='ready')return;
   credential.current=token;setInput('');setBusy(true);setFailed(false);
@@ -26,12 +35,12 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
  };
  const prepare=async()=>{
   const token=input.trim()||credential.current;
-  if(pending.current||!token||state!=='ready'||canConnect||!onLearnPrepared)return;
+  if(pending.current||!token||state!=='ready'||canConnect||!learningEnabled||!onLearnPrepared)return;
   credential.current=token;setInput('');setBusy(true);setFailed(false);
-  const controller=new AbortController();pending.current=controller;const timer=setTimeout(()=>controller.abort(),15000);
-  try{const draft=await prepareLearning(token,learnSource,learnScope,controller.signal);if(pending.current===controller)onLearnPrepared(draft);}
+  const controller=new AbortController();pending.current=controller;learningRequest.current=controller;const timer=setTimeout(()=>controller.abort(),15000);
+  try{const draft=await prepareLearning(token,learnSource,learnScope,controller.signal);if(pending.current===controller&&!controller.signal.aborted)onLearnPrepared(draft);}
   catch{if(pending.current===controller)setFailed(true);}
-  finally{clearTimeout(timer);if(pending.current===controller){pending.current=null;setBusy(false);}}
+  finally{clearTimeout(timer);if(learningRequest.current===controller)learningRequest.current=null;if(pending.current===controller){pending.current=null;setBusy(false);}}
  };
  useEffect(()=>{
   const bootstrap=readControlBootstrap(window.location.hash);
@@ -47,16 +56,17 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
   try{
    const result=await controlRequest(action,token,controller.signal);
    if(pending.current!==controller)return;
+   onManagementToken?.(token);
    setState(result.state);setConfirmed(false);
    if(result.connection)onConnected(result.connection);
    if(action==='stop'&&result.state==='idle')onStopped();
-  }catch{if(pending.current===controller){setState('unknown');setFailed(true);}}
+  }catch{if(pending.current===controller){onManagementToken?.('');setState('unknown');setFailed(true);}}
   finally{clearTimeout(timer);if(pending.current===controller){pending.current=null;setBusy(false);}}
  };
  const authenticated=!!(input.trim()||credential.current);
  return <Panel title={serviceCopy.title} className="mb-5">
   <p>{serviceCopy.help}</p><p role="status">{busy?serviceCopy.pending:serviceCopy.states[state]}</p>
-  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{setInput(event.target.value);credential.current='';setState('unknown');}}/></label>
+  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{invalidatePreparation();setInput(event.target.value);credential.current='';onManagementToken?.('');setState('unknown');}}/></label>
   <div className="flex flex-wrap gap-3 my-4">
    <button className="button" disabled={busy||!authenticated} onClick={()=>void run('status')}>{serviceCopy.check}</button>
    <button className="button primary" disabled={busy||!authenticated||state!=='idle'||!canConnect} onClick={()=>void run('start')}>{serviceCopy.start}</button>
@@ -67,9 +77,9 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
   {failed&&<p role="alert">{serviceCopy.error}</p>}
   <details className="mt-5"><summary>{catalogCopy.title}</summary><p className="my-3">{catalogCopy.help}</p><button className="button" disabled={busy||!authenticated||state!=='ready'} onClick={()=>void exportCatalog()}>{catalogCopy.export}</button></details>
   <details className="mt-5"><summary>{learnCopy.prepareTitle}</summary><p className="my-3">{learnCopy.prepareHelp}</p>
-   <label className="block">{learnCopy.source}<textarea className="workflow-input" maxLength={4000} disabled={busy} value={learnSource} onChange={event=>setLearnSource(event.target.value)}/></label>
-   <label className="block">{learnCopy.scope}<textarea className="workflow-input" maxLength={4000} disabled={busy} value={learnScope} onChange={event=>setLearnScope(event.target.value)}/></label>
-   <button className="button mt-3" disabled={busy||!authenticated||state!=='ready'||canConnect||!learnSource.trim()||!learnScope.trim()} onClick={()=>void prepare()}>{learnCopy.prepare}</button>
+   <label className="block">{learnCopy.source}<textarea className="workflow-input" maxLength={4000} disabled={busy} value={learnSource} onChange={event=>{invalidatePreparation();setLearnSource(event.target.value);}}/></label>
+   <label className="block">{learnCopy.scope}<textarea className="workflow-input" maxLength={4000} disabled={busy} value={learnScope} onChange={event=>{invalidatePreparation();setLearnScope(event.target.value);}}/></label>
+   <button className="button mt-3" disabled={busy||!authenticated||state!=='ready'||canConnect||!learningEnabled||!learnSource.trim()||!learnScope.trim()} onClick={()=>void prepare()}>{learnCopy.prepare}</button>
   </details>
  </Panel>;
 }

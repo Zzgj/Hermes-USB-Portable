@@ -42,7 +42,7 @@ Development is on `feat/portable-initializer`. The verified P0 baseline currentl
 
 The custom Stitch workbench UI, full CLI/TUI/Desktop/WebUI entry set, model/proxy manager, private Obsidian integration, driver repository workflow, and real printer installation are planned work and are not implemented yet. The inherited launchers remain available, but cross-platform portability and host-write behavior have not yet completed the new project audit.
 
-See the Chinese [project plan and live phase checklist](docs/PROJECT-PLAN.md) for the current P-stage, task IDs, acceptance gates, and implementation order. The current USB acceptance sequence is in the [P0 RC2 acceptance guide](docs/p0/ACCEPTANCE.md).
+See the Chinese [project plan](docs/project_plan.md) for overall phase status and the [AI onboarding guide](docs/AI_GUIDE.md) for project boundaries and the local Hermes lead prompt. Detailed P2 tasks are in the [progress guide](docs/p2/PROGRESS-GUIDE.md). The current USB acceptance sequence is in the [P0 RC2 acceptance guide](docs/p0/ACCEPTANCE.md).
 
 ---
 
@@ -129,7 +129,7 @@ hermes-portable/
         └── linux-arm64/
 ```
 
-Hermes-owned logs and update receipts remain under `data/logs/`, while Runtime and source-state manifests remain next to the components they describe. The [portable log layout](docs/p0/log-layout.md) and its catalog expose all of these locations as one logical source set without breaking upstream paths.
+Hermes-owned logs and update receipts remain under `data/logs/`, while Runtime and source-state manifests remain next to the components they describe. The [P0 engineering reference](docs/p0/ENGINEERING.md) and its log catalog expose all of these locations as one logical source set without breaking upstream paths.
 
 ---
 
