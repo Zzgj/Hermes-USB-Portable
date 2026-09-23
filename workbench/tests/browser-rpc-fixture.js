@@ -15,6 +15,7 @@
     checks: [{ id: 'fixture-check', passed: true }],
   };
 
+  const realFetch = window.fetch.bind(window);
   window.fetch = async (url, options) => {
     const urlStr = String(url);
     window.__p2FetchRequests.push({ url: urlStr, options });
@@ -25,7 +26,8 @@
     if (urlStr.includes('/api/capabilities/evidence')) {
       return new Response(JSON.stringify([FIXTURE_EVIDENCE]), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
-    return new Response('', { status: 404 });
+    // Pass through management API and other requests to the real fetch.
+    return realFetch(url, options);
   };
 
   window.WebSocket = class extends EventTarget {
@@ -55,7 +57,7 @@
         setTimeout(() => this.event('message.complete',{text:'测试已停止',status:'interrupted'}),20);
       }
     }
-    close() { this.closed = true; }
+    close() { this.closed = true; this.dispatchEvent(new Event('close')); }
   };
   return 'P2 browser RPC fixture installed';
 })();
