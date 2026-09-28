@@ -1,5 +1,42 @@
 # P2 验证记录
 
+## 2026-09-28 P2-S1-R1 S1-6c 测试 AST 提取修正（基于 284518b）
+
+返工原因：前次修正（284518b）的 S1-6c 测试在手写表达式中复制调用点代码，未读取实际页面源码。审查证实：在隔离环境临时破坏生产调用顺序后，该测试文件仍 26/26 通过；独立源码探针则正确失败。
+
+### 修改内容
+
+**测试修正：**
+- `tests/s1-capability-chain.test.mjs`：S1-6c 改为使用 TypeScript AST 从 `CapabilitiesPage.tsx` 实际源码提取 commit-check 表达式（`commitIf.expression.getText(pageTree)`），不再手写复制。
+- 新增 S1-6c-mutation 测试：临时修改源码为 fcd8212 回归形式，重新 AST 提取，验证测试能检测到 `!!submitRun` 作为参数的破坏形式。
+- S1-6c 增加结构断言：验证提取的条件包含 `||`（短路）、`canCommitCapability`、`submitRun`，且不含 `!!submitRun`（参数形式）。
+- 测试数量从 26 增至 28。
+
+### 变异验证
+
+| 源码状态 | S1-6c 通过 | S1-6c 失败 | 退出码 |
+|---|---|---|---|
+| 正常源码（`||` 短路） | 7/7 | 0 | 0 |
+| 变异源码（`!!submitRun` 参数） | 1/7 | 6 | 1 |
+| 恢复正常源码 | 7/7 | 0 | 0 |
+
+变异测试临时修改 `CapabilitiesPage.tsx`，在 `t.after` 中恢复原始内容。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 204 项，202 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+### 未验证范围
+
+- AST 提取测试在 Node 中执行，未在 React 组件渲染中验证（Chromium 缺失）。
+- 真实 Hermes/Skill 链路、Windows/U 盘验收未执行。
+- S1-9/10 仅域函数 epoch 守卫，未执行实际 end() 调用。
+
+
 ## 2026-09-28 P2-S1-R1 提交顺序回归修复（基于 fcd8212）
 
 返工原因：前次修正（fcd8212）中 `canCommitCapability` 接收 `submitResult` 参数，导致 `CapabilitiesPage.tsx:22` 的调用表达式 `!!submitRun?.(next)` 在校验之前执行——提交回调先于校验被调用，构成实际生产行为回归。审查探针证实：prompt/fingerprint 不匹配时，base 提交 0 次，fcd8212 提交 1 次。

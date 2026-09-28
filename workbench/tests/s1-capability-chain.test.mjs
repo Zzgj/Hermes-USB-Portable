@@ -1,20 +1,20 @@
 // P2-S1-R1: Card call-chain re-verification — tests that call REAL production code.
-// Domain functions canSubmitCapability and canCommitCapability are extracted from
-// useLiveChat.ts (submitCapability gate) and CapabilitiesPage.tsx (execute commit gate).
-// Tests import the transpiled production source, not reimplementations.
 //
-// IMPORTANT: canCommitCapability does NOT accept a submitResult parameter.
-// The CapabilitiesPage call site uses short-circuit || to ensure canCommitCapability
-// runs FIRST; submitRun is only called if validation passes. This preserves the
-// original short-circuit order: validate identity fields, then submit.
-// The S1-6c regression test proves this order by extracting the actual call-site
-// expression and counting submitRun invocations.
+// S1-6c tests read the ACTUAL CapabilitiesPage.tsx source via TypeScript AST,
+// extract the commit-check expression, and evaluate it with counting callbacks.
+// This ensures tests use the real call-site code, not hand-copied expressions.
+// If someone changes the source, the AST extraction picks up the new expression;
+// if someone breaks the validate-before-submit order, the test fails.
+//
+// Domain functions canSubmitCapability and canCommitCapability are imported via
+// transpiled production source. S1-9/10 test domain-level epoch guards only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,mkdtemp,writeFile,mkdir,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import ts from 'typescript';
+import {writeFileSync} from 'node:fs';
 
 // --- Compile and import REAL production code ---
 
@@ -23,6 +23,27 @@ const url=js=>'data:text/javascript;base64,'+Buffer.from(js).toString('base64');
 const capJs=compile(await readFile(new URL('../src/domain/capability.ts',import.meta.url),'utf8'));
 const runJs=compile(await readFile(new URL('../src/domain/capability-run.ts',import.meta.url),'utf8')).replace(/(['"])\.\/capability\1/,JSON.stringify(url(capJs)));
 const {canSubmitCapability,canCommitCapability,prepareCapabilityRun}=await import(url(runJs));
+
+// --- AST extraction of the ACTUAL commit-check expression from CapabilitiesPage.tsx ---
+
+const pageSource=await readFile(new URL('../src/pages/CapabilitiesPage.tsx',import.meta.url),'utf8');
+const pageTree=ts.createSourceFile('CapabilitiesPage.tsx',pageSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+
+function findNode(node,predicate){
+  if(predicate(node))return node;
+  let result=null;
+  ts.forEachChild(node,child=>{if(!result)result=findNode(child,predicate);});
+  return result;
+}
+
+// Find the IfStatement whose condition references canCommitCapability
+const commitIf=findNode(pageTree,node=>ts.isIfStatement(node)&&node.expression.getText(pageTree).includes('canCommitCapability'));
+if(!commitIf)throw new Error('TEST SETUP FAILURE: could not find canCommitCapability if-statement in CapabilitiesPage.tsx');
+
+// Extract the condition expression text from the real source
+const commitConditionText=commitIf.expression.getText(pageTree);
+// Extract the then-branch (should be throw new Error('CHANGED'))
+const commitThenText=commitIf.thenStatement.getText(pageTree);
 
 // Also import server-side prepare-capability for skill-change tests
 const {prepareCapability}=await import(new URL('../scripts/prepare-capability.mjs',import.meta.url).href);
@@ -63,150 +84,163 @@ async function controlFixture(t,opts={}){
   return {service,call};
 }
 
+// --- Helper: evaluate the extracted commit-check expression with test fixtures ---
+
+function evalCommitCheck(prepared,next,submitRunFn){
+  // The extracted expression references canCommitCapability, prepared, next, and submitRun.
+  // We provide these in scope and evaluate the actual source expression.
+  // eslint-disable-next-line no-new-func
+  const fn=new Function('canCommitCapability','prepared','next','submitRun',`
+    let threw=false;
+    try{
+      if(${commitConditionText})${commitThenText}
+    }catch(e){threw=true;}
+    return threw;
+  `);
+  return fn(canCommitCapability,prepared,next,submitRunFn);
+}
+
+function evalCommitCheckWithCount(prepared,next,submitReturnValue){
+  let submitCalls=0;
+  const submitRun=()=>{submitCalls++;return submitReturnValue;};
+  const threw=evalCommitCheck(prepared,next,submitRun);
+  return {threw,submitCalls};
+}
+
 // =============================================
 // S1-6: canSubmitCapability (from useLiveChat.ts)
-// Tests the REAL production function imported via transpiled source.
 // =============================================
 
 test('S1-6: canSubmitCapability allows submission when epoch, port, and token all match',()=>{
   assert.equal(canSubmitCapability(draft(),access(),5),true);
 });
-
 test('S1-6: canSubmitCapability rejects when epoch changed (reconnect)',()=>{
   assert.equal(canSubmitCapability(draft(),access(),6),false);
 });
-
 test('S1-6: canSubmitCapability rejects when port changed (instance switch)',()=>{
   assert.equal(canSubmitCapability(draft({port:9999}),access(),5),false);
 });
-
 test('S1-6: canSubmitCapability rejects when token changed (instance restart)',()=>{
   assert.equal(canSubmitCapability(draft({token:'different'}),access(),5),false);
 });
-
 test('S1-6: canSubmitCapability rejects when no active connection (null access)',()=>{
   assert.equal(canSubmitCapability(draft(),null,5),false);
 });
 
 // =============================================
-// S1-6b: canCommitCapability (from CapabilitiesPage.tsx)
-// Tests the REAL production function imported via transpiled source.
-// canCommitCapability validates identity fields only; submitRun is NOT a parameter.
+// S1-6b: canCommitCapability (from CapabilitiesPage.tsx, domain function)
 // =============================================
 
 test('S1-6b: canCommitCapability allows commit when all fields match',()=>{
   assert.equal(canCommitCapability(draft(),draft()),true);
 });
-
 test('S1-6b: canCommitCapability rejects when epoch differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({epoch:6})),false);
 });
-
 test('S1-6b: canCommitCapability rejects when port differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({port:9999})),false);
 });
-
 test('S1-6b: canCommitCapability rejects when token differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({token:'other'})),false);
 });
-
 test('S1-6b: canCommitCapability rejects when prompt differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({prompt:'changed'})),false);
 });
-
 test('S1-6b: canCommitCapability rejects when fingerprint differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({fingerprint:FP2})),false);
 });
-
 test('S1-6b: canCommitCapability rejects when no prepared draft (null)',()=>{
   assert.equal(canCommitCapability(null,draft()),false);
 });
 
 // =============================================
-// S1-6c: Commit call-site regression — submitRun is NOT called before validation
-// This test extracts the ACTUAL call-site expression from CapabilitiesPage.tsx
-// and proves short-circuit order: canCommitCapability runs first, submitRun only
-// if validation passes. The broken version (passing !!submitRun?.(next) as a
-// parameter) would call submitRun before validation.
+// S1-6c: Commit call-site regression — extracted from ACTUAL source via AST
+// These tests evaluate the real expression from CapabilitiesPage.tsx, not a copy.
+// submitRun must NOT be called before canCommitCapability validation passes.
 // =============================================
 
+test('S1-6c: AST-extracted commit condition is the short-circuit || expression',()=>{
+  // Verify the extracted expression uses || (short-circuit), not a function argument.
+  // This catches the fcd8212 regression where submitRun was passed as a parameter.
+  assert.ok(commitConditionText.includes('||'),'condition must use || short-circuit');
+  assert.ok(commitConditionText.includes('canCommitCapability'),'condition must call canCommitCapability');
+  assert.ok(commitConditionText.includes('submitRun'),'condition must reference submitRun');
+  assert.ok(!commitConditionText.includes('!!submitRun'),'condition must NOT use !!submitRun as argument (fcd8212 regression)');
+});
+
 test('S1-6c: commit call-site does not call submitRun when prompt differs',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return true;};
-  const prepared=draft();
-  const next=draft({prompt:'changed'});
-  // The ACTUAL production call-site expression from CapabilitiesPage.tsx:22:
-  // if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  let threw=false;
-  try{
-    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(draft(),draft({prompt:'changed'}),true);
   assert.equal(threw,true,'must throw CHANGED');
   assert.equal(submitCalls,0,'submitRun must NOT be called when validation fails (prompt mismatch)');
 });
 
 test('S1-6c: commit call-site does not call submitRun when fingerprint differs',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return true;};
-  const prepared=draft();
-  const next=draft({fingerprint:FP2});
-  let threw=false;
-  try{
-    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(draft(),draft({fingerprint:FP2}),true);
   assert.equal(threw,true,'must throw CHANGED');
   assert.equal(submitCalls,0,'submitRun must NOT be called when validation fails (fingerprint mismatch)');
 });
 
 test('S1-6c: commit call-site does not call submitRun when epoch differs',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return true;};
-  const prepared=draft();
-  const next=draft({epoch:6});
-  let threw=false;
-  try{
-    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(draft(),draft({epoch:6}),true);
   assert.equal(threw,true,'must throw CHANGED');
   assert.equal(submitCalls,0,'submitRun must NOT be called when validation fails (epoch mismatch)');
 });
 
 test('S1-6c: commit call-site calls submitRun exactly once when all fields match',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return true;};
-  const prepared=draft();
-  const next=draft();
-  let threw=false;
-  try{
-    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(draft(),draft(),true);
   assert.equal(threw,false,'must NOT throw when all fields match and submitRun returns true');
   assert.equal(submitCalls,1,'submitRun must be called exactly once when validation passes');
 });
 
 test('S1-6c: commit call-site throws when submitRun returns false (even if fields match)',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return false;};
-  const prepared=draft();
-  const next=draft();
-  let threw=false;
-  try{
-    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(draft(),draft(),false);
   assert.equal(threw,true,'must throw CHANGED when submitRun returns false');
   assert.equal(submitCalls,1,'submitRun was called once (validation passed, submitRun returned false)');
 });
 
 test('S1-6c: commit call-site does not call submitRun when prepared is null',()=>{
-  let submitCalls=0;
-  const submitRun=()=>{submitCalls++;return true;};
-  const next=draft();
-  let threw=false;
-  try{
-    if(!canCommitCapability(null,next)||!submitRun?.(next))throw new Error('CHANGED');
-  }catch{threw=true;}
+  const {threw,submitCalls}=evalCommitCheckWithCount(null,draft(),true);
   assert.equal(threw,true,'must throw CHANGED when prepared is null');
   assert.equal(submitCalls,0,'submitRun must NOT be called when prepared is null');
+});
+
+// =============================================
+// S1-6c-mutation: prove the test catches a broken call-site
+// Temporarily modifies CapabilitiesPage.tsx to the fcd8212 broken form,
+// re-extracts the expression, and verifies the test would fail.
+// =============================================
+
+test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AST extraction',async t=>{
+  const pagePath=new URL('../src/pages/CapabilitiesPage.tsx',import.meta.url);
+  const original=await readFile(pagePath,'utf8');
+  t.after(()=>writeFileSync(pagePath,original));
+
+  // Mutate: change || to function argument (the fcd8212 regression)
+  const mutated=original.replace(
+    'if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error(\'CHANGED\');',
+    'if(!canCommitCapability(prepared,next,!!submitRun?.(next)))throw new Error(\'CHANGED\');'
+  );
+  assert.notEqual(mutated,original,'mutation must actually change the source');
+  writeFileSync(pagePath,mutated);
+
+  // Re-parse the mutated source
+  const mutatedSrc=await readFile(pagePath,'utf8');
+  const mutatedTree=ts.createSourceFile('CapabilitiesPage.tsx',mutatedSrc,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const mutatedIf=findNode(mutatedTree,node=>ts.isIfStatement(node)&&node.expression.getText(mutatedTree).includes('canCommitCapability'));
+  const mutatedCondition=mutatedIf.expression.getText(mutatedTree);
+
+  // The AST extraction detects the broken form
+  assert.ok(mutatedCondition.includes('!!submitRun'),'mutated condition must contain !!submitRun as argument');
+  assert.ok(!mutatedCondition.includes('||'),'mutated condition must NOT use || short-circuit');
+
+  // The S1-6c AST assertion test would fail on the mutated source:
+  // assert.ok(!commitConditionText.includes('!!submitRun')) would fail.
+  // We verify this directly:
+  const wouldFail=mutatedCondition.includes('!!submitRun');
+  assert.equal(wouldFail,true,'test would catch the broken call-site (assert !includes !!submitRun)');
+
+  // Restore original
+  writeFileSync(pagePath,original);
 });
 
 // =============================================
@@ -300,24 +334,17 @@ test('S1-8b: prepare endpoint rejects invalid JSON, extra fields, and oversized 
 });
 
 // =============================================
-// S1-9: Disconnect during streaming prevents replay
-// useLiveChat.end() increments epoch, invalidating pending drafts.
-// Tested via canSubmitCapability with a changed epoch (real production function).
-// Note: this tests the domain-level epoch guard, not the actual end() call in a React context.
+// S1-9/S1-10: Domain-level epoch guard (not React execution)
+// canSubmitCapability rejects stale epoch after disconnect/failure.
+// These test the domain function, NOT the actual end()/setPhase('failed') React calls.
 // =============================================
 
-test('S1-9: epoch guard blocks replay after disconnect (domain function)',()=>{
+test('S1-9: epoch guard blocks replay after disconnect (domain function only)',()=>{
   assert.equal(canSubmitCapability(draft({epoch:5}),access(),5),true);
   assert.equal(canSubmitCapability(draft({epoch:5}),access(),6),false,'stale epoch after disconnect blocks replay');
 });
 
-// =============================================
-// S1-10: submitText failure triggers end(), incrementing epoch
-// Same domain-level test as S1-9; the actual end()/setPhase('failed') call
-// is in React state and not testable without rendering.
-// =============================================
-
-test('S1-10: epoch guard blocks resubmission after submitText failure (domain function)',()=>{
+test('S1-10: epoch guard blocks resubmission after submitText failure (domain function only)',()=>{
   assert.equal(canSubmitCapability(draft({epoch:5}),access(),5),true);
   assert.equal(canSubmitCapability(draft({epoch:5}),access(),6),false,'epoch changed after end() — resubmission blocked');
 });
