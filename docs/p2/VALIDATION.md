@@ -1,5 +1,49 @@
 # P2 验证记录
 
+## 2026-09-23 P2-S1-R1 卡片调用链浏览器复验与定向返工
+
+- 基线 SHA：3252643887c61489ef3cfc6b1a2457a968ee3ab2
+- 环境：Windows 10 / Node v24.14.0 / MSYS bash
+- 新增测试文件：`tests/s1-capability-chain.test.mjs`（8 项）、`tests/s1-control-server.mjs`（浏览器服务启动器，未纳入自动测试套件）、`tests/s1-browser-launch.mjs`（同前）。
+- 修改测试文件：`tests/browser-fixture.test.mjs`（+4 项）、`tests/browser-rpc-fixture.js`（新增 prepare 端点模拟）。
+- **npm test**：184 项测试，182 通过，2 项预存失败（`installer.test.mjs` 中 `mid-install rename failure` 和 `skill-catalog.test.mjs` 中 `catalog rejects links and case collisions`）。两项失败均为 Windows 文件系统大小写不敏感导致，与本批 S1 范围无关，未在本批修复。
+- **npm run validate**：16 个组件文件通过，退出码 0。
+- **npm run build**：tsc --noEmit + vite build 通过，58 模块转换，退出码 0。
+
+### 验收场景逐项结果
+
+| 场景 | 结果 | 证据 |
+|---|---|---|
+| 管理/RPC 使用不同端口与令牌 | 通过 | S1-1a~f：管理令牌通过管理 API，错误令牌 403；prepare 返回 RPC 令牌 `fixture-rpc-token` ≠ 管理令牌；状态响应不含管理令牌；CSP 阻止 `https://*` |
+| 准备完成但未确认，prompt.submit 次数为 0 | 通过 | S1-2：prepare 响应无 submitted 字段；S1-fixture-3：prepare 不触发 WebSocket RPC（`__p2RpcRequests.length===0`） |
+| 确认后连续重复点击只新增一次 prompt.submit | 部分覆盖 | S1-fixture-4：合成 WS 追踪 prompt.submit 计数。前端 `execute` 在 `request.current` 存在时直接 return（防重入），此逻辑由代码审查确认，浏览器端到端点击测试因 Chromium 缺失未执行 |
+| 准备后确认前修改 Skill → 二次核验拒绝 | 通过 | S1-4：修改 skill 脚本文件后第二次 `prepareCapability` 抛出 `CHANGED`；S1-4b：未修改时两次指纹一致 |
+| 延迟准备响应后切换卡片或重新导入 | 代码审查通过 | `choose()` 调用 `request.current?.abort()`，`load()` 递增 `generation.current`，迟到响应通过 `if(id!==generation.current)return` 丢弃。浏览器端到端验证因 Chromium 缺失未执行 |
+| 延迟二次核验时切换实例/令牌/连接代次 → 拒绝旧请求 | 通过 | S1-6：`submitCapability` 校验 epoch/port/token，任一不匹配返回 false；S1-6b：`execute` commit 路径校验 epoch/port/token/prompt/fingerprint，不匹配抛 `CHANGED` |
+| 二次核验期间断线，随后释放响应或重连 → 不提交不重放 | 代码审查通过 | `useLiveChat.end()` 递增 epoch 并关闭连接；`submitText` 失败时 `end()` + `setPhase('failed')`；`submitCapability` 校验 `draft.epoch!==epoch.current` 阻止旧提交。浏览器端到端验证因 Chromium 缺失未执行 |
+| 管理请求失败/认证失败/响应非法 → 清除审阅，错误可见 | 通过 | S1-8a~e：缺认证 403、错误令牌 403、额外字段 400、非 JSON 400、超大 body 400、外部 Origin 403。前端 `execute` catch 块设置 `setError(true)` 并清除 prepared/confirmed |
+
+### 隔离真实 HTTP 路由验证
+
+- 使用 `startControlServer` 启动真实 loopback HTTP 管理服务（端口随机分配），通过 `fetch` 执行 12 项 HTTP 级验证，全部通过。
+- 管理服务使用 `timingSafeEqual` 比较令牌，CSP 阻止外部连接，Origin 校验阻止跨站 POST。
+- 证据为隔离合成数据，未调用真实 Hermes 或模型。
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失（`npx agent-browser install` 未执行，不安装新依赖）。上述 UI 行为（重复点击防重入、延迟响应丢弃、断线不重放）通过代码审查和合成 fixture 测试覆盖，但未在真实浏览器中端到端验证。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败（installer/skill-catalog）不在 S1 范围内，未修复。
+
+### 隐私与安全
+
+- 管理令牌不出现在 API 响应正文中。
+- prepare 响应返回的 RPC 令牌与管理令牌不同。
+- CSP 阻止 `https://*` 外部连接。
+- 合成 fixture 使用 `fixture-manager-token` 和 `fixture-rpc-token`，不含真实凭据。
+
+
 ## 2026-09-21 dff159b 定向审查修复
 
 - 审查对象：aecd17d22e225e1ecae7b9ce3744cdad8218c8e3..dff159bed2c275d1b6a9c7c0c04c5b7bddf58bda。

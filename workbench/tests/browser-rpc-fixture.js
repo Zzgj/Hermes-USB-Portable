@@ -24,6 +24,14 @@
       if (method !== 'GET') return new Response('', {status: 405});
       return new Response(JSON.stringify({ availability: 'unknown', cards: [FIXTURE_CARD] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+    if (url.pathname === '/api/capabilities/prepare' && !url.search) {
+      if (method !== 'POST') return new Response('', {status: 405});
+      const body = JSON.parse(options.body ?? (request ? await request.text() : '{}'));
+      return new Response(JSON.stringify({
+        prepared: { kind: 'capability', cardId: body.card?.id ?? 'fixture-card', method: FIXTURE_CARD.method, availability: 'unknown', prompt: 'Synthetic capability prepared' },
+        connection: { port: 12345, token: 'fixture-rpc-token' }
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     return new Response('', { status: 404 });
   };
 
