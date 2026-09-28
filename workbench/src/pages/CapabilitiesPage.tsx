@@ -19,7 +19,7 @@ export function CapabilitiesPage({ready=false,epoch=0,prepareRun,submitRun}:Capa
   try{
    const next=await prepareRun(card,review,controller.signal);if(request.current!==controller)return;
    if(commit){
-    if(!canCommitCapability(prepared,next,!!submitRun?.(next)))throw new Error('CHANGED');
+    if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED');
     setPrepared(null);setReview(null);setConfirmed(false);setSent(true);
    }else{setPrepared(next);setConfirmed(false);}
   }catch{if(request.current===controller){setError(true);setPrepared(null);setConfirmed(false);}}

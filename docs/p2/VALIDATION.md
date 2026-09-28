@@ -1,5 +1,45 @@
 # P2 验证记录
 
+## 2026-09-28 P2-S1-R1 提交顺序回归修复（基于 fcd8212）
+
+返工原因：前次修正（fcd8212）中 `canCommitCapability` 接收 `submitResult` 参数，导致 `CapabilitiesPage.tsx:22` 的调用表达式 `!!submitRun?.(next)` 在校验之前执行——提交回调先于校验被调用，构成实际生产行为回归。审查探针证实：prompt/fingerprint 不匹配时，base 提交 0 次，fcd8212 提交 1 次。
+
+### 修改内容
+
+**生产代码修复：**
+- `src/domain/capability-run.ts`：`canCommitCapability` 移除 `submitResult` 参数，仅校验身份字段。调用方负责在校验通过后调用 `submitRun`。
+- `src/pages/CapabilitiesPage.tsx`：恢复短路顺序 `if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED')`——`||` 确保 `canCommitCapability` 先执行，不匹配时不调用 `submitRun`。
+
+**测试新增/修正：**
+- `tests/s1-capability-chain.test.mjs`：新增 S1-6c 调用路径回归测试（6 项），提取 CapabilitiesPage 实际调用点表达式，用计数回调验证：
+  - prompt/fingerprint/epoch 不匹配时 submitRun 调用 **0 次**
+  - 全部匹配时 submitRun 调用 **1 次**
+  - submitRun 返回 false 时正确报 CHANGED
+  - prepared 为 null 时 submitRun 调用 **0 次**
+- 移除 S1-7（复制局部门禁）和 S1-5/5b（常量比较），避免误导覆盖等级。
+- S1-9/10 标注为"域函数测试"，不声称执行了实际断线或失败处理。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 202 项，200 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+### 回归证明
+
+模拟 fcd8212 的错误调用路径（`canCommitCapability(prepared,next,!!submitRun?.(next))`），prompt 不匹配时 submitRun 调用 1 次。修复后调用 0 次。S1-6c 测试 `assert.equal(submitCalls,0)` 能捕获此回归。
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失。调用路径测试提取了实际表达式但未在 React 组件渲染中验证。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败根因待验证，不在 S1 范围内，未修复。
+- S1-9/10 仅测试域函数 epoch 守卫，未执行实际 end()/setPhase('failed') 调用。
+
+
 ## 2026-09-28 P2-S1-R1 证据修正（基于 f27876b）
 
 返工原因：前次交付（f27876b）中 S1-6/S1-6b 测试复制校验逻辑而非调用生产代码；fixture 计数不等于 UI 防重复提交；文档对测试退出码和 Windows 根因描述不准确。

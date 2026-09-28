@@ -9,15 +9,15 @@ export function canSubmitCapability(draft:PreparedCapability,access:ConnectionAc
  if(draft.token!==access.token)return false;
  return true;
 }
-/** Gate for execute commit in CapabilitiesPage: reject if no prepared draft, or any identity field changed between prepare and commit. */
-export function canCommitCapability(prepared:PreparedCapability|null,next:PreparedCapability,submitResult:boolean):boolean{
+/** Gate for execute commit in CapabilitiesPage: reject if no prepared draft, or any identity field changed between prepare and commit.
+ * Does NOT accept or call submitRun — the caller must invoke submitRun only after this returns true, preserving short-circuit order. */
+export function canCommitCapability(prepared:PreparedCapability|null,next:PreparedCapability):boolean{
  if(!prepared)return false;
  if(next.epoch!==prepared.epoch)return false;
  if(next.port!==prepared.port)return false;
  if(next.token!==prepared.token)return false;
  if(next.prompt!==prepared.prompt)return false;
  if(next.fingerprint!==prepared.fingerprint)return false;
- if(!submitResult)return false;
  return true;
 }
 export async function prepareCapabilityRun(token:string,card:Capability,values:Readonly<Record<string,string>>,epoch:number,signal:AbortSignal):Promise<PreparedCapability>{
