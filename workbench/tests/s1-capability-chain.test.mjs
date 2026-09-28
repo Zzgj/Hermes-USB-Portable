@@ -26,7 +26,6 @@ const {canSubmitCapability,canCommitCapability,prepareCapabilityRun}=await impor
 // --- AST extraction of the ACTUAL commit-check expression from CapabilitiesPage.tsx ---
 
 const pageSource=await readFile(new URL('../src/pages/CapabilitiesPage.tsx',import.meta.url),'utf8');
-const pageTree=ts.createSourceFile('CapabilitiesPage.tsx',pageSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 
 function findNode(node,predicate){
   if(predicate(node))return node;
@@ -35,14 +34,17 @@ function findNode(node,predicate){
   return result;
 }
 
-// Find the IfStatement whose condition references canCommitCapability
-const commitIf=findNode(pageTree,node=>ts.isIfStatement(node)&&node.expression.getText(pageTree).includes('canCommitCapability'));
-if(!commitIf)throw new Error('TEST SETUP FAILURE: could not find canCommitCapability if-statement in CapabilitiesPage.tsx');
+/** Extract the commit-check condition and then-branch from a source string via AST.
+ * Works on both the normal source and an in-memory mutated copy. */
+function extractCommitCheck(sourceStr,label){
+  const tree=ts.createSourceFile('CapabilitiesPage.tsx',sourceStr,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const ifNode=findNode(tree,node=>ts.isIfStatement(node)&&node.expression.getText(tree).includes('canCommitCapability'));
+  if(!ifNode)throw new Error(`TEST SETUP FAILURE: could not find canCommitCapability if-statement in ${label}`);
+  return {conditionText:ifNode.expression.getText(tree),thenText:ifNode.thenStatement.getText(tree)};
+}
 
-// Extract the condition expression text from the real source
-const commitConditionText=commitIf.expression.getText(pageTree);
-// Extract the then-branch (should be throw new Error('CHANGED'))
-const commitThenText=commitIf.thenStatement.getText(pageTree);
+// Extract from the REAL production source
+const {conditionText:commitConditionText,thenText:commitThenText}=extractCommitCheck(pageSource,'CapabilitiesPage.tsx');
 
 // Also import server-side prepare-capability for skill-change tests
 const {prepareCapability}=await import(new URL('../scripts/prepare-capability.mjs',import.meta.url).href);
@@ -85,18 +87,23 @@ async function controlFixture(t,opts={}){
 
 // --- Helper: evaluate the extracted commit-check expression with test fixtures ---
 
-function evalCommitCheck(prepared,next,submitRunFn){
-  // The extracted expression references canCommitCapability, prepared, next, and submitRun.
-  // We provide these in scope and evaluate the actual source expression.
+/** Evaluate an extracted commit-check expression with test fixtures.
+ * Accepts the condition and then-branch text so it can evaluate either the
+ * normal source expression or a mutated in-memory copy. */
+function evalCommitCheckExpr(conditionText,thenText,prepared,next,submitRunFn){
   // eslint-disable-next-line no-new-func
   const fn=new Function('canCommitCapability','prepared','next','submitRun',`
     let threw=false;
     try{
-      if(${commitConditionText})${commitThenText}
+      if(${conditionText})${thenText}
     }catch(e){threw=true;}
     return threw;
   `);
   return fn(canCommitCapability,prepared,next,submitRunFn);
+}
+
+function evalCommitCheck(prepared,next,submitRunFn){
+  return evalCommitCheckExpr(commitConditionText,commitThenText,prepared,next,submitRunFn);
 }
 
 function evalCommitCheckWithCount(prepared,next,submitReturnValue){
@@ -206,10 +213,11 @@ test('S1-6c: commit call-site does not call submitRun when prepared is null',()=
 // =============================================
 // S1-6c-mutation: prove the test catches a broken call-site.
 // Mutates an IN-MEMORY copy of the source string (never writes to disk),
-// re-parses via AST, and verifies the extraction detects the broken form.
+// re-extracts via the SAME AST pipeline, then EXECUTES the mutated expression
+// to prove the safety assertion (submit 0 on mismatch) FAILS on the mutant.
 // =============================================
 
-test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AST extraction',()=>{
+test('S1-6c-mutation: AST extraction detects broken form (submitRun as argument)',()=>{
   // Mutate the in-memory source string: change || short-circuit to function argument (the fcd8212 regression)
   const mutated=pageSource.replace(
     'if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error(\'CHANGED\');',
@@ -217,20 +225,40 @@ test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AS
   );
   assert.notEqual(mutated,pageSource,'mutation must actually change the source string');
 
-  // Re-parse the mutated in-memory string (no disk I/O, production source untouched)
-  const mutatedTree=ts.createSourceFile('CapabilitiesPage.tsx',mutated,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-  const mutatedIf=findNode(mutatedTree,node=>ts.isIfStatement(node)&&node.expression.getText(mutatedTree).includes('canCommitCapability'));
-  assert.ok(mutatedIf,'mutated source must still contain a canCommitCapability if-statement');
-  const mutatedCondition=mutatedIf.expression.getText(mutatedTree);
+  // Re-extract via the SAME pipeline used for normal source (no disk I/O)
+  const {conditionText:mutatedCondition}=extractCommitCheck(mutated,'mutated source');
 
   // The AST extraction detects the broken form
   assert.ok(mutatedCondition.includes('!!submitRun'),'mutated condition must contain !!submitRun as argument');
   assert.ok(!mutatedCondition.includes('||'),'mutated condition must NOT use || short-circuit');
+});
 
-  // The S1-6c AST assertion test would fail on the mutated source:
-  // assert.ok(!commitConditionText.includes('!!submitRun')) would fail.
-  const wouldFail=mutatedCondition.includes('!!submitRun');
-  assert.equal(wouldFail,true,'test would catch the broken call-site (assert !includes !!submitRun)');
+test('S1-6c-mutation: mutated expression executes submitRun on mismatch (safety assertion fails)',()=>{
+  // Mutate the in-memory source string
+  const mutated=pageSource.replace(
+    'if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error(\'CHANGED\');',
+    'if(!canCommitCapability(prepared,next,!!submitRun?.(next)))throw new Error(\'CHANGED\');'
+  );
+  const {conditionText:mutCond,thenText:mutThen}=extractCommitCheck(mutated,'mutated source');
+
+  // Execute the MUTATED expression with a prompt mismatch (prepared differs from next).
+  // Normal source: canCommitCapability returns false -> || short-circuits -> submitRun NOT called -> submitCalls=0.
+  // Mutated source: canCommitCapability(prepared,next,!!submitRun?.(next)) — submitRun is called as an ARGUMENT
+  // to canCommitCapability, which executes BEFORE the function can reject. So submitCalls should be 1, not 0.
+  let mutatedSubmitCalls=0;
+  const mutatedSubmitRun=()=>{mutatedSubmitCalls++;return true;};
+  const mutatedThrew=evalCommitCheckExpr(mutCond,mutThen,draft(),draft({prompt:'changed'}),mutatedSubmitRun);
+
+  // The mutant calls submitRun even on mismatch — the safety property is broken.
+  assert.equal(mutatedSubmitCalls,1,'mutated expression MUST call submitRun on mismatch (proving the safety assertion fails on the mutant)');
+
+  // Cross-check: the normal expression on the same mismatch does NOT call submitRun.
+  const {submitCalls:normalSubmitCalls}=evalCommitCheckWithCount(draft(),draft({prompt:'changed'}),true);
+  assert.equal(normalSubmitCalls,0,'normal expression must NOT call submitRun on mismatch (safety holds)');
+
+  // The "submitCalls must be 0 on mismatch" assertion that the normal tests rely on
+  // would FAIL on the mutant because mutatedSubmitCalls === 1, not 0.
+  assert.notEqual(mutatedSubmitCalls,normalSubmitCalls,'mutant and normal must differ in submit count — proves the test catches the regression');
 });
 
 // =============================================

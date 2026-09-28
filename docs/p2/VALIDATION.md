@@ -1,38 +1,40 @@
 # P2 验证记录
 
-## 2026-09-28 P2-S1-R1 测试安全收尾（基于 7a655b8）
+## 2026-09-28 P2-S1-R1 行为变异证据收尾（基于 451c8f5）
 
-返工原因：S1-6c-mutation 测试通过 `writeFileSync` 临时修改生产源码 `CapabilitiesPage.tsx` 再恢复，构成默认测试改写生产源码的副作用。测试中断或异常时可能遗留变异源码。
+返工原因：上一版 mutation 测试仅做 AST 字符串断言（包含 `!!submitRun`、不含 `||`），未执行变异后的表达式，未证明"拒绝时提交次数为 0"的安全断言在变异副本上失败。审查要求将 AST 提取、表达式执行和安全行为断言参数化，让正常源码与变异副本复用同一管线。
 
-### 修改内容
+### 修改内容（仅测试文件和文档）
 
-**测试修正（仅测试文件）：**
-- `tests/s1-capability-chain.test.mjs`：S1-6c-mutation 测试改为在内存字符串副本上执行变异，通过 AST 重新解析变异后的字符串，不再写入磁盘。
-- 移除 `writeFileSync` import（不再使用）。
-- 变异验证逻辑不变：变异源码将 `||` 短路改为 `!!submitRun` 参数形式，AST 提取检测到 `!!submitRun` 且不含 `||`，证明测试能捕获 fcd8212 回归。
-- 测试数量维持 28 项，全部通过。
+**测试修正（仅 `tests/s1-capability-chain.test.mjs`）：**
+- 提取 `extractCommitCheck(sourceStr,label)` 函数，参数化 AST 提取，正常源码和变异副本复用同一管线。
+- 提取 `evalCommitCheckExpr(conditionText,thenText,...)` 函数，参数化表达式执行，正常源码和变异副本复用同一执行器。
+- 新增行为变异测试 `S1-6c-mutation: mutated expression executes submitRun on mismatch (safety assertion fails)`：执行变异后的表达式，在 prompt 不匹配场景下，变异副本 submitRun 调用 1 次（正常源码 0 次），证明"拒绝时提交次数为 0"的安全断言在变异副本上失败。
+- 原 AST 字符串断言测试保留为 `S1-6c-mutation: AST extraction detects broken form`。
+- 测试数量从 28 增至 29，全部通过。
 
-### 变异验证（内存副本，不写入磁盘）
+### 行为变异证据（内存副本，不写入磁盘）
 
-| 源码状态 | S1-6c 通过 | S1-6c-mutation 通过 | 生产源码变更 |
-|---|---|---|---|
-| 正常源码（`||` 短路） | 7/7 | 是（检测到变异形式） | 无 |
-| 内存变异副本（`!!submitRun` 参数） | N/A | 是（AST 提取验证） | 无 |
+| 源码状态 | submitRun 调用次数（prompt 不匹配） | 安全断言结果 |
+|---|---|---|
+| 正常源码（`||` 短路） | 0 | 通过（submitRun 未被调用） |
+| 内存变异副本（`!!submitRun` 参数） | 1 | **失败**（submitRun 在拒绝前被调用） |
 
-变异测试在内存字符串 `pageSource` 上执行 `.replace()`，通过 `ts.createSourceFile` 重新解析，不触碰磁盘文件。生产源码 MD5 测试前后一致：`7501a29283ae1990d371ecdd90a45c8b`。
+变异测试在内存字符串 `pageSource` 上执行 `.replace()`，通过 `extractCommitCheck` 重新提取，通过 `evalCommitCheckExpr` 执行，不触碰磁盘文件。生产源码未修改（`git diff --name-only -- workbench/src/` 输出为空）。
 
 ### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
 
 | 命令 | 退出码 | 结果 |
 |---|---|---|
-| `node --test tests/s1-capability-chain.test.mjs` | 0 | 28 项全部通过 |
-| `node --test tests/*.test.mjs` | 1 | 204 项，202 通过，2 项预存失败 |
+| `node --test tests/s1-capability-chain.test.mjs` | 0 | 29 项全部通过 |
+| `npm test` | 1 | 205 项，203 通过，2 项失败 |
 | `npm run validate` | 0 | 16 组件通过 |
 | `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
 
-**预存 2 项失败（Windows 已知，非本批引入）：**
-- `installer.test.mjs`：mid-install rename failure（Windows 文件系统行为）
-- `skill-catalog.test.mjs`：catalog rejects links and case collisions（Windows 大小写不敏感）
+**2 项失败（历史已知，非本批引入；根因待核实，不单独证明为 Windows 大小写）：**
+- `installer.test.mjs`：mid-install rename failure（`Missing expected rejection`，期望 `INSTALL_FAILED_ROLLED_BACK`）
+- `skill-catalog.test.mjs`：catalog rejects links and case collisions（`Missing expected rejection`，期望 `COLLISION`）
+- 基线对照：在 `7a655b8` 和 `451c8f5` 运行全量测试均出现同样 2 项失败、相同错误信息，确认非本批新增回归。根因标记为待核实，不单独归因于 Windows 大小写。
 
 ### 未验证范围
 

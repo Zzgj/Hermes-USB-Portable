@@ -13,7 +13,7 @@
 完整范围和未测项见 VALIDATION 的“dff159b 定向审查修复”；不启动 S2/S3 新开发，不改变发布资格。
 
 1. S0 现场保存与两线整合已完成；两处 TypeScript 构建错误已修复。
-2. S1 卡片管理服务接线、提交前重核和学习来源已接入；P2-S1-R1 已完成 Node 级和隔离 HTTP 路由验证。前次交付（f27876b）中 S1-6/S1-6b 测试复制校验逻辑而非调用生产代码，已修正：提取 `canSubmitCapability`/`canCommitCapability` 为域函数，测试通过 transpile+import 调用真实生产代码，含 mutation guard 证明测试能捕获门禁被破坏。S1-6c-mutation 已改为内存字符串副本变异，不再写入生产源码。204 项测试 202 通过，2 项预存失败（Windows 大小写，非本批引入）；validate 16 组件通过；build 通过。Node 调用点测试不等于浏览器验收，浏览器真实前端接线因本机 Chromium 缺失未执行。
+2. S1 卡片管理服务接线、提交前重核和学习来源已接入；P2-S1-R1 已完成 Node 级和隔离 HTTP 路由验证。前次交付（f27876b）中 S1-6/S1-6b 测试复制校验逻辑而非调用生产代码，已修正：提取 `canSubmitCapability`/`canCommitCapability` 为域函数，测试通过 transpile+import 调用真实生产代码，含 mutation guard 证明测试能捕获门禁被破坏。S1-6c-mutation 已改为内存字符串副本变异，不再写入生产源码；行为变异证据已补齐：变异副本执行后 submitRun 调用 1 次（正常 0 次），安全断言在变异副本上失败。205 项测试 203 通过，2 项失败（历史已知、根因待核实，非本批引入）；validate 16 组件通过；build 通过。Node 调用点测试不等于浏览器验收，浏览器真实前端接线因本机 Chromium 缺失未执行。
 3. S2 学习产出关联、可信证据、实例环境与受控持久化尚未完成。
 4. S3 配置/真实双通道更新/原生入口、会话恢复、视觉与无障碍待完成。
 5. S4 满足开发门槛后生成集中包，Windows/U 盘缺环境时明确待验。
