@@ -1,5 +1,47 @@
 # P2 验证记录
 
+## 2026-09-28 P2-S1-R1 测试安全收尾（基于 7a655b8）
+
+返工原因：S1-6c-mutation 测试通过 `writeFileSync` 临时修改生产源码 `CapabilitiesPage.tsx` 再恢复，构成默认测试改写生产源码的副作用。测试中断或异常时可能遗留变异源码。
+
+### 修改内容
+
+**测试修正（仅测试文件）：**
+- `tests/s1-capability-chain.test.mjs`：S1-6c-mutation 测试改为在内存字符串副本上执行变异，通过 AST 重新解析变异后的字符串，不再写入磁盘。
+- 移除 `writeFileSync` import（不再使用）。
+- 变异验证逻辑不变：变异源码将 `||` 短路改为 `!!submitRun` 参数形式，AST 提取检测到 `!!submitRun` 且不含 `||`，证明测试能捕获 fcd8212 回归。
+- 测试数量维持 28 项，全部通过。
+
+### 变异验证（内存副本，不写入磁盘）
+
+| 源码状态 | S1-6c 通过 | S1-6c-mutation 通过 | 生产源码变更 |
+|---|---|---|---|
+| 正常源码（`||` 短路） | 7/7 | 是（检测到变异形式） | 无 |
+| 内存变异副本（`!!submitRun` 参数） | N/A | 是（AST 提取验证） | 无 |
+
+变异测试在内存字符串 `pageSource` 上执行 `.replace()`，通过 `ts.createSourceFile` 重新解析，不触碰磁盘文件。生产源码 MD5 测试前后一致：`7501a29283ae1990d371ecdd90a45c8b`。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/s1-capability-chain.test.mjs` | 0 | 28 项全部通过 |
+| `node --test tests/*.test.mjs` | 1 | 204 项，202 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+**预存 2 项失败（Windows 已知，非本批引入）：**
+- `installer.test.mjs`：mid-install rename failure（Windows 文件系统行为）
+- `skill-catalog.test.mjs`：catalog rejects links and case collisions（Windows 大小写不敏感）
+
+### 未验证范围
+
+- AST 调用点测试在 Node 中执行，**不等于浏览器验收**。未在 React 组件渲染中验证（Chromium 缺失）。
+- 真实 Hermes/Skill 链路、Windows/U 盘验收未执行。
+- S1-9/10 仅域函数 epoch 守卫，未执行实际 end() 调用。
+
+
+
 ## 2026-09-28 P2-S1-R1 S1-6c 测试 AST 提取修正（基于 284518b）
 
 返工原因：前次修正（284518b）的 S1-6c 测试在手写表达式中复制调用点代码，未读取实际页面源码。审查证实：在隔离环境临时破坏生产调用顺序后，该测试文件仍 26/26 通过；独立源码探针则正确失败。

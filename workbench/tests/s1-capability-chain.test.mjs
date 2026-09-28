@@ -14,7 +14,6 @@ import {readFile,mkdtemp,writeFile,mkdir,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import ts from 'typescript';
-import {writeFileSync} from 'node:fs';
 
 // --- Compile and import REAL production code ---
 
@@ -205,28 +204,23 @@ test('S1-6c: commit call-site does not call submitRun when prepared is null',()=
 });
 
 // =============================================
-// S1-6c-mutation: prove the test catches a broken call-site
-// Temporarily modifies CapabilitiesPage.tsx to the fcd8212 broken form,
-// re-extracts the expression, and verifies the test would fail.
+// S1-6c-mutation: prove the test catches a broken call-site.
+// Mutates an IN-MEMORY copy of the source string (never writes to disk),
+// re-parses via AST, and verifies the extraction detects the broken form.
 // =============================================
 
-test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AST extraction',async t=>{
-  const pagePath=new URL('../src/pages/CapabilitiesPage.tsx',import.meta.url);
-  const original=await readFile(pagePath,'utf8');
-  t.after(()=>writeFileSync(pagePath,original));
-
-  // Mutate: change || to function argument (the fcd8212 regression)
-  const mutated=original.replace(
+test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AST extraction',()=>{
+  // Mutate the in-memory source string: change || short-circuit to function argument (the fcd8212 regression)
+  const mutated=pageSource.replace(
     'if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error(\'CHANGED\');',
     'if(!canCommitCapability(prepared,next,!!submitRun?.(next)))throw new Error(\'CHANGED\');'
   );
-  assert.notEqual(mutated,original,'mutation must actually change the source');
-  writeFileSync(pagePath,mutated);
+  assert.notEqual(mutated,pageSource,'mutation must actually change the source string');
 
-  // Re-parse the mutated source
-  const mutatedSrc=await readFile(pagePath,'utf8');
-  const mutatedTree=ts.createSourceFile('CapabilitiesPage.tsx',mutatedSrc,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  // Re-parse the mutated in-memory string (no disk I/O, production source untouched)
+  const mutatedTree=ts.createSourceFile('CapabilitiesPage.tsx',mutated,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   const mutatedIf=findNode(mutatedTree,node=>ts.isIfStatement(node)&&node.expression.getText(mutatedTree).includes('canCommitCapability'));
+  assert.ok(mutatedIf,'mutated source must still contain a canCommitCapability if-statement');
   const mutatedCondition=mutatedIf.expression.getText(mutatedTree);
 
   // The AST extraction detects the broken form
@@ -235,12 +229,8 @@ test('S1-6c-mutation: broken call-site (submitRun as argument) is detected by AS
 
   // The S1-6c AST assertion test would fail on the mutated source:
   // assert.ok(!commitConditionText.includes('!!submitRun')) would fail.
-  // We verify this directly:
   const wouldFail=mutatedCondition.includes('!!submitRun');
   assert.equal(wouldFail,true,'test would catch the broken call-site (assert !includes !!submitRun)');
-
-  // Restore original
-  writeFileSync(pagePath,original);
 });
 
 // =============================================
