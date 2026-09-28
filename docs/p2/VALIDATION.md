@@ -1,6 +1,65 @@
 # P2 验证记录
 
-## 2026-09-23 P2-S1-R1 卡片调用链浏览器复验与定向返工
+## 2026-09-28 P2-S1-R1 证据修正（基于 f27876b）
+
+返工原因：前次交付（f27876b）中 S1-6/S1-6b 测试复制校验逻辑而非调用生产代码；fixture 计数不等于 UI 防重复提交；文档对测试退出码和 Windows 根因描述不准确。
+
+### 修改内容
+
+**生产代码重构（不改外部接口）：**
+- `src/domain/capability-run.ts`：新增 `canSubmitCapability` 和 `canCommitCapability` 纯函数，从 `useLiveChat.ts` 和 `CapabilitiesPage.tsx` 提取校验逻辑。
+- `src/hooks/useLiveChat.ts`：`submitCapability` 调用 `canSubmitCapability` 替代内联校验。
+- `src/pages/CapabilitiesPage.tsx`：`execute` commit 调用 `canCommitCapability` 替代内联校验。
+
+**测试重写：**
+- `tests/s1-capability-chain.test.mjs`：26 项测试，全部通过 transpile+import 调用真实生产代码。包含 2 项 mutation guard 测试，证明移除 epoch/fingerprint 检查时测试能捕获回归。
+- `tests/browser-fixture.test.mjs`：修正测试描述，明确 fixture-level 覆盖与 UI-level 覆盖的边界。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 202 项，200 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+**预存失败对照（base SHA 3252643 vs result）：**
+- `installer.test.mjs`（mid-install rename failure）和 `skill-catalog.test.mjs`（catalog rejects links and case collisions）在 base 和 result 中均失败，行为一致。
+- **根因待验证**：此前描述为"Windows 大小写不敏感"仅为基于错误信息和环境的假设，未逐项验证根因，标注为待验证假设。
+- result 比 base 多 30 项测试（202−172），即本批新增的 s1-capability-chain 26 项（替代前次 8 项）+ browser-fixture 扩展 4 项 + 其他既有测试中未在 base 出现的新增。
+
+### 验收场景覆盖（修正后）
+
+| 场景 | 覆盖等级 | 证据 |
+|---|---|---|
+| 管理/RPC 令牌隔离 | 真实 HTTP 路由通过 | S1-1：startControlServer 启动真实 loopback HTTP，fetch 验证管理令牌≠RPC 令牌、错误令牌 403、管理令牌不出现在响应正文 |
+| prepareCapabilityRun 发送管理令牌 | 真实生产代码通过 | S1-1b：transpile+import 真实 capability-run.ts，mock fetch 捕获 Authorization header |
+| Skill 变更后二次核验拒绝 | 真实服务函数通过 | S1-4/S1-4b：真实 prepareCapability + 临时文件，修改后第二次抛 CHANGED |
+| canSubmitCapability epoch/port/token 不匹配 | 真实生产代码通过 | S1-6：transpile+import 真实 canSubmitCapability，测试 epoch/port/token/null access 全路径 |
+| canCommitCapability 不匹配 | 真实生产代码通过 | S1-6b：transpile+import 真实 canCommitCapability，测试 epoch/port/token/prompt/fingerprint/null/submitResult 全路径 |
+| Mutation guard（测试捕获门禁被破坏） | 通过 | S1-6-mutation/S1-6b-mutation：模拟移除 epoch/fingerprint 检查，证明 broken gate 允许通过而 real gate 拒绝 |
+| 重复点击防重入（submitText streaming guard） | 条件逻辑测试 | S1-7：测试 submitText 的 streaming 状态门禁条件。**未在真实浏览器中验证 UI 行为** |
+| 迟到响应丢弃（generation/controller guard） | 条件逻辑测试 | S1-5/S1-5b：测试 generation 和 controller 不匹配时丢弃。**未在真实浏览器中验证 UI 行为** |
+| 断线后不重放（epoch 递增） | 真实生产代码通过 | S1-9：canSubmitCapability 在 epoch 递增后拒绝旧 draft |
+| submitText 失败后阻止重发 | 真实生产代码通过 | S1-10：end() 递增 epoch 后 canSubmitCapability 拒绝旧 draft |
+| 管理请求失败/认证失败/非法响应 | 真实 HTTP 路由通过 | S1-8/S1-8b：缺认证 403、错误令牌 403、额外字段 400、非 JSON 400、超大 body 400 |
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失。S1-7/S1-5/S1-5b 仅测试条件逻辑，未在真实浏览器中端到端验证 UI 行为。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败根因待验证，不在 S1 范围内，未修复。
+
+### 隐私与安全
+
+- 管理令牌不出现在 API 响应正文中。
+- prepare 响应返回的 RPC 令牌与管理令牌不同。
+- CSP 阻止外部连接。
+- 合成 fixture 使用 `fixture-manager-token` 和 `fixture-rpc-token`，不含真实凭据。
+
+
+## 2026-09-23 P2-S1-R1 卡片调用链浏览器复验与定向返工（前次，已被上方修正替代）
 
 - 基线 SHA：3252643887c61489ef3cfc6b1a2457a968ee3ab2
 - 环境：Windows 10 / Node v24.14.0 / MSYS bash

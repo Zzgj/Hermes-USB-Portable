@@ -3,7 +3,7 @@ import {Panel} from '../components/Panel';
 import {bindCapabilityInputs,importCapabilityDrafts,exportCapabilityDrafts,type Capability} from '../domain/capability';
 import {capabilityCopy as copy} from '../data/mockData';
 import {capabilityRunCopy as runCopy} from '../data/mockData';
-import type {PreparedCapability} from '../domain/capability-run';
+import {canCommitCapability,type PreparedCapability} from '../domain/capability-run';
 import {Link} from 'react-router-dom';
 interface CapabilitiesPageProps {readonly ready?:boolean;readonly epoch?:number;readonly prepareRun?:(card:Capability,values:Readonly<Record<string,string>>,signal:AbortSignal)=>Promise<PreparedCapability>;readonly submitRun?:(draft:PreparedCapability)=>boolean;}
 export function CapabilitiesPage({ready=false,epoch=0,prepareRun,submitRun}:CapabilitiesPageProps){
@@ -19,7 +19,7 @@ export function CapabilitiesPage({ready=false,epoch=0,prepareRun,submitRun}:Capa
   try{
    const next=await prepareRun(card,review,controller.signal);if(request.current!==controller)return;
    if(commit){
-    if(!prepared||next.epoch!==prepared.epoch||next.port!==prepared.port||next.token!==prepared.token||next.prompt!==prepared.prompt||next.fingerprint!==prepared.fingerprint||!submitRun?.(next))throw new Error('CHANGED');
+    if(!canCommitCapability(prepared,next,!!submitRun?.(next)))throw new Error('CHANGED');
     setPrepared(null);setReview(null);setConfirmed(false);setSent(true);
    }else{setPrepared(next);setConfirmed(false);}
   }catch{if(request.current===controller){setError(true);setPrepared(null);setConfirmed(false);}}

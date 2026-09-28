@@ -61,29 +61,27 @@ test('browser fixture tracks fetch request counts for prepare and catalog separa
   assert.equal(w.__p2FetchRequests[1].url,'http://127.0.0.1:4173/api/capabilities/prepare');
   assert.equal(w.__p2FetchRequests[1].method,'POST');
 });
-test('browser fixture prepare does not trigger any prompt.submit RPC',async()=>{
+test('browser fixture prepare does not trigger any prompt.submit RPC (fixture-level only, not UI)',async()=>{
   const w=fixture();
   const auth={Authorization:'Bearer fixture-manager-token'};
-  // Prepare via fetch
+  // Prepare via fetch — this tests the fixture, not the UI.
+  // It proves that calling the prepare endpoint does not create a WebSocket,
+  // NOT that the CapabilitiesPage UI prevents submission before confirmation.
+  // UI-level duplicate prevention is tested via canSubmitCapability/canCommitCapability in s1-capability-chain.test.mjs.
   await w.fetch('/api/capabilities/prepare',{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({card:{id:'fixture-card'},values:{}})});
-  // No WebSocket RPC requests should have been made (no WS connection established yet)
   assert.equal(w.__p2RpcRequests.length,0);
 });
-test('browser fixture RPC tracks prompt.submit count for duplicate submit detection',async()=>{
+test('browser fixture RPC tracks prompt.submit count for duplicate detection (fixture-level only)',async()=>{
   const w=fixture();
-  // Simulate WebSocket connection and two prompt.submit calls
+  // This test proves the fixture's WebSocket counter works — NOT that the UI prevents duplicates.
+  // UI-level duplicate-click prevention (submitText streaming guard) is tested in s1-capability-chain.test.mjs S1-7.
   const ws=new w.WebSocket();
-  // Wait for gateway.ready
   await new Promise(r=>setTimeout(r,20));
-  // Send prompt.submit twice
   ws.send(JSON.stringify({jsonrpc:'2.0',id:1,method:'prompt.submit',params:{session_id:'p2-browser',text:'test'}}));
   ws.send(JSON.stringify({jsonrpc:'2.0',id:2,method:'prompt.submit',params:{session_id:'p2-browser',text:'test'}}));
-  // Count prompt.submit calls
   const submits=w.__p2RpcRequests.filter(r=>r.method==='prompt.submit');
   assert.equal(submits.length,2);
-  // Each has a unique id
   assert.notEqual(submits[0].id,submits[1].id);
-  // Wait for completion
   await new Promise(r=>setTimeout(r,100));
 });
 test('browser fixture respects aborted requests including Request objects',async()=>{

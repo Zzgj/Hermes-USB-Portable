@@ -1,5 +1,25 @@
 import {decodeCapability,bindCapabilityInputs,type Capability} from './capability';
 export interface PreparedCapability {readonly cardId:string;readonly prompt:string;readonly fingerprint:string;readonly port:number;readonly token:string;readonly epoch:number;}
+export interface ConnectionAccess {readonly port:number;readonly token:string;}
+/** Gate for submitCapability in useLiveChat: reject if no connection, or epoch/port/token mismatch (reconnect, instance switch, restart). */
+export function canSubmitCapability(draft:PreparedCapability,access:ConnectionAccess|null,currentEpoch:number):boolean{
+ if(!access)return false;
+ if(draft.epoch!==currentEpoch)return false;
+ if(draft.port!==access.port)return false;
+ if(draft.token!==access.token)return false;
+ return true;
+}
+/** Gate for execute commit in CapabilitiesPage: reject if no prepared draft, or any identity field changed between prepare and commit. */
+export function canCommitCapability(prepared:PreparedCapability|null,next:PreparedCapability,submitResult:boolean):boolean{
+ if(!prepared)return false;
+ if(next.epoch!==prepared.epoch)return false;
+ if(next.port!==prepared.port)return false;
+ if(next.token!==prepared.token)return false;
+ if(next.prompt!==prepared.prompt)return false;
+ if(next.fingerprint!==prepared.fingerprint)return false;
+ if(!submitResult)return false;
+ return true;
+}
 export async function prepareCapabilityRun(token:string,card:Capability,values:Readonly<Record<string,string>>,epoch:number,signal:AbortSignal):Promise<PreparedCapability>{
  const safe=decodeCapability(card);if(safe.method.kind!=='skill'||!token.trim()||token.length>4096||!Number.isSafeInteger(epoch)||epoch<0)throw new Error('CAPABILITY_INVALID');
  const body=JSON.stringify({card:safe,values:bindCapabilityInputs(safe,values)});if(new TextEncoder().encode(body).length>16384)throw new Error('CAPABILITY_LIMIT');
