@@ -29,11 +29,27 @@
 
 双方只用同一分支，顺序交接精确 SHA，不同时开发和推送。
 
-## 当前派单：P2-S1-R2（2026-10-04）
+## 当前派单与回交（2026-10-04）
 
 最新回交状态：R2 补丁 Linux 隔离复验 205/205、validate、build 通过；R3 已在实际 React 构建页面、合成 HTTP/RPC 传输下完成 9 项交互检查，覆盖确认、重复点击、迟到响应、断线重连、实例切换、失败与重导入。详细方法和限制见 VALIDATION 最新节；不代表真实后端联合验证或 S1 全部验收。测试补丁仍未应用到开发分支，49e7e7d 不自动整合。当前测试服务已停止，没有后台测试。后续 S1 工作为真实管理 HTTP/目标 RPC 页面接线补证及可重复浏览器回归整理；不调用真实模型、不安装依赖，额外权限单独报告。
 
-### 下一小批次：P2-S2-CONTRACT-01（只读方案，不启动实现）
+### 当前执行：P2-S1-R4-HTTP（测试接线，不改生产功能）
+
+- 目标：消除 R3 浏览器中 fetch 被合成响应替换的覆盖盲区；交付可供负责人浏览器复跑的真实 control-server HTTP 测试入口。Hermes RPC 仍为明确标注的合成传输，不宣称真实 Hermes/模型端到端。
+- base SHA 固定 `feac533f42c3ba5431db3079ee283b34e3c18398`，不是 delivery 分支当前 HEAD。员工在独立 detached worktree 开发，回交包含新增文件的受控补丁；不提交、不推送、不合并，不覆盖 R2 worktree。生产开发分支仍为 feat/portable-initializer；交付分支不继续追加。
+- 员工为唯一测试代码写入者。允许修改 workbench/tests/s1-control-server.mjs、s1-browser-launch.mjs 及本批新建的 s1-http-harness.test.mjs、s1-rpc-only-fixture.js；必要证据以回交文本提供，负责人写入 VALIDATION。不改 src/、scripts/、依赖/锁文件或包白名单，不重写现有通用夹具。
+- 先写会暴露缺口的测试，再实现：入口实际调用 startControlServer；catalog 与 prepare 回调调用 readSkillCatalog/prepareCapability 并指向新建合成 home/skills，不读取个人实例。实例启动回调只返回假连接与可计数 stop，不启动 Hermes；模拟连接端口与管理 HTTP 端口不同，管理/RPC 令牌不同。
+- 浏览器侧夹具仅替换 WebSocket，不覆盖 fetch/XHR；页面静态资源、status、connection、catalog、prepare 必须走真实管理 HTTP。保留正常入口与可审计的释放机制，若需延迟控制只能为测试内部控制，不增加生产端点。
+- 临时管理凭据不得打印到 stdout/stderr、共享日志或回交补丁；优先通过进程内测试对象交接。若浏览器启动需本机短时凭据文件，先报告目标平台权限方案，不擅自写入普通共享文件。脱敏报告只含端口、计数、状态和布尔断言。
+- 验收：真实 HTTP 未认证/错误令牌拒绝；不同管理/RPC 令牌；目录读取不执行 Skill；第一次 prepare 不提交；修改合成 Skill 后第二次 prepare 拒绝 CHANGED；关闭入口清理自有监听与临时目录，不影响其他实例；RPC-only 夹具安装前后 fetch 身份不变。浏览器缺环境只回交“待负责人浏览器复跑”，不安装 Chromium，不把 Node 通过当 UI 通过。
+- 每条记录命令、cwd、退出码：新增定向测试、npm test、npm run validate、npm run build。feac533 上未纳入 R2，Windows 原有两项失败须与本批新增回归分开报告；不得为全绿改动这两个测试或偷偷混入 R2 补丁。
+- 预算：一个小批次，同一失败路径最多两轮修复；新依赖、接口扩展、真实服务/模型、权限或未知基线变化即暂停。仅已有依赖、scratch 临时文件和 loopback；不安装、不访问私人数据、不启远程监听。
+- 审查者先只读核对这份接口/验收边界并回交遗漏案例；员工补丁到齐后再审查精确补丁，不并行修改或替员工提交。重点防止“真实 HTTP”其实被 fetch mock 覆盖、测试入口默认读取个人 home、令牌进入日志、清理误杀。
+- 负责人接收补丁后在本机复跑实际页面→真实管理 HTTP→真实 prepare 函数（RPC 合成），独立核对生产调用链。没有真实 Hermes 证据仍不关闭对应 S1 门禁。当前只是派单，未声称员工/审查者已经开工。
+
+### 已回交：P2-S2-CONTRACT-01（只读方案，不启动实现）
+
+双方修正版已收到。本轮未提供已接入生产路径的可复现缺陷；存储/状态/目录摘要相关模块缺生产调用点，属于接入前约束。learningMatches 需结合调用方 epoch/revision 与清理逻辑判断；启动 fragment 是否残留属已接入链路的待验证项，不归为“未接入模块”。不批准简单增加 trusted:true、epoch 参数或替换 postMessage；实例身份、连接代次、方法版本和环境适用性分别定义。方案调查结束，暂不再重复矩阵，也不启动存储实现；以下保留原任务范围。
 
 - 与 S1 剩余运行验证隔离并行；不以 S2 方案开始为由关闭 S1 门禁。分析代码固定 `feac533f42c3ba5431db3079ee283b34e3c18398`，R2 仅改测试不改变契约。最新派单文档位于开发分支。
 - 员工：只读追踪 capability.ts、capability-storage.ts、管理服务和 prepare/learn 接线，回交“当前真实调用点 → 缺口 → 最小契约建议”矩阵。仅设计实例目录归属、卡片/证据白名单、方法版本与环境适用性、原子写入/拒绝覆盖、迁移后的复验规则。每条建议标明现有代码位置和需要用户确认的决策；不得用 localStorage 模块存在冒充已接入实例库，不把目录摘要当机器/依赖证明。
