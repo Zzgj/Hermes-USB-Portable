@@ -1,5 +1,16 @@
 # P2 验证记录
 
+## 2026-10-04 P2-S1-R2-WIN 负责人隔离复验
+
+- 固定交付基线 `feac533f42c3ba5431db3079ee283b34e3c18398`；不包含后来越出只读任务范围的审计提交 `49e7e7d`。主开发分支未合入本批生产代码或测试补丁。
+- 在独立 detached worktree、Linux / Node v26.7.0、已有依赖下执行；临时文件位于本 Profile scratch，未安装依赖、未启动真实 Hermes/模型、未读取个人配置。
+- 补丁前：`node --test tests/installer.test.mjs tests/skill-catalog.test.mjs tests/s1-capability-chain.test.mjs` 退出码 0，38/38；本机未复现公司 Windows 的两项失败，不能据此否定其平台现场或独立确认其根因。
+- 接收员工两文件测试修复：安装 fixture 对 target 做 realpath；目录用 NFC/NFD 碰撞及单独的大小写探测。负责人仅整理注释，不改变回交测试逻辑：去掉“所有平台/default macOS 必然支持该夹具”和 mkdir 会覆盖目录的表述，明确 EEXIST 分支未覆盖纯大小写拒绝。
+- 补丁后同一条定向命令退出码 0，38/38；`npm test` 退出码 0，205/205，无跳过；`npm run validate` 退出码 0，16 组件；`npm run build` 退出码 0，58 模块；`git diff --check` 退出码 0。以上工作目录均为隔离 worktree 的 workbench。
+- 受控补丁 `p2-s1-r2-win-reviewed.patch`：仅 installer.test.mjs 与 skill-catalog.test.mjs，2 文件 +24/-4；SHA-256 `ac80fa003d4afd751ecc17d1054e83dcb983abd7fc9618158e00075a9124e9d4`。已对主开发工作区执行 `git apply --check` 通过，但未应用。node_modules 复用链接和 dist 不在补丁内。
+- 结论：测试修复 Linux 独立复验通过；Windows 205/205 为员工回交证据，负责人未复跑 Windows。S1 React 浏览器交互、真实 Hermes/审批和 U 盘仍未验证；不授予 S1 完整通过或发布资格。
+- 下一步环境检查仅确认本机存在 `/usr/bin/google-chrome`；未据此声称浏览器自动化或端到端测试已可用/已通过。
+
 ## 2026-09-21 dff159b 定向审查修复
 
 - 审查对象：aecd17d22e225e1ecae7b9ce3744cdad8218c8e3..dff159bed2c275d1b6a9c7c0c04c5b7bddf58bda。
