@@ -1,5 +1,24 @@
 # P2 验证记录
 
+## 2026-10-04 P2-S1-R3-BROWSER 实际 React 页面补证
+
+- 对象：隔离 worktree 的 `feac533` + R2 两文件测试补丁，使用此前本机新构建；生产代码未变化。Vite preview 仅监听 loopback，独立浏览器页面，没有真实 Hermes/模型、个人配置或真实凭据。
+- 方法：Browser Use 驱动实际构建页面的 DOM 事件；加载仓库 browser-rpc-fixture.js，外加页内合成 status/connection、可控 prepare 延迟/403/非法响应。React 的 App、CapabilitiesPage、useLiveChat 正常运行；没有直接调用 React 私有 handler。合成 WebSocket 记录 prompt.submit；HTTP/RPC 传输被替换，不能称为真实后端端到端。
+- 逐项观察与断言（共 9 项，按 JSON case 去重核对）：
+  1. 未勾确认：发送按钮 disabled，prompt.submit 为 0。
+  2. 勾确认后同一 JavaScript 轮次连续点击两次：仅增加 1 次 prompt.submit，审阅清除并显示已交给当前会话。
+  3. 暂存 prepare 响应，切到另一卡片后释放：旧审阅不出现，提交总数保持 1。
+  4. 暂存第二次核验响应，派发 socket close 后释放：旧审阅清除，提交总数保持 1。
+  5. 通过管理连接按钮重连：session.create 增至 2，prompt.submit 仍为 1，无自动重放。
+  6. 第二次核验返回 403：出现可见错误、审阅清除，提交不增加。
+  7. prepare 返回结构非法 JSON：出现可见错误、无可提交审阅，提交不增加。
+  8. 新浏览器现场中暂存二次核验，导航聊天并主动断开，管理连接切至合成新端口/新令牌后释放旧响应：界面端口为 12346，session.create 为 2，prompt.submit 为 0。覆盖完整 UI 导航与 hook 接线，不据局部守卫猜测漏洞。
+  9. prepare 等待期间文件输入 disabled；切卡取消后允许重导入，再释放旧响应：不出现旧审阅，prompt.submit 为 0。
+- 自动化限制：使用 DOM click/input/change，不是物理鼠标全流程或无障碍验收；延迟夹具刻意允许取消后的响应被释放以验证调用方拒绝。一次异步工具等待超时后读取状态核对完成；另一次发现浏览器已为 about:blank、夹具消失，重建独立现场完成剩余场景，不将该工具状态变化归因于产品。
+- 证据：本轮 scratch 的 p2-r3-results.json 逐项保存断言结果，p2-r3-browser-controls.js 为后半段合成控制脚本；这些不是已接入仓库的自动回归套件。正式可复跑自动化仍待整理。
+- 清理：通过已核对的自有 PID/进程组停止 preview；浏览器导航至 about:blank 清除页内合成状态。没有停止其他 Node/Hermes 实例。
+- 结论：上述合成传输下 React 交互通过；原 G1/G2 未在这些场景复现为生产缺陷。真实管理 HTTP 与真实 Hermes WebSocket 的页面联合验证、真实模型/审批、Windows/U 盘仍待验，S1/P2 不宣称全部完成，release_ready 不变。
+
 ## 2026-10-04 P2-S1-R2-WIN 负责人隔离复验
 
 - 固定交付基线 `feac533f42c3ba5431db3079ee283b34e3c18398`；不包含后来越出只读任务范围的审计提交 `49e7e7d`。主开发分支未合入本批生产代码或测试补丁。
