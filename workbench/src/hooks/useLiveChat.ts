@@ -7,7 +7,8 @@ import {decodeAvailableSkills,type AvailableSkill} from '../domain/skills';
 import {decodeProfiles,profileListRequest,type ProfileSummary} from '../domain/profiles';
 import {readTranscript,type SessionTranscript} from '../domain/session-history';
 import {learningMatches,type LearnDraft} from '../domain/learn';
-import type {PreparedCapability} from '../domain/capability-run';
+import type {PreparedCapability,ConnectionAccess} from '../domain/capability-run';
+import {canSubmitCapability} from '../domain/capability-run';
 import {learningSourceFromTurn} from '../domain/learning-source';
 export function useLiveChat(){
  const [port,setPort]=useState('9119'),[token,setToken]=useState(''),[input,setInput]=useState('');
@@ -163,7 +164,7 @@ export function useLiveChat(){
   },
   connectionEpoch:epoch.current,submitCapability:(draft:PreparedCapability)=>{
    const access=historyAccess.current;
-   if(!access||draft.epoch!==epoch.current||draft.port!==access.port||draft.token!==access.token)return false;
+   if(!canSubmitCapability(draft,access,epoch.current))return false;
    return submitText(draft.prompt,`Capability ${draft.cardId}\nSHA256 ${draft.fingerprint}\n${draft.prompt}`,{cardId:draft.cardId,methodFingerprint:draft.fingerprint});
   },
   learnDraft,learnConfirmed,acceptLearnDraft,submitLearning,confirmLearning:(value:boolean)=>setLearnConfirmed(value),dismissLearning:()=>{setLearnDraft(null);setLearnConfirmed(false);},

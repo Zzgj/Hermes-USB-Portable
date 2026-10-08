@@ -1,5 +1,16 @@
 # P2 验证记录
 
+## 2026-10-08 S1/R2/R4 统一整合复验
+
+- 开发原基线 b11bd5a；先保存既有文档修改为 32b27e1，再于本 Profile scratch/p2-s1-integration 独立 worktree 合并 feac533f42c3ba5431db3079ee283b34e3c18398。未纳入 49e7e7d；原 R2/R4 工作区不变。
+- 应用两个受控补丁前分别 git apply --check 通过：R2 的 SHA-256 为 `ac80fa003d4afd751ecc17d1054e83dcb983abd7fc9618158e00075a9124e9d4`，R4 为 `788053a1b38590b3823549c6178fe9c645d9a609f3f4bd93172581be80669f60`。补丁范围与上次审查一致，无依赖、产物或私人数据。
+- 唯一合并冲突为本文件的历史验证节，保留双方记录并明确旧声明不作为当前验收。重复 REVIEW-2026-10-04.md 不在最终树维护，原文保留于交付 Git 历史。生产三文件与固定交付一致，R2/R4 只改测试和夹具。
+- 环境：Linux / Node v26.7.0，已有依赖，临时数据位于本 Profile scratch，loopback 监听；没有安装依赖、读取个人实例、调用真实模型或修改发布资格。
+- 工作目录 scratch/p2-s1-integration/workbench；逐项独立捕获退出码：`node --test tests/*.test.mjs` 为 0，216/216、零跳过；`npm test` 为 0，216/216、零跳过；`npm run validate` 为 0，16 组件；`npm run build` 为 0，tsc --noEmit 与 Vite 58 模块通过；git diff --check 与暂存差异检查为 0。
+- 对本轮新构建运行 `node <scratch>/p2-s1-integration-browser-check.mjs`，退出码 0。该脚本由上轮验证方法仅改目标工作区和证据路径；8 项唯一命名检查全部通过，真实页面/管理 HTTP/catalog/prepare，RPC 合成且 fetch/XHR 保持原生。断言范围同上轮 R4，报告 p2-s1-integration-browser-results.json；报告仅记录同源 path/status 和布尔结果。
+- 原始日志为 scratch/p2-s1-integration-{node,npm,validate,build,browser}.log；浏览器脚本仍属于 scratch 验证材料，尚未成为仓库常规回归入口。自有 harness、浏览器和临时 Profile 由 finally 清理，检查 HTTP 不可连接且临时 home 不存在。
+- 结论：统一整合树的 Linux 代码/自动回归/限定真实管理 HTTP 验证通过；仅本地整合，不推送或发布。真实 Hermes WebSocket/Skill 执行、真实模型审批、Windows/U 盘仍待环境验证；不据 Linux 结果代替 Windows 独立验收，release_ready:false 不变。
+
 ## 2026-10-07 P2-S1-R4-HTTP-F1 负责人本机修复与真实 HTTP 浏览器验证
 
 - 基线 `feac533f42c3ba5431db3079ee283b34e3c18398`，隔离 worktree `p2-r4-lead`；未纳入 49e7e7d 或 R2 补丁。公司 R4 补丁不在本机，负责人按原四文件边界自行实现，不宣称已审核公司未收到的代码。
@@ -45,6 +56,235 @@
 - 受控补丁 `p2-s1-r2-win-reviewed.patch`：仅 installer.test.mjs 与 skill-catalog.test.mjs，2 文件 +24/-4；SHA-256 `ac80fa003d4afd751ecc17d1054e83dcb983abd7fc9618158e00075a9124e9d4`。已对主开发工作区执行 `git apply --check` 通过，但未应用。node_modules 复用链接和 dist 不在补丁内。
 - 结论：测试修复 Linux 独立复验通过；Windows 205/205 为员工回交证据，负责人未复跑 Windows。S1 React 浏览器交互、真实 Hermes/审批和 U 盘仍未验证；不授予 S1 完整通过或发布资格。
 - 下一步环境检查仅确认本机存在 `/usr/bin/google-chrome`；未据此声称浏览器自动化或端到端测试已可用/已通过。
+## 历史交付证据说明
+
+以下 2026-09-28/23 为固定交付 feac533 的历史记录，保留失败、返工和当时的覆盖声明以便追溯；当前结论以上方负责人独立验证为准。旧记录中仅凭 fixture 计数或条件复制宣称 UI 通过、将 Windows 根因直接归为大小写的表述，已被后续返工收紧，不作为现行验收依据。
+
+交付附带的 REVIEW-2026-10-04.md 不另建副本，原文可从 feac533 的 Git 历史读取。其代码审查 APPROVE 不代表全链路或发布批准；预存失败以 R2 独立复验边界为准。
+
+## 2026-09-28 P2-S1-R1 行为变异证据收尾（基于 451c8f5）
+
+返工原因：上一版 mutation 测试仅做 AST 字符串断言（包含 `!!submitRun`、不含 `||`），未执行变异后的表达式，未证明"拒绝时提交次数为 0"的安全断言在变异副本上失败。审查要求将 AST 提取、表达式执行和安全行为断言参数化，让正常源码与变异副本复用同一管线。
+
+### 修改内容（仅测试文件和文档）
+
+**测试修正（仅 `tests/s1-capability-chain.test.mjs`）：**
+- 提取 `extractCommitCheck(sourceStr,label)` 函数，参数化 AST 提取，正常源码和变异副本复用同一管线。
+- 提取 `evalCommitCheckExpr(conditionText,thenText,...)` 函数，参数化表达式执行，正常源码和变异副本复用同一执行器。
+- 新增行为变异测试 `S1-6c-mutation: mutated expression executes submitRun on mismatch (safety assertion fails)`：执行变异后的表达式，在 prompt 不匹配场景下，变异副本 submitRun 调用 1 次（正常源码 0 次），证明"拒绝时提交次数为 0"的安全断言在变异副本上失败。
+- 原 AST 字符串断言测试保留为 `S1-6c-mutation: AST extraction detects broken form`。
+- 测试数量从 28 增至 29，全部通过。
+
+### 行为变异证据（内存副本，不写入磁盘）
+
+| 源码状态 | submitRun 调用次数（prompt 不匹配） | 安全断言结果 |
+|---|---|---|
+| 正常源码（`||` 短路） | 0 | 通过（submitRun 未被调用） |
+| 内存变异副本（`!!submitRun` 参数） | 1 | **失败**（submitRun 在拒绝前被调用） |
+
+变异测试在内存字符串 `pageSource` 上执行 `.replace()`，通过 `extractCommitCheck` 重新提取，通过 `evalCommitCheckExpr` 执行，不触碰磁盘文件。生产源码未修改（`git diff --name-only -- workbench/src/` 输出为空）。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/s1-capability-chain.test.mjs` | 0 | 29 项全部通过 |
+| `npm test` | 1 | 205 项，203 通过，2 项失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+**2 项失败（历史已知，非本批引入；根因待核实，不单独证明为 Windows 大小写）：**
+- `installer.test.mjs`：mid-install rename failure（`Missing expected rejection`，期望 `INSTALL_FAILED_ROLLED_BACK`）
+- `skill-catalog.test.mjs`：catalog rejects links and case collisions（`Missing expected rejection`，期望 `COLLISION`）
+- 基线对照：在 `7a655b8` 和 `451c8f5` 运行全量测试均出现同样 2 项失败、相同错误信息，确认非本批新增回归。根因标记为待核实，不单独归因于 Windows 大小写。
+
+### 未验证范围
+
+- AST 调用点测试在 Node 中执行，**不等于浏览器验收**。未在 React 组件渲染中验证（Chromium 缺失）。
+- 真实 Hermes/Skill 链路、Windows/U 盘验收未执行。
+- S1-9/10 仅域函数 epoch 守卫，未执行实际 end() 调用。
+
+
+
+## 2026-09-28 P2-S1-R1 S1-6c 测试 AST 提取修正（基于 284518b）
+
+返工原因：前次修正（284518b）的 S1-6c 测试在手写表达式中复制调用点代码，未读取实际页面源码。审查证实：在隔离环境临时破坏生产调用顺序后，该测试文件仍 26/26 通过；独立源码探针则正确失败。
+
+### 修改内容
+
+**测试修正：**
+- `tests/s1-capability-chain.test.mjs`：S1-6c 改为使用 TypeScript AST 从 `CapabilitiesPage.tsx` 实际源码提取 commit-check 表达式（`commitIf.expression.getText(pageTree)`），不再手写复制。
+- 新增 S1-6c-mutation 测试：临时修改源码为 fcd8212 回归形式，重新 AST 提取，验证测试能检测到 `!!submitRun` 作为参数的破坏形式。
+- S1-6c 增加结构断言：验证提取的条件包含 `||`（短路）、`canCommitCapability`、`submitRun`，且不含 `!!submitRun`（参数形式）。
+- 测试数量从 26 增至 28。
+
+### 变异验证
+
+| 源码状态 | S1-6c 通过 | S1-6c 失败 | 退出码 |
+|---|---|---|---|
+| 正常源码（`||` 短路） | 7/7 | 0 | 0 |
+| 变异源码（`!!submitRun` 参数） | 1/7 | 6 | 1 |
+| 恢复正常源码 | 7/7 | 0 | 0 |
+
+变异测试临时修改 `CapabilitiesPage.tsx`，在 `t.after` 中恢复原始内容。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 204 项，202 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+### 未验证范围
+
+- AST 提取测试在 Node 中执行，未在 React 组件渲染中验证（Chromium 缺失）。
+- 真实 Hermes/Skill 链路、Windows/U 盘验收未执行。
+- S1-9/10 仅域函数 epoch 守卫，未执行实际 end() 调用。
+
+
+## 2026-09-28 P2-S1-R1 提交顺序回归修复（基于 fcd8212）
+
+返工原因：前次修正（fcd8212）中 `canCommitCapability` 接收 `submitResult` 参数，导致 `CapabilitiesPage.tsx:22` 的调用表达式 `!!submitRun?.(next)` 在校验之前执行——提交回调先于校验被调用，构成实际生产行为回归。审查探针证实：prompt/fingerprint 不匹配时，base 提交 0 次，fcd8212 提交 1 次。
+
+### 修改内容
+
+**生产代码修复：**
+- `src/domain/capability-run.ts`：`canCommitCapability` 移除 `submitResult` 参数，仅校验身份字段。调用方负责在校验通过后调用 `submitRun`。
+- `src/pages/CapabilitiesPage.tsx`：恢复短路顺序 `if(!canCommitCapability(prepared,next)||!submitRun?.(next))throw new Error('CHANGED')`——`||` 确保 `canCommitCapability` 先执行，不匹配时不调用 `submitRun`。
+
+**测试新增/修正：**
+- `tests/s1-capability-chain.test.mjs`：新增 S1-6c 调用路径回归测试（6 项），提取 CapabilitiesPage 实际调用点表达式，用计数回调验证：
+  - prompt/fingerprint/epoch 不匹配时 submitRun 调用 **0 次**
+  - 全部匹配时 submitRun 调用 **1 次**
+  - submitRun 返回 false 时正确报 CHANGED
+  - prepared 为 null 时 submitRun 调用 **0 次**
+- 移除 S1-7（复制局部门禁）和 S1-5/5b（常量比较），避免误导覆盖等级。
+- S1-9/10 标注为"域函数测试"，不声称执行了实际断线或失败处理。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 202 项，200 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+### 回归证明
+
+模拟 fcd8212 的错误调用路径（`canCommitCapability(prepared,next,!!submitRun?.(next))`），prompt 不匹配时 submitRun 调用 1 次。修复后调用 0 次。S1-6c 测试 `assert.equal(submitCalls,0)` 能捕获此回归。
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失。调用路径测试提取了实际表达式但未在 React 组件渲染中验证。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败根因待验证，不在 S1 范围内，未修复。
+- S1-9/10 仅测试域函数 epoch 守卫，未执行实际 end()/setPhase('failed') 调用。
+
+
+## 2026-09-28 P2-S1-R1 证据修正（基于 f27876b）
+
+返工原因：前次交付（f27876b）中 S1-6/S1-6b 测试复制校验逻辑而非调用生产代码；fixture 计数不等于 UI 防重复提交；文档对测试退出码和 Windows 根因描述不准确。
+
+### 修改内容
+
+**生产代码重构（不改外部接口）：**
+- `src/domain/capability-run.ts`：新增 `canSubmitCapability` 和 `canCommitCapability` 纯函数，从 `useLiveChat.ts` 和 `CapabilitiesPage.tsx` 提取校验逻辑。
+- `src/hooks/useLiveChat.ts`：`submitCapability` 调用 `canSubmitCapability` 替代内联校验。
+- `src/pages/CapabilitiesPage.tsx`：`execute` commit 调用 `canCommitCapability` 替代内联校验。
+
+**测试重写：**
+- `tests/s1-capability-chain.test.mjs`：26 项测试，全部通过 transpile+import 调用真实生产代码。包含 2 项 mutation guard 测试，证明移除 epoch/fingerprint 检查时测试能捕获回归。
+- `tests/browser-fixture.test.mjs`：修正测试描述，明确 fixture-level 覆盖与 UI-level 覆盖的边界。
+
+### 验证（工作目录 workbench/，Windows 10 / Node v24.14.0）
+
+| 命令 | 退出码 | 结果 |
+|---|---|---|
+| `node --test tests/*.test.mjs` | 1 | 202 项，200 通过，2 项预存失败 |
+| `npm run validate` | 0 | 16 组件通过 |
+| `npm run build` | 0 | tsc --noEmit + vite build，58 模块 |
+
+**预存失败对照（base SHA 3252643 vs result）：**
+- `installer.test.mjs`（mid-install rename failure）和 `skill-catalog.test.mjs`（catalog rejects links and case collisions）在 base 和 result 中均失败，行为一致。
+- **根因待验证**：此前描述为"Windows 大小写不敏感"仅为基于错误信息和环境的假设，未逐项验证根因，标注为待验证假设。
+- result 比 base 多 30 项测试（202−172），即本批新增的 s1-capability-chain 26 项（替代前次 8 项）+ browser-fixture 扩展 4 项 + 其他既有测试中未在 base 出现的新增。
+
+### 验收场景覆盖（修正后）
+
+| 场景 | 覆盖等级 | 证据 |
+|---|---|---|
+| 管理/RPC 令牌隔离 | 真实 HTTP 路由通过 | S1-1：startControlServer 启动真实 loopback HTTP，fetch 验证管理令牌≠RPC 令牌、错误令牌 403、管理令牌不出现在响应正文 |
+| prepareCapabilityRun 发送管理令牌 | 真实生产代码通过 | S1-1b：transpile+import 真实 capability-run.ts，mock fetch 捕获 Authorization header |
+| Skill 变更后二次核验拒绝 | 真实服务函数通过 | S1-4/S1-4b：真实 prepareCapability + 临时文件，修改后第二次抛 CHANGED |
+| canSubmitCapability epoch/port/token 不匹配 | 真实生产代码通过 | S1-6：transpile+import 真实 canSubmitCapability，测试 epoch/port/token/null access 全路径 |
+| canCommitCapability 不匹配 | 真实生产代码通过 | S1-6b：transpile+import 真实 canCommitCapability，测试 epoch/port/token/prompt/fingerprint/null/submitResult 全路径 |
+| Mutation guard（测试捕获门禁被破坏） | 通过 | S1-6-mutation/S1-6b-mutation：模拟移除 epoch/fingerprint 检查，证明 broken gate 允许通过而 real gate 拒绝 |
+| 重复点击防重入（submitText streaming guard） | 条件逻辑测试 | S1-7：测试 submitText 的 streaming 状态门禁条件。**未在真实浏览器中验证 UI 行为** |
+| 迟到响应丢弃（generation/controller guard） | 条件逻辑测试 | S1-5/S1-5b：测试 generation 和 controller 不匹配时丢弃。**未在真实浏览器中验证 UI 行为** |
+| 断线后不重放（epoch 递增） | 真实生产代码通过 | S1-9：canSubmitCapability 在 epoch 递增后拒绝旧 draft |
+| submitText 失败后阻止重发 | 真实生产代码通过 | S1-10：end() 递增 epoch 后 canSubmitCapability 拒绝旧 draft |
+| 管理请求失败/认证失败/非法响应 | 真实 HTTP 路由通过 | S1-8/S1-8b：缺认证 403、错误令牌 403、额外字段 400、非 JSON 400、超大 body 400 |
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失。S1-7/S1-5/S1-5b 仅测试条件逻辑，未在真实浏览器中端到端验证 UI 行为。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败根因待验证，不在 S1 范围内，未修复。
+
+### 隐私与安全
+
+- 管理令牌不出现在 API 响应正文中。
+- prepare 响应返回的 RPC 令牌与管理令牌不同。
+- CSP 阻止外部连接。
+- 合成 fixture 使用 `fixture-manager-token` 和 `fixture-rpc-token`，不含真实凭据。
+
+
+## 2026-09-23 P2-S1-R1 卡片调用链浏览器复验与定向返工（前次，已被上方修正替代）
+
+- 基线 SHA：3252643887c61489ef3cfc6b1a2457a968ee3ab2
+- 环境：Windows 10 / Node v24.14.0 / MSYS bash
+- 新增测试文件：`tests/s1-capability-chain.test.mjs`（8 项）、`tests/s1-control-server.mjs`（浏览器服务启动器，未纳入自动测试套件）、`tests/s1-browser-launch.mjs`（同前）。
+- 修改测试文件：`tests/browser-fixture.test.mjs`（+4 项）、`tests/browser-rpc-fixture.js`（新增 prepare 端点模拟）。
+- **npm test**：184 项测试，182 通过，2 项预存失败（`installer.test.mjs` 中 `mid-install rename failure` 和 `skill-catalog.test.mjs` 中 `catalog rejects links and case collisions`）。两项失败均为 Windows 文件系统大小写不敏感导致，与本批 S1 范围无关，未在本批修复。
+- **npm run validate**：16 个组件文件通过，退出码 0。
+- **npm run build**：tsc --noEmit + vite build 通过，58 模块转换，退出码 0。
+
+### 验收场景逐项结果
+
+| 场景 | 结果 | 证据 |
+|---|---|---|
+| 管理/RPC 使用不同端口与令牌 | 通过 | S1-1a~f：管理令牌通过管理 API，错误令牌 403；prepare 返回 RPC 令牌 `fixture-rpc-token` ≠ 管理令牌；状态响应不含管理令牌；CSP 阻止 `https://*` |
+| 准备完成但未确认，prompt.submit 次数为 0 | 通过 | S1-2：prepare 响应无 submitted 字段；S1-fixture-3：prepare 不触发 WebSocket RPC（`__p2RpcRequests.length===0`） |
+| 确认后连续重复点击只新增一次 prompt.submit | 部分覆盖 | S1-fixture-4：合成 WS 追踪 prompt.submit 计数。前端 `execute` 在 `request.current` 存在时直接 return（防重入），此逻辑由代码审查确认，浏览器端到端点击测试因 Chromium 缺失未执行 |
+| 准备后确认前修改 Skill → 二次核验拒绝 | 通过 | S1-4：修改 skill 脚本文件后第二次 `prepareCapability` 抛出 `CHANGED`；S1-4b：未修改时两次指纹一致 |
+| 延迟准备响应后切换卡片或重新导入 | 代码审查通过 | `choose()` 调用 `request.current?.abort()`，`load()` 递增 `generation.current`，迟到响应通过 `if(id!==generation.current)return` 丢弃。浏览器端到端验证因 Chromium 缺失未执行 |
+| 延迟二次核验时切换实例/令牌/连接代次 → 拒绝旧请求 | 通过 | S1-6：`submitCapability` 校验 epoch/port/token，任一不匹配返回 false；S1-6b：`execute` commit 路径校验 epoch/port/token/prompt/fingerprint，不匹配抛 `CHANGED` |
+| 二次核验期间断线，随后释放响应或重连 → 不提交不重放 | 代码审查通过 | `useLiveChat.end()` 递增 epoch 并关闭连接；`submitText` 失败时 `end()` + `setPhase('failed')`；`submitCapability` 校验 `draft.epoch!==epoch.current` 阻止旧提交。浏览器端到端验证因 Chromium 缺失未执行 |
+| 管理请求失败/认证失败/响应非法 → 清除审阅，错误可见 | 通过 | S1-8a~e：缺认证 403、错误令牌 403、额外字段 400、非 JSON 400、超大 body 400、外部 Origin 403。前端 `execute` catch 块设置 `setError(true)` 并清除 prepared/confirmed |
+
+### 隔离真实 HTTP 路由验证
+
+- 使用 `startControlServer` 启动真实 loopback HTTP 管理服务（端口随机分配），通过 `fetch` 执行 12 项 HTTP 级验证，全部通过。
+- 管理服务使用 `timingSafeEqual` 比较令牌，CSP 阻止外部连接，Origin 校验阻止跨站 POST。
+- 证据为隔离合成数据，未调用真实 Hermes 或模型。
+
+### 未验证范围
+
+- **浏览器真实前端接线**：本机 Chromium 缺失（`npx agent-browser install` 未执行，不安装新依赖）。上述 UI 行为（重复点击防重入、延迟响应丢弃、断线不重放）通过代码审查和合成 fixture 测试覆盖，但未在真实浏览器中端到端验证。
+- **真实 Hermes/Skill 链路**：未启动真实 Hermes 实例，未调用真实模型。
+- **Windows/U 盘验收**：未执行。
+- 2 项预存失败（installer/skill-catalog）不在 S1 范围内，未修复。
+
+### 隐私与安全
+
+- 管理令牌不出现在 API 响应正文中。
+- prepare 响应返回的 RPC 令牌与管理令牌不同。
+- CSP 阻止 `https://*` 外部连接。
+- 合成 fixture 使用 `fixture-manager-token` 和 `fixture-rpc-token`，不含真实凭据。
+
 
 ## 2026-09-21 dff159b 定向审查修复
 

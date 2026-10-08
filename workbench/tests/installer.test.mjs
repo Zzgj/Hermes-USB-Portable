@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm,readdir} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rm,readdir,realpath} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
 import {packageFiles,stageP2Package} from '../scripts/build-p2-package.mjs';
 import {installP2Package,recoverP2Install} from '../scripts/install-p2-package.mjs';
 import {acquireInstanceLock} from '../scripts/instance-lock.mjs';
 import fs from 'node:fs/promises';
+// Match the installer's realpath-normalized target in fault-injection comparisons.
+// Temporary paths can contain aliases (for example Windows short names).
 async function fixture(t){
  const root=await mkdtemp(join(tmpdir(),'hermes-p2-install-'));t.after(()=>rm(root,{recursive:true,force:true}));
- const repo=join(root,'repo'),target=join(root,'target'),pkg=join(root,'package');
- await mkdir(repo);await mkdir(join(target,'data'),{recursive:true});await writeFile(join(target,'launch.bat'),'original launcher');await writeFile(join(target,'data','.env'),'private sentinel');
+ const repo=join(root,'repo'),pkg=join(root,'package');
+ await mkdir(repo);await mkdir(join(root,'target','data'),{recursive:true});const target=await realpath(join(root,'target'));await writeFile(join(target,'launch.bat'),'original launcher');await writeFile(join(target,'data','.env'),'private sentinel');
  for(const file of [...packageFiles,'workbench/dist/index.html']){await mkdir(dirname(join(repo,file)),{recursive:true});await writeFile(join(repo,file),'new '+file);}
  await stageP2Package(repo,pkg);return {root,repo,target,pkg};
 }

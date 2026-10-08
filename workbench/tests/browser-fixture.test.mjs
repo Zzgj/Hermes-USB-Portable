@@ -18,14 +18,74 @@ test('browser fixture rejects wrong service, missing auth, methods and unknown e
   ['/api/capabilities/catalog',{headers:auth,method:'DELETE'},405],
   ['/api/capabilities/catalog?extra=1',{headers:auth},404],
   ['/api/capabilities/evidence',{headers:auth},404],
-  ['/api/capabilities/prepare',{headers:auth,method:'POST'},404],
+  ['/api/capabilities/prepare',{headers:auth},405],  // GET on POST-only prepare endpoint
  ])assert.equal((await w.fetch(url,options)).status,status);
  const response=await w.fetch('/api/capabilities/catalog',{headers:auth});
  assert.equal(response.status,200);
  assert.equal((await response.json()).cards[0].state,'draft');
 });
+test('browser fixture prepare endpoint returns capability and connection with correct auth',async()=>{
+  const w=fixture();
+  const auth={Authorization:'Bearer fixture-manager-token'};
+  // Wrong auth rejected
+  assert.equal((await w.fetch('/api/capabilities/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card:{id:'x'},values:{}})})).status,403);
+  // Wrong method rejected
+  assert.equal((await w.fetch('/api/capabilities/prepare',{headers:auth,method:'DELETE'})).status,405);
+  // Correct auth + body returns prepared capability
+  const resp=await w.fetch('/api/capabilities/prepare',{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({card:{id:'fixture-card',name:'Fixture',goal:'Test',method:{kind:'skill',name:'fixture-skill',fingerprint:'a'.repeat(64)},inputs:[{id:'source',label:'Source',required:true}],state:'draft'},values:{source:'test'}})});
+  assert.equal(resp.status,200);
+  const result=await resp.json();
+  assert.equal(result.prepared.kind,'capability');
+  assert.equal(result.prepared.cardId,'fixture-card');
+  assert.equal(result.prepared.availability,'unknown');
+  assert.equal(result.prepared.method.name,'fixture-skill');
+  assert.equal(result.connection.port,12345);
+  assert.equal(result.connection.token,'fixture-rpc-token');
+  // RPC token differs from management token
+  assert.notEqual(result.connection.token,'fixture-manager-token');
+  // Prepare does not include any submission indicator
+  assert.equal(result.prepared.submitted,undefined);
+});
+test('browser fixture tracks fetch request counts for prepare and catalog separately',async()=>{
+  const w=fixture();
+  const auth={Authorization:'Bearer fixture-manager-token'};
+  // Before any requests
+  assert.equal(w.__p2FetchRequests.length,0);
+  // Catalog call
+  await w.fetch('/api/capabilities/catalog',{headers:auth});
+  assert.equal(w.__p2FetchRequests.length,1);
+  assert.equal(w.__p2FetchRequests[0].url,'http://127.0.0.1:4173/api/capabilities/catalog');
+  // Prepare call
+  await w.fetch('/api/capabilities/prepare',{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({card:{id:'fixture-card'},values:{}})});
+  assert.equal(w.__p2FetchRequests.length,2);
+  assert.equal(w.__p2FetchRequests[1].url,'http://127.0.0.1:4173/api/capabilities/prepare');
+  assert.equal(w.__p2FetchRequests[1].method,'POST');
+});
+test('browser fixture prepare does not trigger any prompt.submit RPC (fixture-level only, not UI)',async()=>{
+  const w=fixture();
+  const auth={Authorization:'Bearer fixture-manager-token'};
+  // Prepare via fetch — this tests the fixture, not the UI.
+  // It proves that calling the prepare endpoint does not create a WebSocket,
+  // NOT that the CapabilitiesPage UI prevents submission before confirmation.
+  // UI-level duplicate prevention is tested via canSubmitCapability/canCommitCapability in s1-capability-chain.test.mjs.
+  await w.fetch('/api/capabilities/prepare',{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({card:{id:'fixture-card'},values:{}})});
+  assert.equal(w.__p2RpcRequests.length,0);
+});
+test('browser fixture RPC tracks prompt.submit count for duplicate detection (fixture-level only)',async()=>{
+  const w=fixture();
+  // This test proves the fixture's WebSocket counter works — NOT that the UI prevents duplicates.
+  // UI-level duplicate-click prevention (submitText streaming guard) is tested in s1-capability-chain.test.mjs S1-7.
+  const ws=new w.WebSocket();
+  await new Promise(r=>setTimeout(r,20));
+  ws.send(JSON.stringify({jsonrpc:'2.0',id:1,method:'prompt.submit',params:{session_id:'p2-browser',text:'test'}}));
+  ws.send(JSON.stringify({jsonrpc:'2.0',id:2,method:'prompt.submit',params:{session_id:'p2-browser',text:'test'}}));
+  const submits=w.__p2RpcRequests.filter(r=>r.method==='prompt.submit');
+  assert.equal(submits.length,2);
+  assert.notEqual(submits[0].id,submits[1].id);
+  await new Promise(r=>setTimeout(r,100));
+});
 test('browser fixture respects aborted requests including Request objects',async()=>{
- const w=fixture(),controller=new AbortController();controller.abort();
+  const w=fixture(),controller=new AbortController();controller.abort();
  await assert.rejects(w.fetch('/api/capabilities/catalog',{headers:auth,signal:controller.signal}),{name:'AbortError'});
  const request=new Request('http://127.0.0.1:4173/api/capabilities/catalog',{headers:auth});
  assert.equal((await w.fetch(request)).status,200);

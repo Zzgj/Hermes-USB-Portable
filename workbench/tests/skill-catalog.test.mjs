@@ -16,7 +16,25 @@ test('catalog exports draft metadata only and hashes scripts as well as the defi
 test('catalog rejects links and case collisions, and missing skills is an empty inventory',async t=>{
  const root=await fixture(t);assert.deepEqual(await readSkillCatalog(root),{cards:[],availability:'unknown'});
  await mkdir(join(root,'skills'));await symlink(root,join(root,'skills','outside'));await assert.rejects(readSkillCatalog(root),/UNSAFE/);
- await rm(join(root,'skills','outside'));await writeFile(join(root,'skills','Case'),'a');await writeFile(join(root,'skills','case'),'b');await assert.rejects(readSkillCatalog(root),/COLLISION/);
+ await rm(join(root,'skills','outside'));
+ // NFC/NFD collision: verified on the delivery Windows filesystem and Linux.
+ // This fixture requires distinct normalization forms; it is not a claim about every filesystem.
+ await mkdir(join(root,'skills','café'));
+ await mkdir(join(root,'skills','cafe\u0301'));
+ await assert.rejects(readSkillCatalog(root),/COLLISION/);
+ await rm(join(root,'skills','café'),{recursive:true,force:true});
+ await rm(join(root,'skills','cafe\u0301'),{recursive:true,force:true});
+ // Keep a separate pure-case collision assertion wherever both names can exist.
+ // EEXIST means this fixture did not exercise the pure-case rejection branch.
+ await mkdir(join(root,'skills','Case'));
+ let caseDistinct=false;
+ try{await mkdir(join(root,'skills','case'));caseDistinct=true;}catch(error){if(error.code!=='EEXIST')throw error;}
+ if(caseDistinct){
+   await assert.rejects(readSkillCatalog(root),/COLLISION/);
+ }else{
+   const catalog=await readSkillCatalog(root);
+   assert.equal(catalog.cards.length,0);
+ }
 });
 test('oversized skill files fail without partial results',async t=>{
  const root=await fixture(t),skill=join(root,'skills','demo');await mkdir(skill,{recursive:true});await writeFile(join(skill,'SKILL.md'),'x'.repeat(1048577));await assert.rejects(readSkillCatalog(root),/LIMIT/);
