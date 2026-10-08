@@ -11,6 +11,14 @@
 - 原始日志为 scratch/p2-s1-integration-{node,npm,validate,build,browser}.log；浏览器脚本仍属于 scratch 验证材料，尚未成为仓库常规回归入口。自有 harness、浏览器和临时 Profile 由 finally 清理，检查 HTTP 不可连接且临时 home 不存在。
 - 结论：统一整合树的 Linux 代码/自动回归/限定真实管理 HTTP 验证通过；仅本地整合，不推送或发布。真实 Hermes WebSocket/Skill 执行、真实模型审批、Windows/U 盘仍待环境验证；不据 Linux 结果代替 Windows 独立验收，release_ready:false 不变。
 
+### 开发工作区落地后复验
+
+- 整合提交 `f59ff57203f942a858dc34fd26afe190b44d196a`，父提交为 32b27e1 与 feac533，保留双方历史。原开发工作区确认无未知修改后，以 git merge --ff-only 落到 feat/portable-initializer；未推送，远端开发分支回读仍为 b11bd5a，交付分支仍为 49e7e7d。
+- 工作目录为开发仓库 workbench；重新执行直接 Node、npm test，各 216/216、零跳过、退出码 0；validate 16 组件与 build 58 模块均退出码 0。日志为本 Profile scratch/p2-s1-main-{node,npm,validate,build}.log。生产文件与隔离整合提交完全一致。
+- 主工作区浏览器首跑完成前 5 项后 PAGE_EVALUATION_FAILED、退出码 1，未认定通过。原脚本重导入后仅等待相同 Skill 文本，可能命中上次仍显示的内容；点击前也未等待按钮可用，不能由此错误单独认定生产回归。
+- 仅修正 scratch 浏览器驱动：每次导入使用唯一显示名称等待本次渲染，普通步骤点击等待 enabled，不改变显式连续双击的断言路径，不改生产代码或掩盖错误响应。`node <scratch>/p2-s1-main-browser-check.mjs` 连续 3 次分别退出 0、8/8 通过，均清理自有服务/浏览器/临时目录。
+- 首次失败日志与 JSON 保留为 p2-s1-main-initial-failed-browser.*；成功日志为 p2-s1-main-browser-rerun-1.log 至 -3.log，末次 JSON 为 p2-s1-main-browser-results.json。后续可复跑入口整理须带入上述等待修正，而非照搬旧脚本。
+
 ## 2026-10-07 P2-S1-R4-HTTP-F1 负责人本机修复与真实 HTTP 浏览器验证
 
 - 基线 `feac533f42c3ba5431db3079ee283b34e3c18398`，隔离 worktree `p2-r4-lead`；未纳入 49e7e7d 或 R2 补丁。公司 R4 补丁不在本机，负责人按原四文件边界自行实现，不宣称已审核公司未收到的代码。
