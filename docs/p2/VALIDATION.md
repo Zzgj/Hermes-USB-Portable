@@ -1,5 +1,21 @@
 # P2 验证记录
 
+## 2026-10-07 P2-S1-R4-HTTP-F1 负责人本机修复与真实 HTTP 浏览器验证
+
+- 基线 `feac533f42c3ba5431db3079ee283b34e3c18398`，隔离 worktree `p2-r4-lead`；未纳入 49e7e7d 或 R2 补丁。公司 R4 补丁不在本机，负责人按原四文件边界自行实现，不宣称已审核公司未收到的代码。
+- 改动仅 tests/s1-control-server.mjs、s1-browser-launch.mjs、新增 s1-http-harness.test.mjs 与 s1-rpc-only-fixture.js。无生产代码、依赖/锁文件、包白名单变化。
+- 两个入口改为无导入副作用的 startS1Harness 进程内接口，原直接运行后打印含令牌 URL 的行为移除。真实 startControlServer、readSkillCatalog、prepareCapability 使用自有临时合成 home/skills；实例与 RPC 不启动 Hermes。调用者必须 finally close，凭据不写 stdout/stderr 或凭据文件。
+- 先失败：构建后运行 `node --test --test-name-pattern='never writes credentials' tests/s1-http-harness.test.mjs`，2 项失败、退出码 1；仅报告输出长度 185，不打印实际凭据。修复后在子进程实际捕获两个入口及其启动/关闭生命周期的 stdout/stderr，均为零字节。
+- 定向命令 `node --test tests/s1-http-harness.test.mjs`：11/11，退出码 0。覆盖认证/错误 origin/RPC 令牌拒绝、静态资源、身份隔离、真实目录与准备、Skill 变化的内部 CAPABILITY_CHANGED 和 HTTP 400、受控延迟、双实例独立关闭、临时目录删除、启动失败清理、原生 fetch/XHR 身份不变。
+- 原始回归日志保存在本 Profile scratch 的 p2-r4-node.log、p2-r4-npm.log、p2-r4-validate.log、p2-r4-build.log。工作目录为 p2-r4-lead/workbench，Linux / Node v26.7.0：`node --test tests/*.test.mjs` 与 `npm test` 各 216/216、零跳过，`npm run validate` 16 组件、`npm run build` 58 模块，均退出码 0。未将公司 Windows 两项失败据此关闭。
+- 浏览器方法：已有 Chrome headless，通过自有 remote-debugging-pipe/CDP 驱动真实 React DOM；临时浏览器 Profile 位于 scratch，未安装依赖，不接触个人浏览器数据。管理 HTTP 为真实 loopback 服务；只替换 WebSocket，不替换 fetch/XHR。凭据仅进程内传给浏览器，不输出；脱敏 Network 记录仅保留同源 pathname/status。
+- `node <scratch>/p2-r4-browser-check.mjs` 退出码 0；p2-r4-browser-results.json 的 8 项断言：原生 fetch/XHR 与 bootstrap fragment 清除；真实 connection 重连；浏览器目录导出；首次准备且未确认时零 RPC 提交；连续双击只增加一次 prompt.submit 且真实第二次 prepare 被调用；更改 Skill 后真实 HTTP 400 且无新增提交；二次核验期间关闭合成 socket 后无重放；观察到静态资源/status/start/connection/catalog/prepare 的真实 HTTP 状态。
+- 无提交使用实际合成 WebSocket 的 prompt.submit 计数，不再以 submitted 字段缺失替代；不执行 Skill 的限定依据是调用链只到文件读取与提示构造、实例启动回调无执行器，不把 SKILL.md 未变当成真实 Hermes 执行副作用验证。RPC/模型仍未实际执行。
+- 浏览器初次尝试使用过宽 checkbox 选择器，点中了仍挂载的隐藏服务确认框，等待发送状态超时；收窄到能力确认标签后复跑通过。该失败属于测试驱动定位，不改生产代码、不冒充产品缺陷。
+- 清理：await harness.close 后确认 home 不存在且 HTTP 不可连接；仅关闭自有 Chrome，删除自有临时 Profile。没有全局停止 Node/Python 或其他实例；没有本批后台测试。浏览器检查脚本仍为 scratch 证据，尚非仓库常规回归入口。
+- 四文件受控补丁 p2-s1-r4-lead.patch（包含两项新增文件），SHA-256 `788053a1b38590b3823549c6178fe9c645d9a609f3f4bd93172581be80669f60`。在 feac533 + 保留 R2 修改的 p2-r2-review 上 `git apply --check` 为 0，但未应用。补丁不含 node_modules、dist、临时 Profile、令牌或日志。令牌相关断言使用布尔比较，失败时也不输出实际凭据。
+- 结论：R4 本批 Linux 修复与限定页面→真实管理 HTTP 联合验证通过；整合提交、真实 Hermes WebSocket/审批/模型、Windows/U盘尚未完成。不改变 release_ready，不启动 S2 新实现。
+
 ## 2026-10-04 P2-S1-R3-BROWSER 实际 React 页面补证
 
 - 对象：隔离 worktree 的 `feac533` + R2 两文件测试补丁，使用此前本机新构建；生产代码未变化。Vite preview 仅监听 loopback，独立浏览器页面，没有真实 Hermes/模型、个人配置或真实凭据。
