@@ -140,6 +140,10 @@ test('S1-6: canSubmitCapability rejects when no active connection (null access)'
 test('S1-6b: canCommitCapability allows commit when all fields match',()=>{
   assert.equal(canCommitCapability(draft(),draft()),true);
 });
+test('S1-6b: different card identity fails the guard and causes zero caller submissions',()=>{
+  assert.equal(canCommitCapability(draft(),draft({cardId:'other-card'})),false);
+  assert.deepEqual(evalCommitCheckWithCount(draft(),draft({cardId:'other-card'}),true),{threw:true,submitCalls:0});
+});
 test('S1-6b: canCommitCapability rejects when epoch differs',()=>{
   assert.equal(canCommitCapability(draft(),draft({epoch:6})),false);
 });

@@ -13,6 +13,7 @@ export function canSubmitCapability(draft:PreparedCapability,access:ConnectionAc
  * Does NOT accept or call submitRun — the caller must invoke submitRun only after this returns true, preserving short-circuit order. */
 export function canCommitCapability(prepared:PreparedCapability|null,next:PreparedCapability):boolean{
  if(!prepared)return false;
+ if(next.cardId!==prepared.cardId)return false;
  if(next.epoch!==prepared.epoch)return false;
  if(next.port!==prepared.port)return false;
  if(next.token!==prepared.token)return false;

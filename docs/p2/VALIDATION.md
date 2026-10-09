@@ -1,5 +1,103 @@
 # P2 验证记录
 
+## 2026-10-09 P2-S1-RECHECK-02 修复后复查与交付状态
+
+- 对象仍为 3400686 加已接管修复工作区；接手先执行已交源码补丁的 `git apply --reverse --check` 通过，文件清单与上一轮一致。重新审阅关闭/重试、持锁启动、POSIX 退出屏障及 cardId 差异；本轮不修改生产代码、不提交或推送。
+- 在本 Profile scratch/p2-final-recheck-20261009.mjs 增加三项独立探针：连续三次 stop 拒绝均保留各自原始错误且 HTTP 已关闭、第四次可成功；启动请求进行中关闭管理器，等待取得实例句柄后只停止一次；异步 beforeStart 持锁期间拒绝另一锁持有者，守卫拒绝后释放自有锁。每项在有父进程超时的独立子进程内运行，不启动 Hermes，不记录令牌。`node --test <scratch>/p2-final-recheck-20261009.mjs` 3/3，退出 0；属于额外探针，不加到默认套件数量中。
+- 本轮重新执行 `node --test tests/*.test.mjs` 245/245，零失败/取消/跳过；`npm run validate` 16 组件；`npm run test:s1-browser` 的 TypeScript/Vite 新构建和浏览器 v2 10/10、cleaned=true。各退出 0，日志 scratch/p2-final-recheck-20261009-{extra,node,validate,browser}.log。管理 HTTP 真实、RPC 合成；不覆盖公司模型、原生审批或 Windows。
+- 结论：在本轮审阅和实际执行范围内，三项已确认缺陷的修复仍成立，未发现新的已复现阻塞缺陷；不声称代码绝对无缺陷或完整 S1 实机验收通过。POSIX 主动脱组、不确定停止保留锁，以及 S2/S3 未完成功能仍按 ACCEPTANCE 限定。
+- 交付状态单独核验：本 Profile deliveries 仅有原开发 ZIP，SHA-256 仍为 81a7115b24312ccc3c7573ead37440d56cf41aef374815438f1efefd15e5e49b。包内 control-server/hermes-instance/owned-process 与当前修复源码均不同，原包继续停用。当前源码可作为 P2-S1 集中测试候选，尚不是已完成替代包交付；须重新构建归档、解压验证清单/安装/启动并附新哈希后交公司测试。release_ready:false。
+
+## 2026-10-09 P2-S1-REPAIR-01 中断接管独立复验
+
+- 用户确认另一会话因额度停止，授权接管三项缺陷修复。HEAD 仍 3400686db091d493855c2048949c6868f63e690a；接手工作区共 17 个修改/新增文件原样保存至本 Profile scratch/p2-fix-takeover-20261009，manifest.json 记录逐文件 SHA-256。保留原实现，不重复覆盖，不提交或推送。
+- 接手定向：`node --test workbench/tests/lifecycle-boundaries.test.mjs workbench/tests/owned-process-tree.test.mjs`，11/11、退出 0。独立用 `git archive HEAD workbench` 导出旧源码至 scratch/p2-fix-red-baseline-20261009，复制接手的两份新测试并复用既有依赖，同一 11 项测试 10 失败/1 通过、退出 1，red.log 保存确切失败；没有把旧源码覆盖当前工作区。
+- 红灯分别命中 launcher 失败提前关闭重试入口、HTTP 关闭失败监听仍在、持锁前注入恢复标记仍到达 spawn，以及正常/抗 TERM/父提前退出/超时/实例隔离/锁保持等后代生存断言；spawn 失败原路径为绿色。证明测试确实能暴露三项原缺陷，不以当前全绿倒推旧版本安全。
+- 接管后新增 health-failure 树场景及重复停止断言，保留独立硬截止与 owned PID 清理；修正文案，限定普通进程组后代，不承诺主动脱组进程或裸 PGID 的不可复用性。既有 cardId 防御性补丁和测试保留，未将其升级为跨卡生产误发缺陷。
+- 当前 workbench 实际命令与结果：`node --test tests/lifecycle-boundaries.test.mjs tests/owned-process-tree.test.mjs` 12/12；`node --test tests/*.test.mjs`、`npm test` 各 245/245（零失败、取消、跳过）；`npm run validate` 16 组件；`npm run test:s1-browser` 包含 TypeScript/Vite 新构建与方法 v2 的 10/10，cleaned=true。每条退出 0；日志 scratch/p2-fix-20261009-{focused,node,npm,validate,browser}.log。
+- 验证层级：真实 loopback 管理 HTTP 配合合成实例；生产 launcher 的 AST 提取 handler；真实自有 Node 三级进程及 managed lock；Chrome/React/真实管理 HTTP 配合合成 RPC。没有调用模型、连接公司网络、安装依赖或操作个人实例。本轮未重跑真实 Hermes 探针，下方前一会话记录不可冒充本次执行。
+- 三项源码修复已在开发工作区通过本轮独立回归。旧 ZIP 不包含修复且保持暂停；本轮未重打包、提交或推送。POSIX 主动 setsid 脱组不在保障范围；组存在或无法确认消失时不报告停止成功、不释放锁。Windows/真实模型/审批仍待环境验证，release_ready:false。
+
+## 2026-10-09 P2-S1-REPAIR-01 红灯、隔离修复与落地验证
+
+- 基线 3400686db091d493855c2048949c6868f63e690a 加原八文件未提交快照；scratch/p2-repair-20261009-snapshot.json 保存接手哈希，隔离目录 p2-repair-20261009 复用已安装依赖。不覆盖既有浏览器/文档修改，不提交或推送。
+- 红灯：新增 lifecycle-boundaries.test.mjs 最初 2/2 失败，分别为关闭后监听仍存活及恢复标记竞态到达 spawn；追加实际 launcher shutdown AST 提取回归后 1 失败/2 通过，定位 input 提前关闭阻断重试。cardId 新增定向测试退出 1，属于防御性守卫遗漏而非生产跨卡误发复现。POSIX 树回归修复前 5 失败/1 通过，见 scratch/p2-owned-tree-red.log；直接父进程退出不能证明后代退出。
+- 修复九文件：scripts/control-server.mjs、hermes-instance.mjs、managed-instance.mjs、launch-managed.mjs、owned-process.mjs；src/domain/capability-run.ts；tests/s1-capability-chain.test.mjs；新增 tests/lifecycle-boundaries.test.mjs、owned-process-tree.test.mjs（均相对 workbench）。控制服务保留 stop 原始错误并释放监听，可显式重试；启动持锁重核 marker；launcher 失败保留重试入口；POSIX 普通后代进程组消失后才完成退出屏障；守卫比较 cardId 后才进入真实调用点提交。
+- 新增树测试覆盖三级 Node 普通后代、忽略 TERM、父先退出、启动超时、另一实例不受影响、spawn 失败及真实 managed-instance 锁保持。测试只使用自有合成进程，有独立看门狗与清理。Windows 特定路径未作实机验证；主动 setsid 脱组不保证清理，组权限错误/不可终止/僵尸未回收时不报告停止成功。裸 PGID 并非原生不可复用句柄，首次观察到 ESRCH 后永久停用该组 ID。
+- 隔离定向主审 46/46、树/进程/锁定向 20/20；隔离全量与主工作区落地均 `node --test tests/*.test.mjs`、`npm test` 各 244/244、零失败/跳过（每条退出 0）。`npm run validate` 16 组件，`npm run test:s1-browser` 包含 tsc/Vite 构建及方法 v2 10/10，均退出 0、cleaned=true。日志 scratch/p2-repair-{isolated,main}-{node,npm,validate,browser}.log；新旧通过数不相加。
+- 主工作区另复跑原受控 bwrap 命令（scratch/s1-real-managed-probe-command.json）：固定 Hermes 28044757aabd34010bd9f5f3e3f82b0906b46241 源码、清空环境、隐藏个人 home、独立网络；绑定本次修复后的 scripts。退出 0，认证/错误令牌/单实例/停止锁释放及管理 HTTP/Origin 共 11 项 true，日志 p2-repair-main-real-managed.log。未连接模型、未读取个人配置。
+- scratch/p2-repair-20261009.patch 含全部九文件，已在主工作区 apply --check 后应用并复验。当前为已落地的未提交修复，不是仅隔离通过；旧 ZIP 不含本修复，继续暂停，最终替代包另按归档验证结果确认。release_ready:false 不变。
+
+## 2026-10-09 P2-S1-RECHECK-01 复审结论：需返工
+
+- 对象：feat/portable-initializer，HEAD 3400686db091d493855c2048949c6868f63e690a 加既有五个 tracked 修改和三个新增测试文件；本轮不修改生产实现、不提交或推送。远程仅核对本地配置/跟踪引用，未 fetch 或宣称远端最新。
+- 主审重新执行 `node <scratch>/p2-control-close-review.mjs`，退出 0，复现 close 拒绝后 HTTP 仍返回 403、重复 close 不重试停止。这里的退出 0 是缺陷断言成立，不是安全验收通过。
+- 两项生命周期问题经独立审查后，由主审读取探针并重新执行 `node <scratch>/p2-lifecycle-readonly-probe.mjs`（退出 0）确认：① hermes-instance.mjs:15 的恢复标记检查在 managed-instance.mjs:5 获取锁之前；在实际锁 mkdir 前注入标记后 forbiddenSpawnCalls=1，证明待恢复实例仍到达 spawn。探针拦截 spawn 并抛合成错误，未启动 Hermes；markerRetained/lockReleased 均 true。② owned-process.mjs:27–29 只停止直接子进程，managed-instance.mjs:9 在其退出后释放锁；真实合成后代在 managerState=stopped、lockReleased=true 后仍写 heartbeat。后代固定短时自退出，探针确认结束并清理夹具。第二项只证明 POSIX/Linux 路径，不推断 Windows Job Object 失败。
+- 主审核对归档 SHA-256 仍为 81a7115b24312ccc3c7573ead37440d56cf41aef374815438f1efefd15e5e49b；包内 control-server.mjs、hermes-instance.mjs、managed-instance.mjs、owned-process.mjs 均与被复现源码字节一致。旧包继续暂停公司测试，未重打包或解除暂停。
+- 前端补充审查：canCommitCapability 未比较 cardId（capability-run.ts:14–21），但 prepareCapabilityRun:31–32 已校验响应 ID，页面 choose:29 清空请求引用、execute:20 拒绝迟到响应；定性为防御性守卫/测试缺口，不列为已复现的跨卡误发。独立审查的真实 handler 提取测试不是完整 React DOM 生命周期验收。主审未确认新的前端生产误发缺陷，不代表所有跨实例场景已验。
+- 本轮在 workbench 执行 `node --test tests/*.test.mjs`：232/232、零失败/跳过，退出 0；`npm run validate`：16 组件，退出 0；`npm run test:s1-browser`：tsc/Vite 构建及方法 v2 的 10/10，退出 0、cleaned=true。日志在本 Profile scratch/p2-review-20261009-{node,validate,browser}.log。浏览器实际 Chrome/React/管理 HTTP，RPC 合成，无模型调用；绿灯不能覆盖以上新增异常路径。
+- 结论：三项生命周期缺陷需返工。先补异常关闭、持锁恢复标记复核、POSIX 后代存活的定向回归，再在隔离现场修复并做完整回归与新包验证。真实模型/审批、Windows/U 盘仍待环境验证；release_ready:false 保持不变。
+
+## 2026-10-08 P2-S1-RECHECK-01 主审初步复现（其余独立审查待回交）
+
+- 对象：3400686 加现有测试/文档工作区；交付 ZIP 哈希再次核对为 81a7115b24312ccc3c7573ead37440d56cf41aef374815438f1efefd15e5e49b，包内 control-server.mjs 与本机源码字节一致。
+- 确认缺陷：control-server.mjs:95–102 的 closePromise 在 instance.stop 抛错后永久拒绝；server.close 未执行，closing 已设 true。launch-managed.mjs 的 shutdown 又会关闭输入并设置 stopping，不能据“请求关闭”认定管理服务已退出。
+- 自有子进程中启动真实 startControlServer，注入会拒绝 stop 的合成实例，实际 POST /api/start 200；close 拒绝后仍能收到 HTTP 403；再次 close 仍拒绝且 stopCalls=1。JSON 为 closeRejected:true、listenerStillAcceptsRequests:true、httpAfterClose:403、repeatedCloseRetriesStop:false。探针自行退出以清理其监听，不涉及真实 Hermes 或其他进程。
+- 脚本/输出：本 Profile scratch/p2-control-close-review.mjs、p2-control-close-review.log，命令 node <scratch>/p2-control-close-review.mjs 退出 0 表示缺陷被复现，不是安全检查通过。
+- 同轮 node --test tests/*.test.mjs 232/232、npm run validate 16 组件、npm run test:s1-browser 的构建及 10 场景均退出 0；日志 p2-rereview-{node,validate,browser}.log。这些通过不能覆盖上述失败路径，旧包暂停公司测试。前端/生命周期独立审查尚未回交，未声明全面复查完成。
+
+## 2026-10-08 P2-COMPANY-TEST-01 候选包与安装后检查
+
+- 最终归档打包后证据：Hermes-Portable-P2-development.zip，228837 字节，SHA-256 `81a7115b24312ccc3c7573ead37440d56cf41aef374815438f1efefd15e5e49b`，35 个 payload 文件。实际从最终 ZIP 解压，重新执行同一 package-smoke，退出 0；清单/哈希、预检只读、安装字节一致、旧外壳备份、合成数据保留、锁/标记清理及 HTTP 静态资源与认证检查全通过。机器可读结果在同目录 COMPANY-TEST-RESULTS.json。包内文档冻结于打包前，本条外层哈希不回写 ZIP，防止自引用；未改变已测代码。
+- 基线 3400686 加受控工作区修改，不是干净 result SHA。用户将真实模型测试安排在公司独立环境；公司模型名称、可达性和费用均未经本机验证，不写入任何内网地址、配置或凭据。release_ready:false，包状态仍为 development-snapshot。
+- 开发工作区 workbench 重新执行：`node --test tests/*.test.mjs`、`npm test` 各 232/232、零跳过；`npm run validate` 16 组件；`npm run test:s1-browser` 包含 tsc/Vite 构建及 methodVersion:2 的十项浏览器断言，全部退出 0。日志为本 Profile scratch/p2-company-{node,npm,validate,browser}.log。
+- 使用既有 build-p2-package.mjs 的严格白名单生成候选包，不改打包/安装生产脚本或兼容门禁。35 个清单 payload 文件，加 p2-package.json；清单路径无重复，ZIP 实际文件集合与清单完全一致，CRC 及逐文件 SHA-256 通过，排除 .git/node_modules/.env/auth.json/data/sessions/.cache。不把编译产物或日志反向纳入 Git。
+- 在自有临时合成 portable target 上导入包内 install-p2-package.mjs：只读 verify 未改变旧 index 或数据哨兵；apply 后所有清单文件哈希一致；旧外壳原文保留于备份；合成 data/sentinel.txt 字节未变；安装标记和实例锁释放。没有对真实安装目录或 U 盘操作。
+- 再从已安装目标导入包内 control-server.mjs，用其提供已安装 dist：HTML 及引用 assets 均 HTTP 200；未认证 status 为 403，持管理 token 的 status 为 idle，未启动后端；关闭后 HTTP 不可连接。仅本轮临时目录/服务被清理。这是 Linux 包内运行证据，不替代 Windows PowerShell、Job Object、真实模型或业务审批验收。
+- 验证脚本位于 scratch/p2-company-package-smoke.mjs，候选日志 p2-company-candidate-package.log、p2-company-candidate-smoke.log。最终包将再次校验精确清单、哈希及安装后行为；外层哈希单独交付，避免将 ZIP 自身哈希写入 ZIP 内产生自引用。
+- 公司操作说明在 ACCEPTANCE 的开发测试批次节。包为依赖既有 P0 环境的外壳增量，不是全套便携安装器或 P2 全功能交付；原任务和真实模型/Windows/U盘验收勾选不据此关闭。
+
+## 2026-10-08 P2-S1-REAL-NOMODEL-01 固定 Hermes 无模型隔离复验
+
+- 工作台 HEAD 3400686db091d493855c2048949c6868f63e690a，加已有六文件未提交浏览器/文档批次；这些实现文件本轮未改。真实 Hermes 固定为兼容性清单 development 基线 28044757aabd34010bd9f5f3e3f82b0906b46241；本机安装源码 HEAD 3251a180f01ad21ae059862997307bf75f3e3f0a 不作为被测源码。
+- 准备：从既有 Git 对象 git archive 导出固定基线至本 Profile scratch/s1-real-hermes-280447-source，检查无 .env/auth.json/state.db 这些凭据或个人库文件名，不复制工作区配置。只读复用既有 venv 与其 Python runtime generation；不安装、不拉取远端、不改 Hermes 源码或 Profile。
+- 隔离采用既有 probe-hermes-isolated.sh/probe-managed-isolated.sh 的 bwrap --unshare-all 模式，针对导出源码/共享解释器显式调整只读挂载。宿主根只读，/home、/root、/tmp、/run 被新 tmpfs 隐藏，环境清空；源码在沙箱 /tmp/p2-source，venv 在其子目录，只有必需 runtime generation 子树额外可见。沙箱内 /tmp 为内存文件系统，不是宿主系统临时目录；所有宿主产物在本 Profile scratch。
+- 前置实测：网络 namespace 与宿主不同；个人 Profile 配置不可见；固定源码 .env 不存在；无继承 API_KEY；hermes_cli 实际导入路径位于 /tmp/p2-source/hermes_cli。探针 runtime token 仅存在子进程内存/环境，不输出到日志。
+- 环境适配失败如实保留：第一次把新挂载点设为只读根下 /p2-source，bwrap 报 Can't mkdir /p2-source: Read-only file system；改为 namespace tmpfs 下的 /tmp/p2-source。随后仅挂载 canonical Python 目录，venv 的解释器别名无法解析，报 execvp ... No such file or directory；只读挂载包含别名的同一 runtime generation 后，隔离 import 通过。没有改写个人 venv 或解除网络/目录隔离。
+- 协议命令：在上述 bwrap 中执行 `/tmp/p2-source/venv/bin/python /tmp/probe.py`，probe.py 只读绑定仓库 scripts/probe-hermes-protocol.py，prepare-learn.py 同样只读绑定。退出 0、stderr 零字节。真实服务启动、未认证拒绝、gateway.ready、unknown method -32601、契约 6、隔离会话 cwd、创建/关闭、stale interrupt 4001、重复关闭 false 全部符合断言。
+- 无 provider 的 prompt.submit 返回失败并出现 status:error 的 message.complete；tool_not_started 为 true。不代表真实模型完成回复或工具执行。skills/list、learn 注册解析、Profile 摘要不含会话、历史 HTTP 认证及本机 Origin、固定学习提示构造器指纹检查通过；未执行学习文件产出。
+- 管理命令：在同等隔离环境只读绑定 Node 和仓库 scripts，执行 `/tmp/p2-node /tmp/p2-scripts/probe-managed.mjs /tmp/p2-source`。退出 0、stderr 零字节，11 项布尔断言全为 true：authenticatedHealth、rejectsWrongToken、singleInstance、stopped、lockReleased、controlUnauthorizedRejected、controlStartReady、localOriginAccepted、foreignOriginRejected、controlStopIdle、controlLockReleased。
+- 两个探针均使用真实 Hermes WebSocket/HTTP，不是浏览器合成 RPC；但没有把真实浏览器与此隔离服务连接，不能把两组独立通过拼成完整端到端。此处也不声明管理/RPC 凭据双向互换拒绝已全部验证。
+- 本机精确 argv 保存在 scratch/s1-real-hermes-probe-command.json 与 s1-real-managed-probe-command.json；脱敏输出分别为 s1-real-hermes-probe.log、s1-real-managed-probe.log。argv 不含 token，但含本机路径，跨机必须重新定位，不直接复制。探针结束后扫描其沙箱 cwd/命令确认无自有进程残留，tmpfs 数据随 namespace 释放；固定导出源码作为复验材料保留。
+- 本轮没有修改应用实现，未重复计入之前 232 单测/10 浏览器场景；这批新增的是固定源码真实服务无模型证据。未提交、未推送、未发布；真实模型/审批/活动取消、Windows/U盘仍待环境及授权，release_ready:false 不变。
+
+## 2026-10-08 P2-S1-BROWSER-RUNNER-01 方法版本 2：取消/重导入与重连
+
+- 基线仍 3400686 的现有未提交批次；仅扩展 tests/s1-browser-check.mjs 的浏览器步骤及本阶段文档，不改生产代码、驱动接口、依赖或发布门禁。保留版本 1 的八项历史证据，当前报告 methodVersion:2，共十项唯一名称断言。
+- 新场景 cancel-reimport-held-prepare-no-stale-review：真实管理 HTTP prepare 在服务端等待，浏览器文件输入 disabled；点击当前卡片经真实 choose 路径取消，重新导入新显示名称的同一方法，再释放旧服务请求；确认无可提交旧审阅、合成 prompt.submit 总数保持 1。本案例覆盖主动取消与重导入，不声称覆盖所有跨卡或取消无效的服务实现。
+- 新场景 explicit-reconnect-no-replay：在原有二次核验延迟期间关闭合成 socket、释放响应的场景之后，经实际页面导航点击“连接本实例”；确认 session.create 次数仅增加一次，返回能力页无旧审阅，prompt.submit 仍为 1。此处只是显式重连相同合成 RPC 身份，不等于真实 Hermes 重连或换实例/令牌验收。
+- 保持原生 fetch/XHR；不通过直接调用 React 私有 handler 完成场景。旧响应释放后待服务端 held 解除并观察界面；无新增提交来自实际合成 WebSocket 记录，不由缺字段或静态计数推断。
+- cwd：开发仓库 workbench。`npm run test:s1-browser`（含 tsc/Vite build，58 模块）退出 0，10/10；`node tests/s1-browser-check.mjs` 再跑退出 0，10/10；逐项核对十个名称唯一、全部 passed、cleaned:true、hermesModelExecuted:false。`node --test tests/*.test.mjs` 和 `npm test` 各 232/232、零跳过、退出 0；`npm run validate` 16 组件、退出 0。
+- 原始日志：本 Profile scratch/s1-browser-v2-{browser-build,browser-repeat,node,npm,validate}.log。命令仍为方法版本 1 所列的仓库入口，环境和隐私边界不变；增加的是浏览器场景，故 Node 单测数量不增加。不把重复运行相加为二十项。
+- 当前实现/限定 Linux 浏览器回归通过；缺 provider 的真实服务探针本轮仅读取未执行，真实模型/审批、Windows/U盘仍待验。未提交、未推送、未发布，release_ready:false 不变。
+
+## 2026-10-08 P2-S1-BROWSER-RUNNER-01 仓库内复跑入口
+
+- base SHA：3400686db091d493855c2048949c6868f63e690a；本批没有结果提交。接管原有 package.json、tests/s1-browser-check.mjs、s1-browser-driver.mjs、s1-browser-driver.test.mjs；快照与 manifest 位于本 Profile scratch/s1-browser-takeover-original。审查未发现需要修改生产逻辑的已复现缺陷，不虚构红灯修复记录。
+- package.json 仅新增脚本；不新增依赖、锁文件或生产接口。已有入口采用无导入副作用的 runS1BrowserCheck，CDP pipe、临时合成 home/Skill、只替换 WebSocket 的夹具；实际管理 HTTP/catalog/prepare 和原生 fetch/XHR。重复导入使用唯一显示名称，普通操作等按钮 enabled，显式双击不增加等待以保留防重入断言。
+- 接手初跑：`node --test tests/s1-browser-driver.test.mjs` 为 13/13、退出 0；`npm run test:s1-browser` 构建及 8 项浏览器检查通过、退出 0。随后补三项边界测试（超大帧拒绝、预取消不调用等待谓词、预取消入口先于发现/启动浏览器），并补 peer error 后下一请求实际成功断言；没有改变原驱动或入口实现。
+- 最终验证 cwd 为开发仓库 workbench：驱动定向 16/16；`node --test tests/*.test.mjs` 与 `npm test` 各 232/232、零失败/零跳过；`npm run validate` 16 组件；`npm run test:s1-browser` 包含 tsc/Vite 58 模块构建和 8 项浏览器检查；再执行 `node tests/s1-browser-check.mjs` 8/8。上述命令分别退出 0，git diff --check 通过。
+- 浏览器结果包含 methodVersion:1、status、failure、8 项固定名称断言、限定同源路径与 HTTP 状态、cleaned、rpc:synthetic、hermesModelExecuted:false。不记录查询串、运行时凭据、页面正文、用户 home 或原始 CDP 错误；Chrome 使用环境变量白名单及自有 HOME/cache/temp。清理仅针对本入口创建的子进程及目录，失败不报告成功。
+- 证据日志为本 Profile scratch/s1-browser-takeover-{driver-initial,browser-initial,driver,node,npm,validate,browser-build,browser-repeat}.log。末行 JSON 已核对 8 项名称唯一、全部通过、cleaned:true；不将八项重复执行相加为更多场景。
+
+### 复跑方法与边界（方法版本 1）
+
+- 在已获批准的隔离测试环境、已有依赖及已安装 Chrome/Chromium 条件下，从 workbench 执行 `npm run test:s1-browser`。这会写 dist、创建临时合成实例和浏览器目录、启动本机回环管理 HTTP；不会启动 Hermes 或模型。
+- 默认只探测 Linux 常见浏览器路径；可用 CHROME_BIN 指定已安装浏览器的绝对可执行路径，不自动下载/安装。缺浏览器返回 BROWSER_UNAVAILABLE、退出 1，而不是跳过成功。Windows 尚未实际验证，设置路径不能替代平台验收。
+- 临时目录由 TMPDIR/TMP/TEMP 对应的系统临时根决定。本 Profile 已配置 scratch；换机须显式配置该机器批准的临时根，不复制旧机绝对路径、凭据或权限。Linux 根过长可能受浏览器 singleton socket 长度限制，环境不满足应报告失败，不改用未批准目录。
+- 默认 `npm test` 只跑驱动/入口边界测试，不自动启动 Chrome；浏览器回归为上述显式命令。直接运行 Node 入口需事先构建，日常优先 npm 命令避免使用旧 dist。
+- 适用范围仍为 Linux 实际 React → 真实管理 HTTP → 合成 RPC；真实 Hermes/Skill 执行、模型审批、Windows/U 盘未验，release_ready:false 不变。入口已在仓库工作区，不代表已提交、推送或发布。
+
 ## 2026-10-08 S1/R2/R4 统一整合复验
 
 - 开发原基线 b11bd5a；先保存既有文档修改为 32b27e1，再于本 Profile scratch/p2-s1-integration 独立 worktree 合并 feac533f42c3ba5431db3079ee283b34e3c18398。未纳入 49e7e7d；原 R2/R4 工作区不变。

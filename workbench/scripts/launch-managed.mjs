@@ -45,9 +45,14 @@ export async function launch(args){
  console.log('Use the browser controls to start/stop. Type OPEN to reopen, or EXIT to stop this manager and its instance.');
  const input=createInterface({input:process.stdin,output:process.stdout});let stopping=false;
  const shutdown=async()=>{
-  if(stopping)return;stopping=true;input.close();
-  try{await control.close();console.log('P2 manager stopped.');}catch{console.error('P2 stop not confirmed. Inspect this instance before removing the drive.');process.exitCode=1;}
-  process.removeListener('SIGINT',shutdown);process.removeListener('SIGTERM',shutdown);
+  if(stopping)return;stopping=true;
+  try{
+   await control.close();input.close();console.log('P2 manager stopped.');
+   process.removeListener('SIGINT',shutdown);process.removeListener('SIGTERM',shutdown);
+  }catch{
+   stopping=false;
+   console.error('P2 stop not confirmed. Retry EXIT or signal shutdown; inspect this instance before removing the drive.');process.exitCode=1;
+  }
  };
  const open=()=>openBrowser(`${control.origin}/#/chat/live?control=${control.token}`).catch(()=>console.error('Browser could not open. Type OPEN to retry or EXIT to stop.'));
  process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);

@@ -91,14 +91,20 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
  server.requestTimeout=10_000;server.headersTimeout=5_000;
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
  origin=`http://127.0.0.1:${server.address().port}`;
- let closePromise;
+ let closePromise,listenerClosePromise;
+ const closeListener=()=>listenerClosePromise??=new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
  return {origin,token,close:()=>{
   if(closePromise)return closePromise;
   closing=true;
   closePromise=(async()=>{
-   await pending;
-   if(instance){await instance.stop();instance=null;}
-   await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
-  })();return closePromise;
+   let failure;
+   try{await pending;if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
+   // A failed instance stop must not retain an unusable HTTP listener.
+   // Keep the instance handle and original error for an explicit cleanup retry.
+   try{await closeListener();}catch(error){failure??=error;}
+   if(failure)throw failure;
+  })();
+  void closePromise.catch(()=>{closePromise=undefined;});
+  return closePromise;
  }};
 }
