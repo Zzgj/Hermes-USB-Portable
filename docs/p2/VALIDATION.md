@@ -1,5 +1,15 @@
 # P2 验证记录
 
+## 2026-10-09 P2-S1-USB-PACK-02 最终修复包验证
+
+- 源码提交：4090b4d0846f537ceb832d9f4464af69936ae18e，分支 feat/portable-initializer；打包前工作区干净，无依赖/构建产物入库。17 个受控源码/测试/文档文件已本地提交，未推送；本节是后续仅文档交付证据，不改变被测实现。
+- 在该提交 workbench 下执行 `node --test tests/*.test.mjs` 245/245、`npm run validate` 16 组件、`npm run test:s1-browser` 包含 tsc/Vite 新构建与方法 v2 10/10，均退出 0。日志 scratch/p2-usb-4090b4d-{node,validate,browser}.log；浏览器 RPC 合成，未调用模型。
+- 执行 `node workbench/scripts/build-p2-package.mjs <repo> <profile>/deliveries/p2-s1-usb-20261009-4090b4d`，退出 0。最终 Hermes-Portable-P2-development.zip：236501 字节，35 个 payload，SHA-256 98d8505f12228a069ebe54d38befd29271e22e1f149060c9f5a94b9a6d32ffde。状态 development-snapshot，release_ready:false，没有放宽发布门禁。
+- scratch/p2-usb-verify-4090b4d.py 实际校验最终 ZIP 的 CRC、大小写唯一/无穿越/无符号链接、精确文件集合为 manifest 清单加 manifest、自带 .sha256、所有文件大小与 SHA-256、禁入数据/配置/依赖目录；非 dist 文件逐字节对照 Git 提交，dist 对照新构建。全部通过、退出 0，再解压至 scratch/p2-usb-final-4090b4d。
+- 对最终解压内容执行 `node <scratch>/p2-company-package-smoke.mjs <extracted>/Hermes-Portable-P2`，退出 0。真实包内 installer 在临时合成 P0 目标完成只读预检、安装前备份、数据哨兵保留、全部安装字节一致、恢复标记/自有锁释放；从安装目标实际导入 control-server，静态资源/认证与关闭检查通过。未操作用户真实便携实例。
+- 另将现有两份生命周期回归置于 scratch/p2-usb-extracted-regressions-4090b4d，scripts 指向最终 ZIP 解压脚本，复用已安装测试依赖（不入包）；`node --test tests/lifecycle-boundaries.test.mjs tests/owned-process-tree.test.mjs` 12/12、退出 0，确认包内修复不是旧源码。日志 p2-usb-4090b4d-extracted-regressions.log。
+- 同交付目录提供使用说明.md 与 DELIVERY-RESULTS.json。新包可供限定 P2-S1 集中测试，替代停用旧包；不代表 Windows/真实模型/审批验收完成。依赖已有独立 P0 根，不含内核或运行时，不是完整空盘安装器。包内文档为 4090b4d 打包前快照；外层哈希及本次完成证据不回写 ZIP，避免自引用。
+
 ## 2026-10-09 P2-S1-RECHECK-02 修复后复查与交付状态
 
 - 对象仍为 3400686 加已接管修复工作区；接手先执行已交源码补丁的 `git apply --reverse --check` 通过，文件清单与上一轮一致。重新审阅关闭/重试、持锁启动、POSIX 退出屏障及 cardId 差异；本轮不修改生产代码、不提交或推送。
