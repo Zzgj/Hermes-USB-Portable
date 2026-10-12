@@ -48,6 +48,52 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
       }catch{json(response,400,{error:learning?'LEARN_PREPARATION_FAILED':'CAPABILITY_PREPARATION_FAILED'});}finally{busy=false;}
      })();await pending;return;
     }
+    if(url.pathname.startsWith('/api/sessions/')&&url.pathname.endsWith('/messages')&&request.method==='GET'){
+     const match=url.pathname.match(/^\/api\/sessions\/([^/]+)\/messages$/);
+     if(!match){json(response,404,{error:'NOT_FOUND'});return;}
+     const sessionId=match[1];
+     if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/.test(sessionId)){json(response,400,{error:'INVALID_SESSION'});return;}
+     if(busy||instance?.state!=='ready'){json(response,409,{error:'NOT_READY'});return;}
+     const connection=await instance.connection;
+     if(!connection||!Number.isInteger(connection.port)||connection.port<1||connection.port>65535||typeof connection.token!=='string'||!connection.token){json(response,503,{error:'NO_BACKEND'});return;}
+     busy=true;
+     pending=(async()=>{
+      try{
+       const upstreamUrl=`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
+       const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+       let upstreamResponse;
+       try{upstreamResponse=await fetch(upstreamUrl,{method:'GET',headers:{Authorization:'Bearer '+connection.token},redirect:'error',signal:controller.signal});}
+       catch(error){clearTimeout(timer);json(response,502,{error:'UPSTREAM_UNREACHABLE'});return;}
+       clearTimeout(timer);
+       if(!upstreamResponse.ok||!upstreamResponse.body){json(response,502,{error:'UPSTREAM_ERROR'});return;}
+       // Server-side size limit: read and decode, reject over 1 MiB.
+       const reader=upstreamResponse.body.getReader();const chunks=[];let length=0;
+       try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>1_048_576){json(response,502,{error:'UPSTREAM_TOO_LARGE'});return;}chunks.push(value);}}
+       finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+       if(length===0){json(response,502,{error:'UPSTREAM_EMPTY'});return;}
+       const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+       let decoded;
+       try{decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{json(response,502,{error:'UPSTREAM_INVALID'});return;}
+       // Server-side projection: only return safe transcript shape, never raw upstream data.
+       try{
+        if(typeof decoded!=='object'||decoded===null||Array.isArray(decoded)||typeof decoded.session_id!=='string'||!Array.isArray(decoded.messages))throw new Error();
+        const messages=[];let omitted=false,total=0;
+        for(const row of decoded.messages){
+         if(typeof row!=='object'||row===null||Array.isArray(row)){omitted=true;continue;}
+         if(row.display_kind==='hidden'){omitted=true;continue;}
+         if(row.role!=='user'&&row.role!=='assistant'){omitted=true;continue;}
+         const content=Object.hasOwn(row,'display_content')?row.display_content:row.content;
+         if(typeof content!=='string'){omitted=true;continue;}
+         const text=content.slice(0,Math.max(0,Math.min(20_000,100_000-total)));
+         total+=text.length;omitted=omitted||text.length<content.length;
+         if(text)messages.push({role:row.role,text});
+        }
+        json(response,200,{sessionId:decoded.session_id,messages,omitted});
+       }catch{json(response,502,{error:'UPSTREAM_INVALID'});return;}
+      }catch{json(response,502,{error:'UPSTREAM_ERROR'});}
+      finally{busy=false;}
+     })();await pending;return;
+    }
     if(url.pathname==='/api/status'&&request.method==='GET'){
      json(response,200,{state:busy?'changing':instance?.state??'idle'});return;
     }

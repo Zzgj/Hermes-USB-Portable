@@ -29,6 +29,7 @@ export function useLiveChat(){
  const [transcript,setTranscript]=useState<SessionTranscript|null>(null),[transcriptLoading,setTranscriptLoading]=useState(false);
  const [transcriptError,setTranscriptError]=useState<string|null>(null);
  const transcriptRequest=useRef<AbortController|null>(null),historyAccess=useRef<{port:number;token:string}|null>(null);
+ const managementTokenRef=useRef('');
  const [history,setHistory]=useState<readonly ChatRecord[]>([]),[turn,setTurn]=useState<ChatTurn|null>(null);
  const connection=useRef<ReturnType<typeof connectHermes>|null>(null),session=useRef<SessionIdentity|null>(null);
  const epoch=useRef(0),current=useRef<ChatTurn|null>(null),sequence=useRef(-1);
@@ -44,7 +45,7 @@ export function useLiveChat(){
   setSkills([]);setSkillsLoading(false);setSkillsLoaded(false);
   setProfiles([]);setProfilesLoading(false);setProfilesLoaded(false);
   setLearnDraft(null);setLearnConfirmed(false);
-  setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);historyAccess.current={port:targetPort,token:targetToken.trim()};
+  setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);historyAccess.current={port:0,token:managementTokenRef.current};
   const endpoint=`ws://127.0.0.1:${targetPort}/api/ws?token=${encodeURIComponent(targetToken.trim())}`;setToken('');
   const live=()=>epoch.current===generation;
   try{connection.current=connectHermes({endpoint,onState:state=>{
@@ -176,5 +177,6 @@ export function useLiveChat(){
   },
   learnDraft,learnConfirmed,acceptLearnDraft,submitLearning,confirmLearning:(value:boolean)=>setLearnConfirmed(value),dismissLearning:()=>{setLearnDraft(null);setLearnConfirmed(false);},
   busy:turn?.status==='streaming',connect:(event:FormEvent)=>{event.preventDefault();connectTo({port:Number(port),token});},connectTo,disconnect,submit:(event:FormEvent)=>{event.preventDefault();submitText(input.trim());},stop,
-  changePort:(e:ChangeEvent<HTMLInputElement>)=>setPort(e.target.value),changeToken:(e:ChangeEvent<HTMLInputElement>)=>setToken(e.target.value),changeInput:(e:ChangeEvent<HTMLTextAreaElement>)=>setInput(e.target.value)};
+  changePort:(e:ChangeEvent<HTMLInputElement>)=>setPort(e.target.value),changeToken:(e:ChangeEvent<HTMLInputElement>)=>setToken(e.target.value),changeInput:(e:ChangeEvent<HTMLTextAreaElement>)=>setInput(e.target.value),
+  setManagementToken:(value:string)=>{managementTokenRef.current=value;}};
 }

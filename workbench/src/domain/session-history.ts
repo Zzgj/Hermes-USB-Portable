@@ -19,10 +19,12 @@ export function decodeTranscript(value:unknown):SessionTranscript {
  }
  return {sessionId:value.session_id,messages,omitted};
 }
-/** Fixed read-only endpoint; no resume, redirects, cookies, body or query credentials. */
+/** Read-only transcript via same-origin management proxy (port=0) or direct loopback (legacy). */
 export async function readTranscript(connection:{readonly port:number;readonly token:string},sessionId:string,signal:AbortSignal,send:typeof fetch=fetch):Promise<SessionTranscript>{
- if(!Number.isInteger(connection.port)||connection.port<1||connection.port>65535||!connection.token.trim()||connection.token.length>4096||!identity(sessionId))throw new Error('HISTORY_INVALID');
- const url=`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
+ if(!Number.isInteger(connection.port)||connection.port<0||connection.port>65535||!connection.token.trim()||connection.token.length>4096||!identity(sessionId))throw new Error('HISTORY_INVALID');
+ // When port=0, use same-origin relative URL (management service proxy avoids CORS).
+ // When port>0, use direct loopback (legacy path, may trigger CORS preflight).
+ const url=connection.port===0?`/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`:`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
  // Preserve distinct error categories so the UI can show meaningful messages and allow retry.
  let response:Response;
  try{response=await send(url,{method:'GET',headers:{Authorization:'Bearer '+connection.token},credentials:'omit',cache:'no-store',redirect:'error',signal});}
