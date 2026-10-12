@@ -11,6 +11,7 @@ import {startHermesInstance} from './hermes-instance.mjs';
 import {prepareLearn} from './prepare-learn.mjs';
 import {readSkillCatalog} from './skill-catalog.mjs';
 import {prepareCapability} from './prepare-capability.mjs';
+import {formatLauncherBanner,launcherCommand} from './launcher-ui.mjs';
 
 export function parseLaunchArgs(args){
  const {values}=parseArgs({args,options:{root:{type:'string'},python:{type:'string'},source:{type:'string'},home:{type:'string'},git:{type:'string'},experimental:{type:'boolean'}}});
@@ -39,28 +40,27 @@ export async function launch(args){
  if(!(await stat(join(assets,'index.html'))).isFile())throw new Error('BUILD_REQUIRED');
  const baseline=inspectBaseline(options.source,values.root?join(values.root,'.cache','runtimes','windows-x64','git','cmd','git.exe'):values.git);
  if(baseline.tracked_changes)throw new Error('SOURCE_REVIEW_REQUIRED');
- console.log(`P2 experimental source: ${baseline.commit} (${baseline.status}; not release-qualified)`);
+ console.log('正在检查 P2 开发测试基线，准备本机管理服务…');
  const control=await startControlServer({assets,startInstance:()=>startHermesInstance(options),prepareLearn:request=>prepareLearn(options,request),readCatalog:()=>readSkillCatalog(options.home),prepareCapability:request=>prepareCapability(options.home,request)});
- console.log(`P2 manager: ${control.origin} (backend not started)`);
- console.log('Use the browser controls to start/stop. Type OPEN to reopen, or EXIT to stop this manager and its instance.');
+ console.log(formatLauncherBanner({origin:control.origin,commit:baseline.commit,baselineStatus:baseline.status},{color:Boolean(process.stdout.isTTY)&&process.env.NO_COLOR===undefined}));
  const input=createInterface({input:process.stdin,output:process.stdout});let stopping=false;
  const shutdown=async()=>{
   if(stopping)return;stopping=true;
   try{
-   await control.close();input.close();console.log('P2 manager stopped.');
+   await control.close();input.close();console.log('P2 管理服务及其持有的实例已停止。其他独立服务需分别确认停止后再拔盘。');
    process.removeListener('SIGINT',shutdown);process.removeListener('SIGTERM',shutdown);
   }catch{
    stopping=false;
-   console.error('P2 stop not confirmed. Retry EXIT or signal shutdown; inspect this instance before removing the drive.');process.exitCode=1;
+   console.error('停止尚未确认，请勿拔出 U 盘。输入 0 或 EXIT 重试；必要时检查该实例的进程与日志。');process.exitCode=1;
   }
  };
- const open=()=>openBrowser(`${control.origin}/#/chat/live?control=${control.token}`).catch(()=>console.error('Browser could not open. Type OPEN to retry or EXIT to stop.'));
+ const open=()=>openBrowser(`${control.origin}/#/chat/live?control=${control.token}`).catch(()=>console.error('无法自动打开浏览器。输入 1 或 OPEN 重试，输入 0 或 EXIT 停止服务。'));
  process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);
- input.on('line',line=>{if(line.trim()==='EXIT')void shutdown();else if(line.trim()==='OPEN'&&!stopping)void open();});
+ input.on('line',line=>{const command=launcherCommand(line);if(command==='exit')void shutdown();else if(command==='open'&&!stopping)void open();else if(!stopping)console.log('请输入 1 打开工作台，或输入 0 停止并退出，然后按回车。');});
  input.on('close',()=>{if(!stopping)void shutdown();});
  await open();
  return {shutdown};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- launch(process.argv.slice(2)).catch(()=>{console.error('P2 manager startup failed. Verify explicit paths, source state, runtime relocation and build. No automatic repair was attempted.');process.exitCode=1;});
+ launch(process.argv.slice(2)).catch(()=>{console.error('P2 启动失败。请检查便携路径、源码状态、运行环境迁移及工作台构建；未尝试自动修复。');process.exitCode=1;});
 }

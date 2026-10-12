@@ -1,5 +1,42 @@
 # P2 验证记录
 
+## 2026-10-12 P2-S1-SYNC-01 推送前复验与用户反馈边界
+
+- 推送前核对本地 b986738，分支 feat/portable-initializer，origin 远端 b11bd5a 为本地祖先；现有中文批次与三份文档修改均保留。本轮将当前文件及交接更新纳入提交，不新增功能修复，不重新生成安装包。
+- 本轮 workbench 下 `node --test tests/*.test.mjs` 退出 0，250/250；`npm run validate` 退出 0，16 组件；`npm run test:s1-browser` 退出 0，含 TypeScript/Vite 新构建和 methodVersion 2 的 10/10 浏览器断言，cleaned=true、RPC 合成、未执行模型。日志 scratch/p2-sync-20261012-{test,validate,browser-build}.log。未安装或升级依赖。
+- 用户实机口述反馈与本机自动测试分开：已确认模型回复/多轮/文件读写/取消/正常停止重启和旧会话索引；历史正文一闪消失且无错误、主聊天仍可发送，属于失败反馈，本机未复现、根因未定。审批没有出现，记未触发；断线重连记未测。
+- 自动测试通过不能关闭 HISTORY-01；下一批需实际页面和生产调用链失败回归。模型配置 GUI、旧会话恢复执行与 S2/S3 仍未完成，release_ready:false 不变。只发布脱敏项目状态，不含端点、用户名、Key 或会话正文。
+
+## 2026-10-11 P2-S1-LAUNCHER-ZH-01 中文启动界面开发验证
+
+- 最终交付：Hermes-Portable-P2-S1-First-Install-ONLINE-ZH.zip，370264 字节，89 个 payload，SHA-256 70fc2ce4c88f206ca1d1f02b77fc228fb9e77dce10e418a24507105956f9c92f；CRC、安全路径/无链接/大小写唯一、精确清单、逐文件大小与哈希、旁车一致性通过。保留原 ONLINE 基包身份，明确 source_dirty=true，覆盖文件在清单 source_overlays 中列明，不冒充干净 b986738。
+- 审查后将 P2-Workbench.bat 纳入 P2 增量白名单；launch.bat 仍归 P0 所有，只随完整首装包交付。本次完整归档包含两份 BAT；对应保护性断言通过。最终源码重新运行 250/250、validate 16、build，均退出 0。
+- 最终解压包运行 p2-first-install-smoke.mjs 通过；隔离夹具 scripts 链接解析到解压目录，运行 launcher-zh、lifecycle-boundaries、owned-process-tree 共 17/17、退出 0，日志 scratch/p2-first-install-zh-regression.log。同一解压 launch-managed.mjs 运行 p2-launcher-zh-live-smoke.mjs 退出 0，真实管理 HTTP/认证/中文退出/令牌不输出均通过，浏览器打开调用为合成失败，不等于 Windows 默认浏览器实测。
+- 归档冻结后的最终证据在包外 ARCHIVE-RESULTS.json、DELIVERY-RESULTS.json 与本节；包内进度文档保留打包前快照，不回写冻结 ZIP。核心生命周期与首装安装逻辑未改；未提交/推送，Windows 实机和公司模型仍未验。
+- 基线 b986738，保留既有三份首装文档修改。本轮改动仅启动展示、P2 入口/操作别名、打包白名单及对应测试/说明；无内核/依赖/协议/存储或发布资格变化。
+- 先增四项测试，旧实现 0/4：缺中文展示与两个新增文件；这是新增需求红灯，不是四项既有生产缺陷。实现后新增真实 line 回调提取执行验证，默认新增共 5 项。
+- `node --test tests/*.test.mjs`（workbench）退出 0，250/250，日志 scratch/p2-launcher-zh-suite.log。`npm run validate` 退出 0、16 组件；`npm run build` 退出 0、TypeScript/Vite 构建完成。
+- `node tests/s1-browser-check.mjs`（workbench）退出 0，methodVersion 2、10/10、cleaned=true；真实 Chrome/React/HTTP、合成 RPC，不调用模型。日志 scratch/p2-launcher-zh-browser.log。
+- `node <scratch>/p2-launcher-zh-live-smoke.mjs workbench/scripts/launch-managed.mjs` 退出 0：临时无内核 Git 仓库提供合成源码身份，生产 launch 函数实际启动管理 HTTP；未授权请求拒绝，合成浏览器打开失败后的中文提示和重新打开别名有效，输入“退出”后真实 HTTP 不再可达，输出不含管理 URL 凭据。仅浏览器进程调用被替换为失败夹具，不调用模型/工具，不启动 Hermes。本探针不计入 250 个默认测试。
+- BAT 使用 UTF-8 无 BOM、全 CRLF，首个中文前执行 chcp 65001；含中文的 PowerShell 回归文件加 UTF-8 BOM 兼容 Windows PowerShell。Linux 无 pwsh，未执行该 PowerShell 测试或 Windows BAT；不宣称终端实机显示通过。主菜单调用 P2 前局部恢复原 APPDATA/LOCALAPPDATA，避免原生便携环境影响默认浏览器的配置目录。
+- 此处记录源码开发验证；新归档独立验证与最终交付结果记录在后续条目/包旁车，不沿用旧包哈希。本批未提交、未推送，release_ready:false。
+
+## 2026-10-09 P2-S1-FIRST-INSTALL-RECHECK 实际安装包复查
+
+- 直接复查 First-Install-ONLINE.zip：SHA-256 仍为 953030908ecbfdf8920e025c6d3ba0c99fb1db02590dfec0567cc3705e47f76d，88 个 payload，CRC、精确清单、大小/哈希全部通过。空盘入口 launch.bat、P2-Workbench.bat、基础脚本及组件清单存在；静态本地辅助脚本名称扫描未确认缺失文件，扫描中的 main.py/__init__.py 属初始化下载的内核，不是遗漏的便携脚本。
+- 再次运行最终解压包的 p2-first-install-smoke.mjs：manifest、入口静态参数、资产/认证/关闭通过；最终解压 scripts 对应生命周期测试 12/12、退出 0。未将该结果描述为 Windows BAT 实测。
+- 核对默认 bootstrap 29112bef 的 agent/learn_prompt.py SHA-256 与包内 prepare-learn.py 白名单一致，实际执行包内 Python 准备器，返回 kind=learn 和非空 prompt，退出 0；使用合成输入，不调用模型或写 Skill。
+- 将最终解压 scripts 原字节复制至只读探针挂载目录，仅额外加入测试探针。在固定 29112bef、bwrap 独立网络和清空环境中实际复跑管理验证 11 项 true、退出 0。首次因未复制 probe-websocket-origin.py 测试辅助文件而 MANAGED_PROBE_FAILED，日志 p2-first-install-recheck-managed.log 保留；补齐测试辅助文件、不修改包内生产字节后重跑通过，日志 p2-first-install-recheck-managed-rerun.log。该测试辅助文件不是安装运行必需文件。
+- 结论：本轮未发现新的已确认归档/启动接线/限定生命周期阻塞缺陷；可作为空盘联网首次部署开发测试包，不声称已通过 Windows 首装。公司外网下载、脚本策略、Windows 运行时/依赖安装与真实模型审批仍未验。包仍需要联网，不是离线完整预装环境；本轮未修改或替换 ZIP，也未提交/推送。
+
+## 2026-10-09 P2-S1-FIRST-INSTALL-01 空盘联网部署包验证
+
+- 区别于此前增量 ZIP，本包从现有 P0 builder 相同源码白名单合并当前 P2 payload，包含 launch.bat、P0 脚本/manifests 和预构建工作台；包内新增 P2-Workbench.bat 仅相对当前根调用已有 start-p2-workbench.ps1，不增加执行策略绕过。START_HERE.md 明确空盘流程、下载要求和未验限制。未捆绑内核/Runtime，不宣称离线安装器。
+- 打包源码 b986738fac8e5cc594d04891f0bbfca429ba1762，生成文件另列 first-install-manifest.json；当前 production 无变更。`npm run build` 退出 0。scratch/build-first-install-20261009.py 生成并验证 ZIP：363472 字节、88 个 payload，SHA-256 953030908ecbfdf8920e025c6d3ba0c99fb1db02590dfec0567cc3705e47f76d。验证 CRC、精确清单、大小写唯一、无穿越/链接、逐文件大小/哈希、源码匹配 Git（BAT 规范 CRLF）、禁入路径及实际最终解压，退出 0。
+- 最终解压内容执行 scratch/p2-first-install-smoke.mjs，校验全部 manifest、P0/P2 必需文件、入口静态参数、真实静态资源/未授权拒绝和关闭，退出 0。将两份生命周期测试置于独立 scratch，scripts 指向最终解压代码，运行 12/12、退出 0，日志 p2-first-install-regression.log；不是 Windows BAT 实际执行证据。
+- P0 默认 bootstrap 为 29112bef099274229cadff79cdff7bf7b99c4b77（不是先前开发探针 28044757）。从本机 Git 对象导出固定源码至独立 scratch，复用受控 bwrap 命令，将源码替换为该导出路径；只读源/运行时、清空环境、隐藏个人 home、独立网络、无模型。初次因只读源缺少 venv 挂载点失败，保留 p2-first-install-bootstrap-29112be.log；只在导出目录补空挂载点后复跑 probe-managed.mjs，11 项 true、退出 0，日志 p2-first-install-bootstrap-29112be-rerun.log。
+- 本轮未执行 Windows 下载/依赖安装或真实 U 盘初始化，不能将 Linux 服务探针等同目标首装验收。外网不可达时本 ONLINE 包不能完成空盘初始化；不能静默降级为模拟模式。Windows/公司模型/审批保持未验，release_ready:false。ZIP 与旁车位于 deliveries/p2-s1-first-install-online-20261009，归档冻结后不回写本记录。
+
 ## 2026-10-09 P2-S1-USB-PACK-02 最终修复包验证
 
 - 源码提交：4090b4d0846f537ceb832d9f4464af69936ae18e，分支 feat/portable-initializer；打包前工作区干净，无依赖/构建产物入库。17 个受控源码/测试/文档文件已本地提交，未推送；本节是后续仅文档交付证据，不改变被测实现。

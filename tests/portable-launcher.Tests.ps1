@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$WindowsLauncherPath,
     [string]$UnixLauncherPath,
@@ -103,7 +103,7 @@ try {
     Assert-True ($observationSource -match '\$env:PATH = \$gitDirectory \+ \[System\.IO\.Path\]::PathSeparator \+ \$env:PATH') "Windows observation runner should expose portable Git when invoked directly"
     Assert-True ($observationSource -match '\$env:HERMES_GIT_BASH_PATH = \$gitBashExecutable') "Windows observation runner should expose portable Git Bash when invoked directly"
     Assert-True ($windowsPlan -match 'choice /C YN') "Windows update action should require an explicit confirmation"
-    Assert-True ($windowsPlan -match 'No update was applied') "Windows update action should identify a preflight failure as non-mutating"
+    Assert-True ($windowsPlan -match '未执行更新') "Windows update action should identify a preflight failure as non-mutating"
 
     $windowsApply = Get-SourceSection $windowsSource '(?ms)^:adv_update_apply\s*$.*?(?=^:[A-Za-z_][A-Za-z0-9_]*\s*$|\z)' "Windows update-apply action"
     Assert-True ($windowsApply -match 'invoke-hermes-update\.ps1') "Windows update action should use the structured portable wrapper"
@@ -135,8 +135,8 @@ try {
     Assert-True (-not ($setupSource -match 'safe\.directory=\*|config\s+--global')) "Windows setup should not disable Git ownership protection or mutate host-global config"
 
     $windowsLogs = Get-SourceSection $windowsSource '(?ms)^:adv_logs\s*$.*?(?=^:adv_config\s*$)' "Windows view-logs action"
-    Assert-True ($windowsLogs -match 'Gateway Log - last 20 lines') "Windows view-logs action should use CMD-safe text inside its parenthesized conditional"
-    Assert-True (-not ($windowsLogs -match 'Gateway Log \(')) "Windows view-logs action should not use unescaped parentheses inside a CMD parenthesized block"
+    Assert-True ($windowsLogs -match '原生网关日志 - 最后 20 行') "Windows view-logs action should use CMD-safe text inside its parenthesized conditional"
+    Assert-True (-not ($windowsLogs -match '(?m)^\s*echo .*日志.*[()]')) "Windows view-logs action should not use unescaped parentheses inside a CMD parenthesized block"
 
     Write-Host "Portable launcher tests passed."
 }
