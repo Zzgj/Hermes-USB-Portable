@@ -52,6 +52,7 @@ export function LiveChatPage({chat,onManagementToken}:LiveChatPageProps){
    <ul>{chat.sessions.map(item=><li key={item.id} className="my-2 break-all">{item.title||liveCopy.untitled}{' · '}{item.messages} {liveCopy.messages}<button className="button ml-3" disabled={chat.phase!=='ready'||chat.transcriptLoading} onClick={()=>chat.viewTranscript(item.id)}>{liveCopy.viewTranscript}</button></li>)}</ul>
    <p className="my-3">{liveCopy.transcriptHelp}</p>
    {chat.transcriptLoading&&<p role="status">{liveCopy.transcriptLoading}</p>}
+   {chat.transcriptError&&<p role="alert" className="my-3">{(liveCopy.transcriptErrors as Record<string,string>)[chat.transcriptError]??liveCopy.transcriptErrorFallback}</p>}
    {(chat.transcript||chat.transcriptLoading)&&<button className="button" onClick={chat.hideTranscript}>{liveCopy.hideTranscript}</button>}
    {chat.transcript&&<section className="mt-4"><h3>{liveCopy.transcriptTitle}</h3><p className="break-all">{chat.transcript.sessionId}</p>
     {chat.transcript.messages.length===0&&<p>{liveCopy.noTranscript}</p>}

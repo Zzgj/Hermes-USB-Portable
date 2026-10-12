@@ -25,6 +25,6 @@ test('history request is GET with fixed paging, encoded identity, no cookie or q
 });
 test('history rejects oversized responses and hides errors without retry',async()=>{
  for(const id of ['..','../config','a/b','%2e%2e','bad\n'])await assert.rejects(()=>readTranscript({port:1234,token:'test-token'},id,new AbortController().signal,async()=>{throw new Error('must not request');}),/^Error: HISTORY_INVALID$/);
- let calls=0;await assert.rejects(()=>readTranscript({port:1234,token:'test-token'},'id',new AbortController().signal,async()=>{calls++;return new Response('secret',{status:403});}),/^Error: HISTORY_FAILED$/);assert.equal(calls,1);
- await assert.rejects(()=>readTranscript({port:1234,token:'test-token'},'id',new AbortController().signal,async()=>new Response('x'.repeat(1048577))),/^Error: HISTORY_FAILED$/);
+ let calls=0;await assert.rejects(()=>readTranscript({port:1234,token:'test-token'},'id',new AbortController().signal,async()=>{calls++;return new Response('secret',{status:403});}),/^Error: HISTORY_FORBIDDEN$/);assert.equal(calls,1);
+ await assert.rejects(()=>readTranscript({port:1234,token:'test-token'},'id',new AbortController().signal,async()=>new Response('x'.repeat(1048577))),/^Error: HISTORY_TOO_LARGE$/);
 });

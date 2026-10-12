@@ -27,13 +27,14 @@ export function useLiveChat(){
  const learningRevision=useRef(0);
  const invalidateLearning=()=>{learningRevision.current++;setLearnDraft(null);setLearnConfirmed(false);};
  const [transcript,setTranscript]=useState<SessionTranscript|null>(null),[transcriptLoading,setTranscriptLoading]=useState(false);
+ const [transcriptError,setTranscriptError]=useState<string|null>(null);
  const transcriptRequest=useRef<AbortController|null>(null),historyAccess=useRef<{port:number;token:string}|null>(null);
  const [history,setHistory]=useState<readonly ChatRecord[]>([]),[turn,setTurn]=useState<ChatTurn|null>(null);
  const connection=useRef<ReturnType<typeof connectHermes>|null>(null),session=useRef<SessionIdentity|null>(null);
  const epoch=useRef(0),current=useRef<ChatTurn|null>(null),sequence=useRef(-1);
- const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;learningRevision.current++;setSelectedLearningSource('');};
+ const end=()=>{epoch.current++;connection.current?.close();connection.current=null;session.current=null;approvalBusy.current=false;listBusy.current=false;skillsBusy.current=false;profilesBusy.current=false;transcriptRequest.current?.abort();transcriptRequest.current=null;historyAccess.current=null;learningRevision.current++;setSelectedLearningSource('');setTranscriptError(null);};
  useEffect(()=>()=>{end();},[]);
- const disconnect=()=>{end();setPhase('closed');setToken('');setStopping(false);setApproval(false);setTranscriptLoading(false);setTranscript(null);setLearnDraft(null);setLearnConfirmed(false);};
+ const disconnect=()=>{end();setPhase('closed');setToken('');setStopping(false);setApproval(false);setTranscriptLoading(false);setTranscript(null);setTranscriptError(null);setLearnDraft(null);setLearnConfirmed(false);};
  const connectTo=({port:targetPort,token:targetToken}:{port:number;token:string})=>{
   if(!Number.isInteger(targetPort)||targetPort<1||targetPort>65535||!targetToken.trim())return;
   setPort(String(targetPort));
@@ -43,7 +44,7 @@ export function useLiveChat(){
   setSkills([]);setSkillsLoading(false);setSkillsLoaded(false);
   setProfiles([]);setProfilesLoading(false);setProfilesLoaded(false);
   setLearnDraft(null);setLearnConfirmed(false);
-  setTranscript(null);setTranscriptLoading(false);historyAccess.current={port:targetPort,token:targetToken.trim()};
+  setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);historyAccess.current={port:targetPort,token:targetToken.trim()};
   const endpoint=`ws://127.0.0.1:${targetPort}/api/ws?token=${encodeURIComponent(targetToken.trim())}`;setToken('');
   const live=()=>epoch.current===generation;
   try{connection.current=connectHermes({endpoint,onState:state=>{
@@ -55,7 +56,7 @@ export function useLiveChat(){
      if(identity.contract!==6)throw new Error('Unsupported contract');
      session.current=identity;setPhase('ready');
     }).catch(()=>{if(live()){end();setPhase('failed');setError(true);}});
-   }else if(state==='closed'||state==='failed'){historyAccess.current=null;transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscriptLoading(false);setPhase(state);setStopping(false);setApproval(false);}
+   }else if(state==='closed'||state==='failed'){historyAccess.current=null;transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscriptLoading(false);setTranscriptError(null);setPhase(state);setStopping(false);setApproval(false);}
   },onEvent:event=>{
    if(!live()||event.sessionId!==session.current?.runtimeId)return;
    if(event.seq!==undefined&&event.seq<=sequence.current)return;
@@ -74,15 +75,21 @@ export function useLiveChat(){
  const viewTranscript=(id:string)=>{
   const access=historyAccess.current,generation=epoch.current;
   if(!access||phase!=='ready'||transcriptRequest.current||!sessions.some(item=>item.id===id))return;
-  const controller=new AbortController();transcriptRequest.current=controller;setTranscriptLoading(true);setTranscript(null);setError(false);
+  const controller=new AbortController();transcriptRequest.current=controller;setTranscriptLoading(true);setTranscript(null);setTranscriptError(null);
   const timeout=setTimeout(()=>controller.abort(),15000);
   void readTranscript(access,id,controller.signal).then(value=>{
    if(epoch.current===generation&&transcriptRequest.current===controller)setTranscript(value);
-  }).catch(()=>{if(epoch.current===generation&&transcriptRequest.current===controller)setError(true);}).finally(()=>{
+  }).catch((error:unknown)=>{
+   if(epoch.current===generation&&transcriptRequest.current===controller){
+    // Preserve the specific error category from readTranscript for visible, retryable feedback.
+    const message=error instanceof Error?error.message:'HISTORY_FAILED';
+    setTranscriptError(message);
+   }
+  }).finally(()=>{
    clearTimeout(timeout);if(transcriptRequest.current===controller){transcriptRequest.current=null;setTranscriptLoading(false);}
   });
  };
- const hideTranscript=()=>{transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscript(null);setTranscriptLoading(false);};
+ const hideTranscript=()=>{transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);};
  const loadProfiles=()=>{
   const client=connection.current,generation=epoch.current;
   if(!client||phase!=='ready'||profilesBusy.current||current.current?.status==='streaming')return;
@@ -157,7 +164,7 @@ export function useLiveChat(){
    if(decodeInterrupt(value)==='not-interrupted'){setStopping(false);setError(true);}
   }).catch(()=>{if(epoch.current===generation){setStopping(false);setError(true);}});
  };
- return {port,token,input,phase,error,approval,requests,responding,respond,stopping,history,turn,sessions,listing,listed,listSessions,skills,skillsLoading,skillsLoaded,loadSkills,profiles,profilesLoading,profilesLoaded,loadProfiles,transcript,transcriptLoading,viewTranscript,hideTranscript,
+ return {port,token,input,phase,error,approval,requests,responding,respond,stopping,history,turn,sessions,listing,listed,listSessions,skills,skillsLoading,skillsLoaded,loadSkills,profiles,profilesLoading,profilesLoaded,loadProfiles,transcript,transcriptLoading,transcriptError,viewTranscript,hideTranscript,
   selectedLearningSource,invalidateLearning,selectLearningSource:(selected:ChatTurn)=>{
    if(phase!=='ready'||current.current?.status==='streaming'||!(selected===current.current||history.some(record=>record.role==='assistant'&&record.turn===selected)))return false;
    try{const source=learningSourceFromTurn(selected);invalidateLearning();setSelectedLearningSource(source);return true;}catch{setError(true);return false;}

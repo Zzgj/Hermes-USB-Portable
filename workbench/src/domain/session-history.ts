@@ -15,7 +15,7 @@ export function decodeTranscript(value:unknown):SessionTranscript {
   if(typeof content!=='string'){omitted=true;continue;}
   const text=content.slice(0,Math.max(0,Math.min(20_000,100_000-total)));
   total+=text.length;omitted=omitted||text.length<content.length;
-  if(text)messages.push({role:row.role,text});
+  if(text)messages.push({role:row.role as 'user'|'assistant',text});
  }
  return {sessionId:value.session_id,messages,omitted};
 }
@@ -23,13 +23,19 @@ export function decodeTranscript(value:unknown):SessionTranscript {
 export async function readTranscript(connection:{readonly port:number;readonly token:string},sessionId:string,signal:AbortSignal,send:typeof fetch=fetch):Promise<SessionTranscript>{
  if(!Number.isInteger(connection.port)||connection.port<1||connection.port>65535||!connection.token.trim()||connection.token.length>4096||!identity(sessionId))throw new Error('HISTORY_INVALID');
  const url=`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
- try{
-  const response=await send(url,{method:'GET',headers:{Authorization:`Bearer ${connection.token}`},credentials:'omit',cache:'no-store',redirect:'error',signal});
-  if(!response.ok||!response.body)throw new Error('HISTORY_FAILED');
-  const reader=response.body.getReader(),chunks:Uint8Array[]=[];let length=0;
-  try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>1_048_576)throw new Error('HISTORY_TOO_LARGE');chunks.push(value);}}
-  finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
-  const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
-  return decodeTranscript(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
- }catch{throw new Error('HISTORY_FAILED');}
+ // Preserve distinct error categories so the UI can show meaningful messages and allow retry.
+ let response:Response;
+ try{response=await send(url,{method:'GET',headers:{Authorization:'Bearer '+connection.token},credentials:'omit',cache:'no-store',redirect:'error',signal});}
+ catch(error){if(error instanceof DOMException&&error.name==='AbortError')throw new Error('HISTORY_ABORTED');throw new Error('HISTORY_NETWORK');}
+ if(!response.ok)throw new Error(response.status===401||response.status===403?'HISTORY_FORBIDDEN':'HISTORY_HTTP_ERROR');
+ if(!response.body)throw new Error('HISTORY_EMPTY');
+ const reader=response.body.getReader(),chunks:Uint8Array[]=[];let length=0;
+ try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>1_048_576)throw new Error('HISTORY_TOO_LARGE');chunks.push(value);}}
+ catch(error){if(error instanceof Error&&error.message==='HISTORY_TOO_LARGE')throw error;throw new Error(error instanceof DOMException&&error.name==='AbortError'?'HISTORY_ABORTED':'HISTORY_NETWORK');}
+ finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+ if(length===0)throw new Error('HISTORY_EMPTY');
+ const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+ let decoded:unknown;
+ try{decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{throw new Error('HISTORY_INVALID');}
+ return decodeTranscript(decoded);
 }

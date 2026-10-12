@@ -15,6 +15,7 @@
    const request=JSON.parse(raw);window.__p2RpcRequests.push(request);
    const result=value=>this.frame({jsonrpc:'2.0',id:request.id,result:value});
    if(request.method==='session.create')result({session_id:'p2-browser',stored_session_id:'p2-stored',info:{cwd:'/fixture',desktop_contract:6}});
+   else if(request.method==='session.list')result({sessions:[{id:'hist-1',title:'History session 1',message_count:3},{id:'hist-2',title:'History session 2',message_count:0}]});
    else if(request.method==='prompt.submit'){
     result({status:'streaming'});
     if(request.params.text!=='hold')setTimeout(()=>this.event('message.complete',{text:'Synthetic RPC reply; business not verified.',status:'complete'}),50);
