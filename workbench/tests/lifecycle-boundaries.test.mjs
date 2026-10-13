@@ -63,12 +63,16 @@ test('startup rechecks recovery marker under its newly acquired lock before spaw
  import {startHermesInstance} from ${JSON.stringify(moduleUrl)};
  const root=${JSON.stringify(root)},home=join(root,'data'),source=join(root,'source'),marker=join(root,'logs','diagnostics','p2-install-active.json');
  await fs.mkdir(home);await fs.mkdir(join(source,'hermes_cli'),{recursive:true});await fs.writeFile(join(source,'hermes_cli','main.py'),'# synthetic');await fs.mkdir(join(root,'logs','diagnostics'),{recursive:true});
+ // Production code resolves home via realpath before lock acquisition; on Windows
+ // the temp path may contain 8.3 short names that differ from the resolved path.
+ // Use the resolved path for mock comparison to match production behavior.
+ const homeResolved=await fs.realpath(home);
  const mkdir=fs.mkdir,spawn=cp.spawn;let injected=false,calls=0,error;
- fs.mkdir=async(path,...args)=>{if(path===join(home,'.p2-manager-lock')){await fs.writeFile(marker,'synthetic-recovery-marker',{flag:'wx'});injected=true;}return mkdir(path,...args);};
+ fs.mkdir=async(path,...args)=>{if(path===join(homeResolved,'.p2-manager-lock')){await fs.writeFile(marker,'synthetic-recovery-marker',{flag:'wx'});injected=true;}return mkdir(path,...args);};
  cp.spawn=()=>{calls++;throw new Error('FORBIDDEN_SPAWN');};syncBuiltinESMExports();
  try{await startHermesInstance({python:process.execPath,source,home,environment:{}});}catch(e){error=e.message;}finally{fs.mkdir=mkdir;cp.spawn=spawn;syncBuiltinESMExports();}
  const exists=async path=>{try{await fs.lstat(path);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
- console.log(JSON.stringify({injected,calls,rejected:error==='INTERRUPTED_INSTALL_REQUIRES_RECOVERY',markerRetained:(await fs.readFile(marker,'utf8'))==='synthetic-recovery-marker',lockReleased:!await exists(join(home,'.p2-manager-lock'))}));`);
+ console.log(JSON.stringify({injected,calls,rejected:error==='INTERRUPTED_INSTALL_REQUIRES_RECOVERY',markerRetained:(await fs.readFile(marker,'utf8'))==='synthetic-recovery-marker',lockReleased:!await exists(join(homeResolved,'.p2-manager-lock'))}));`);
  assert.equal(result.injected,true);assert.equal(result.calls,0,'recovery marker must block actual spawn');
  assert.equal(result.rejected,true);assert.equal(result.markerRetained,true);assert.equal(result.lockReleased,true);
 });
