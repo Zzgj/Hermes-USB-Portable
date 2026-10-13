@@ -27,6 +27,9 @@ export const serviceCopy={
  token:'临时管理令牌',check:'读取服务状态',start:'启动本实例并连接',connect:'连接本实例',stop:'停止本实例',
  confirm:'我确认停止此管理器启动的服务，活动任务可能中断；已产生的修改不会自动撤销。',
  pending:'操作进行中，请勿关闭管理器',error:'操作失败或结果未知。请先读取服务状态；不会自动重试启动或停止。',
+ failedState:'上次管理操作未成功，当前服务状态需重新读取',failureSeparator:'：',
+ actions:{status:'读取服务状态失败',start:'启动本实例失败',stop:'停止本实例失败',connection:'获取实例连接失败'},
+ failureTimeout:'请求等待超时或已取消；不代表服务已停止。',failureForbidden:'管理认证或来源校验被拒绝，请重新核对管理令牌与页面来源。',failureConflict:'管理操作冲突或实例状态不允许，请先重新读取状态。',failureUnavailable:'当前服务没有此管理接口，请确认使用管理器打开的页面。',failureServer:'管理服务返回错误；安全诊断码：',failureTransport:'连接、传输或响应校验失败，操作结果未知。',
  states:{unknown:'尚未确认服务状态',idle:'本管理器没有运行实例',starting:'服务正在启动',ready:'服务已就绪',changing:'管理操作进行中',stopping:'服务正在停止',stopped:'服务已停止',exited:'服务已退出，请停止并清理本实例句柄后再启动'},
 };
 export const learnCopy={
@@ -112,7 +115,7 @@ export const updateCopy={
  kernelTitle:'Hermes 内核更新',shellTitle:'Portable 外壳更新',
  channelKernel:'内核 · 官方更新器',channelShell:'外壳 · 独立包',
  unavailable:'更新接口尚未接入，当前版本及是否有更新均未检测。不会自动安装。',
- entryUnavailable:'入口检测尚未接入，不能判断是否已安装。请使用 P0-Workbench 中的原生入口。',
+ entryUnavailable:'尚未检测入口文件。请先在真实聊天页读取管理服务状态，再点击检测；无需先启动 Hermes 实例。',
  checkButton:'检查更新',checking:'正在检查…',upToDate:'已是最新版本',available:'有可用更新',notAvailable:'暂无更新',incompatible:'兼容性未知，需手动确认',offline:'离线或网络不可达',failed:'检查失败',
  current:'当前版本',latest:'最新版本',retryAfter:'下次可重试时间',
  planButton:'查看更新计划',installButton:'确认安装',installConfirmed:'我已阅读变更说明和兼容性状态；理解更新可能修改文件，且失败可能需要手动恢复。',
@@ -121,8 +124,8 @@ export const updateCopy={
  noAutoApply:'检查和通知不自动安装；安装必须经用户明确确认。',
  kernelHelp:'内核更新复用 Hermes 官方 `hermes update`；更新前生成只读计划，成功后保留官方回执和 Portable 摘要。失败不自动重试或回退。',
  shellHelp:'外壳更新使用独立包；校验整包哈希、保留 Runtime 和用户数据。不升级内核或 Hermes 源码。',
- entryTitle:'备用入口与能力检测',entryHelp:'检测已安装的 Hermes 入口（CLI/TUI/Desktop/Web）。工作台不替代这些入口，仅在它们可用时提供快捷导航。',
- entryCheckButton:'检测入口',entryChecking:'正在检测…',entryEmpty:'未检测到可用入口。',entryAvailable:'检测到以下入口：',entryRetry:'检测失败，可重试',entryAvailableShort:'✓ 可用',entryNotAvailable:'× 不可用',
+ entryTitle:'备用入口与能力检测',entryHelp:'当前仅检查 CLI 与本工作台入口文件，不验证运行依赖，不启动服务。原生 Dashboard、TUI、Desktop 的探测与启动尚未接入；此列表不代表四入口可用性验收。',
+ entryCheckButton:'检测入口',entryChecking:'正在检测…',entryEmpty:'服务未返回入口检查项。',entryAvailable:'入口文件检查结果（运行可用性未验证）：',entryRetry:'检测失败，可重试',entryAvailableShort:'检测到入口文件',entryNotAvailable:'未检测到或尚未接入',
  centerTitle:'更新中心',yes:'是',no:'否',mockChangelog:'模拟变更摘要 · 待接入真实更新计划接口',
 };
 export const wizardSteps = ['选择便携目录','磁盘与权限检查','准备运行环境','API 与代理','知识库与资源','最终健康检查'];

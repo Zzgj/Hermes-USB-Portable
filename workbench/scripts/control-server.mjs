@@ -3,6 +3,9 @@ import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {realpath,readFile,stat} from 'node:fs/promises';
 import {join,relative,extname,isAbsolute} from 'node:path';
 
+// Only fixed codes cross the HTTP boundary; never expose exception text, paths or output.
+const operationReasons=new Set(['INSTANCE_LOCKED','LOCK_CREATE_FAILED','LOCK_INITIALIZATION_FAILED','LOCK_IDENTITY_CHANGED','LOCK_OWNER_CHANGED','INTERRUPTED_INSTALL_REQUIRES_RECOVERY','SOURCE_ENV_REQUIRES_REVIEW','INVALID_HERMES_PATHS','INVALID_HERMES_LAYOUT','HERMES_ENTRY_MISSING','PROCESS_SPAWN_FAILED','PROCESS_STARTUP_TIMEOUT','PROCESS_HEALTH_FAILED','PROCESS_EXITED_BEFORE_READY','PROCESS_STOPPED_BEFORE_READY','PROCESS_CONTROL_FAILED','PROCESS_OUTPUT_LIMIT','PROCESS_INVALID_PORT']);
+
 export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
@@ -138,9 +141,10 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
        if(instance){await instance.stop();instance=null;}
        json(response,200,{state:'idle'});
       }
-     }catch{
+     }catch(error){
       // Keep the handle on failure: the caller can explicitly stop; don't auto-restart.
-      json(response,500,{error:'OPERATION_FAILED'});
+      const reason=error instanceof Error&&operationReasons.has(error.message)?error.message:'UNKNOWN';
+      json(response,500,{error:'OPERATION_FAILED',reason});
      }finally{busy=false;}
     })();await pending;return;
    }

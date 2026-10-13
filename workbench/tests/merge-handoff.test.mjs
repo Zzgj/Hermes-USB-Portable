@@ -43,7 +43,7 @@ test('unconnected settings render unavailable with disabled actions, not fake up
  const html=renderToStaticMarkup(React.createElement(SettingsPage,{}));
  assert.equal((html.match(/disabled=""/g)||[]).length,3);
  assert.ok(html.includes('更新接口尚未接入'));
- assert.ok(html.includes('入口检测尚未接入'));
+ assert.ok(html.includes('尚未检测入口文件'));
  assert.equal(html.includes('暂无更新'),false);
  assert.equal(html.includes('未检测到可用入口'),false);
  assert.equal(html.includes('0.21.0'),false);

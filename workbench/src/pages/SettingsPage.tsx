@@ -1,4 +1,4 @@
-import {useRef} from 'react';
+
 import {Panel} from '../components/Panel';
 import {updateCopy} from '../data/mockData';
 import {useEntryDetect} from '../hooks/useEntryDetect';
@@ -7,11 +7,11 @@ interface SettingsPageProps {readonly demo?:boolean;readonly managementToken?:st
 function entryLine(e:EntryStatus){return entryLabel(e.kind)+': '+(e.available?updateCopy.entryAvailableShort:updateCopy.entryNotAvailable)+' — '+e.note;}
 /** Update channels remain placeholder; entry detection is connected to the management service. */
 export function SettingsPage({managementToken}:SettingsPageProps){
- const entryToken=useRef(managementToken??'');
- if(managementToken)entryToken.current=managementToken;
- const{entries,loading,error,detect}=useEntryDetect();
+ const entryToken=managementToken??'';
+ const{entries,loading,error,detect}=useEntryDetect(entryToken);
  let entryStatus:string;
  if(loading)entryStatus=updateCopy.entryChecking;
+ else if(error)entryStatus=updateCopy.entryRetry;
  else if(entries&&entries.length>0)entryStatus=updateCopy.entryAvailable;
  else if(error===null&&!entries)entryStatus=updateCopy.entryUnavailable;
  else if(error===null&&entries&&entries.length===0)entryStatus=updateCopy.entryEmpty;
@@ -26,8 +26,9 @@ export function SettingsPage({managementToken}:SettingsPageProps){
    </Panel>)}
   <Panel title={updateCopy.entryTitle} className="mb-5">
    <p>{updateCopy.entryHelp}</p>
-   {entries&&entries.length>0?<div className="my-3"><p>{entryStatus}</p><ul>{entries.map(e=><li key={e.kind}>{entryLine(e)}</li>)}</ul></div>:<p role={error?'alert':'status'} className="my-3">{entryStatus}</p>}
-   <button className="button" disabled={loading||!entryToken.current} onClick={()=>detect(entryToken.current)}>{loading?updateCopy.entryChecking:updateCopy.entryCheckButton}</button>
+   <p role={error?'alert':'status'} className="my-3">{entryStatus}</p>
+   {!loading&&!error&&entryToken&&entries&&<ul>{entries.map(e=><li key={e.kind}>{entryLine(e)}</li>)}</ul>}
+   <button className="button" disabled={loading||!entryToken} onClick={()=>detect(entryToken)}>{loading?updateCopy.entryChecking:updateCopy.entryCheckButton}</button>
   </Panel>
  </>;
 }

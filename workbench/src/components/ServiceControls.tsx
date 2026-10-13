@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Panel} from './Panel';
-import {controlRequest,type ControlAction,type ControlState,type ManagedConnection} from '../domain/control';
+import {controlRequest,ControlRequestError,type ControlAction,type ControlState,type ManagedConnection} from '../domain/control';
 import {serviceCopy} from '../data/mockData';
 import {readControlBootstrap} from '../domain/bootstrap';
 import {prepareLearning,type LearnDraft} from '../domain/learn';
@@ -11,6 +11,7 @@ interface ServiceControlsProps {readonly canConnect:boolean;readonly onConnected
 export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepared,onManagementToken,selectedLearningSource='',onLearnInvalidated,learningEnabled=true}:ServiceControlsProps){
  const [input,setInput]=useState(''),[state,setState]=useState<ControlState|'unknown'>('unknown'),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false),[confirmed,setConfirmed]=useState(false);
  const credential=useRef(''),pending=useRef<AbortController|null>(null);
+ const [controlFailure,setControlFailure]=useState<string|null>(null);
  const [learnSource,setLearnSource]=useState(''),[learnScope,setLearnScope]=useState('');
  const learningRequest=useRef<AbortController|null>(null),invalidateCallback=useRef(onLearnInvalidated);
  invalidateCallback.current=onLearnInvalidated;
@@ -50,7 +51,7 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
  const run=async(action:ControlAction)=>{
   if(pending.current||(action==='stop'&&!confirmed))return;
   const token=input.trim()||credential.current;if(!token)return;
-  credential.current=token;setInput('');setBusy(true);setFailed(false);
+  credential.current=token;setInput('');setBusy(true);setFailed(false);setControlFailure(null);
   const controller=new AbortController();pending.current=controller;
   const timer=setTimeout(()=>controller.abort(),75000);
   try{
@@ -60,13 +61,25 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
    setState(result.state);setConfirmed(false);
    if(result.connection)onConnected(result.connection);
    if(action==='stop'&&result.state==='idle')onStopped();
-  }catch{if(pending.current===controller){onManagementToken?.('');setState('unknown');setFailed(true);}}
+  }catch(error){if(pending.current===controller){
+   onManagementToken?.('');setState('unknown');setConfirmed(false);setFailed(true);
+   let detail=serviceCopy.failureTransport;
+   if(controller.signal.aborted)detail=serviceCopy.failureTimeout;
+   else if(error instanceof ControlRequestError){
+    if(error.status===401||error.status===403)detail=serviceCopy.failureForbidden;
+    else if(error.status===409)detail=serviceCopy.failureConflict;
+    else if(error.status===404)detail=serviceCopy.failureUnavailable;
+    else detail=serviceCopy.failureServer+' HTTP '+error.status+' / '+error.reason;
+   }
+   if(error instanceof ControlRequestError&&(error.status===401||error.status===403))credential.current='';
+   setControlFailure(serviceCopy.actions[action]+serviceCopy.failureSeparator+detail);
+  }}
   finally{clearTimeout(timer);if(pending.current===controller){pending.current=null;setBusy(false);}}
  };
  const authenticated=!!(input.trim()||credential.current);
  return <Panel title={serviceCopy.title} className="mb-5">
-  <p>{serviceCopy.help}</p><p role="status">{busy?serviceCopy.pending:serviceCopy.states[state]}</p>
-  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{invalidatePreparation();setInput(event.target.value);credential.current='';onManagementToken?.('');setState('unknown');}}/></label>
+  <p>{serviceCopy.help}</p><p role="status">{busy?serviceCopy.pending:controlFailure?serviceCopy.failedState:serviceCopy.states[state]}</p>
+  <label>{serviceCopy.token}<input type="password" autoComplete="off" className="workflow-input" disabled={busy} value={input} onChange={event=>{invalidatePreparation();setInput(event.target.value);credential.current='';onManagementToken?.('');setState('unknown');setControlFailure(null);setFailed(false);setConfirmed(false);}}/></label>
   <div className="flex flex-wrap gap-3 my-4">
    <button className="button" disabled={busy||!authenticated} onClick={()=>void run('status')}>{serviceCopy.check}</button>
    <button className="button primary" disabled={busy||!authenticated||state!=='idle'||!canConnect} onClick={()=>void run('start')}>{serviceCopy.start}</button>
@@ -74,7 +87,7 @@ export function ServiceControls({canConnect,onConnected,onStopped,onLearnPrepare
   </div>
   <label><input type="checkbox" checked={confirmed} disabled={busy} onChange={event=>setConfirmed(event.target.checked)}/>{serviceCopy.confirm}</label>
   <button className="button ml-3" disabled={busy||!authenticated||!confirmed||state==='idle'} onClick={()=>void run('stop')}>{serviceCopy.stop}</button>
-  {failed&&<p role="alert">{serviceCopy.error}</p>}
+  {failed&&<p role="alert">{controlFailure&&<span>{controlFailure}<br/></span>}{serviceCopy.error}</p>}
   <details className="mt-5"><summary>{catalogCopy.title}</summary><p className="my-3">{catalogCopy.help}</p><button className="button" disabled={busy||!authenticated||state!=='ready'} onClick={()=>void exportCatalog()}>{catalogCopy.export}</button></details>
   <details className="mt-5"><summary>{learnCopy.prepareTitle}</summary><p className="my-3">{learnCopy.prepareHelp}</p>
    <label className="block">{learnCopy.source}<textarea className="workflow-input" maxLength={4000} disabled={busy} value={learnSource} onChange={event=>{invalidatePreparation();setLearnSource(event.target.value);}}/></label>
