@@ -11,6 +11,7 @@ import {startHermesInstance} from './hermes-instance.mjs';
 import {prepareLearn} from './prepare-learn.mjs';
 import {readSkillCatalog} from './skill-catalog.mjs';
 import {prepareCapability} from './prepare-capability.mjs';
+import {detectEntries as defaultDetectEntries} from './entry-detect.mjs';
 import {formatLauncherBanner,launcherCommand} from './launcher-ui.mjs';
 
 export function parseLaunchArgs(args){
@@ -41,7 +42,7 @@ export async function launch(args){
  const baseline=inspectBaseline(options.source,values.root?join(values.root,'.cache','runtimes','windows-x64','git','cmd','git.exe'):values.git);
  if(baseline.tracked_changes)throw new Error('SOURCE_REVIEW_REQUIRED');
  console.log('正在检查 P2 开发测试基线，准备本机管理服务…');
- const control=await startControlServer({assets,startInstance:()=>startHermesInstance(options),prepareLearn:request=>prepareLearn(options,request),readCatalog:()=>readSkillCatalog(options.home),prepareCapability:request=>prepareCapability(options.home,request)});
+ const control=await startControlServer({assets,startInstance:()=>startHermesInstance(options),prepareLearn:request=>prepareLearn(options,request),readCatalog:()=>readSkillCatalog(options.home),prepareCapability:request=>prepareCapability(options.home,request),detectEntries:()=>defaultDetectEntries({source:options.source,home:options.home,assetsDir:assets}),source:options.source,home:options.home});
  console.log(formatLauncherBanner({origin:control.origin,commit:baseline.commit,baselineStatus:baseline.status},{color:Boolean(process.stdout.isTTY)&&process.env.NO_COLOR===undefined}));
  const input=createInterface({input:process.stdin,output:process.stdout});let stopping=false;
  const shutdown=async()=>{

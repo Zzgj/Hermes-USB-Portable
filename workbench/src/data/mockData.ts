@@ -123,7 +123,7 @@ export const updateCopy={
  kernelHelp:'内核更新复用 Hermes 官方 `hermes update`；更新前生成只读计划，成功后保留官方回执和 Portable 摘要。失败不自动重试或回退。',
  shellHelp:'外壳更新使用独立包；校验整包哈希、保留 Runtime 和用户数据。不升级内核或 Hermes 源码。',
  entryTitle:'备用入口与能力检测',entryHelp:'检测已安装的 Hermes 入口（CLI/TUI/Desktop/Web）。工作台不替代这些入口，仅在它们可用时提供快捷导航。',
- entryCheckButton:'检测入口',entryChecking:'正在检测…',entryEmpty:'未检测到可用入口。',entryAvailable:'检测到以下入口：',
+ entryCheckButton:'检测入口',entryChecking:'正在检测…',entryEmpty:'未检测到可用入口。',entryAvailable:'检测到以下入口：',entryRetry:'检测失败，可重试',entryAvailableShort:'✓ 可用',entryNotAvailable:'× 不可用',
  centerTitle:'更新中心',yes:'是',no:'否',mockChangelog:'模拟变更摘要 · 待接入真实更新计划接口',
 };
 export const wizardSteps = ['选择便携目录','磁盘与权限检查','准备运行环境','API 与代理','知识库与资源','最终健康检查'];

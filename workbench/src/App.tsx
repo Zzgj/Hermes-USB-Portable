@@ -15,6 +15,6 @@ export function App(_:AppProps){
   <Route path="/" element={<HomePage/>}/><Route path="/capabilities" element={<CapabilitiesPage ready={chat.phase==='ready'&&!chat.busy} epoch={chat.connectionEpoch} prepareRun={(card,values,signal)=>prepareCapabilityRun(managementToken.current,card,values,chat.connectionEpoch,signal)} submitRun={chat.submitCapability}/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/chat/live" element={null}/>
   <Route path="/tasks" element={<LiveTasksPage chat={chat}/>}/><Route path="/tasks/demo" element={<TasksPage/>}/>
   {Object.keys(catalogs).map(kind=><Route key={kind} path={`/${kind}`} element={<CatalogPage key={kind} kind={kind}/>}/>)}
-  <Route path="/settings" element={<SettingsPage/>}/><Route path="/onboarding" element={<OnboardingPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
+  <Route path="/settings" element={<SettingsPage managementToken={managementToken.current}/>}/><Route path="/onboarding" element={<OnboardingPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
  </Routes></Shell>;
 }

@@ -8,7 +8,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 async function moduleUrl(relative,replacements={}){
  const source=await readFile(new URL(relative,import.meta.url),'utf8');
  let code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- for(const [specifier,url] of Object.entries({'react/jsx-runtime':import.meta.resolve('react/jsx-runtime'),...replacements})){
+ for(const [specifier,url] of Object.entries({'react':import.meta.resolve('react'),'react/jsx-runtime':import.meta.resolve('react/jsx-runtime'),...replacements})){
   code=code.replaceAll(`from "${specifier}"`,`from "${url}"`).replaceAll(`from '${specifier}'`,`from '${url}'`);
  }
  return `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
@@ -37,7 +37,9 @@ test('learning source rejects active tasks and bounds failed/interrupted observa
 test('unconnected settings render unavailable with disabled actions, not fake update results',async()=>{
  const panel=await moduleUrl('../src/components/Panel.tsx');
  const copy=await moduleUrl('../src/data/mockData.ts');
- const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy}));
+ const entryDetectUrl=`data:text/javascript;base64,${Buffer.from('export function entryLabel(k){return k;}').toString('base64')}`;
+ const useEntryDetectUrl=`data:text/javascript;base64,${Buffer.from('export function useEntryDetect(){return{entries:null,loading:false,error:null,detect:()=>{}};}').toString('base64')}`;
+ const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy,'../domain/entry-detect':entryDetectUrl,'../hooks/useEntryDetect':useEntryDetectUrl}));
  const html=renderToStaticMarkup(React.createElement(SettingsPage,{}));
  assert.equal((html.match(/disabled=""/g)||[]).length,3);
  assert.ok(html.includes('更新接口尚未接入'));

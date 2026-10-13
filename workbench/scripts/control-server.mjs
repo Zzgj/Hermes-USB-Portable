@@ -3,7 +3,7 @@ import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {realpath,readFile,stat} from 'node:fs/promises';
 import {join,relative,extname,isAbsolute} from 'node:path';
 
-export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability}) {
+export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
  let origin,instance=null,busy=false,closing=false,pending=Promise.resolve();
@@ -104,6 +104,15 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
       }catch{reply(502,{error:'UPSTREAM_ERROR'});}
       finally{clearTimeout(timer);response.removeListener('close',disconnected);controller.signal.removeEventListener('abort',rejectAbort);historyReads.delete(controller);}
      })();historyReads.set(controller,reading);await reading;return;
+    }
+    if(url.pathname==='/api/entries'&&request.method==='GET'){
+     if(typeof detectEntries!=='function'){json(response,404,{error:'UNAVAILABLE'});return;}
+     try{
+      const entries=await detectEntries({source:source??null,home:home??null});
+      if(!Array.isArray(entries)||entries.length>20)throw new Error('INVALID_ENTRIES');
+      json(response,200,{entries});
+     }catch{json(response,400,{error:'ENTRY_DETECTION_FAILED'});}
+     return;
     }
     if(url.pathname==='/api/status'&&request.method==='GET'){
      json(response,200,{state:busy?'changing':instance?.state??'idle'});return;

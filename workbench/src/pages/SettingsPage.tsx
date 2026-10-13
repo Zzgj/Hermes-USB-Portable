@@ -1,8 +1,21 @@
+import {useRef} from 'react';
 import {Panel} from '../components/Panel';
 import {updateCopy} from '../data/mockData';
-interface SettingsPageProps {readonly demo?:boolean;}
-/** No update/detection backend is connected yet. Never synthesize a successful check. */
-export function SettingsPage(_:SettingsPageProps){
+import {useEntryDetect} from '../hooks/useEntryDetect';
+import {entryLabel,type EntryStatus} from '../domain/entry-detect';
+interface SettingsPageProps {readonly demo?:boolean;readonly managementToken?:string;}
+function entryLine(e:EntryStatus){return entryLabel(e.kind)+': '+(e.available?updateCopy.entryAvailableShort:updateCopy.entryNotAvailable)+' — '+e.note;}
+/** Update channels remain placeholder; entry detection is connected to the management service. */
+export function SettingsPage({managementToken}:SettingsPageProps){
+ const entryToken=useRef(managementToken??'');
+ if(managementToken)entryToken.current=managementToken;
+ const{entries,loading,error,detect}=useEntryDetect();
+ let entryStatus:string;
+ if(loading)entryStatus=updateCopy.entryChecking;
+ else if(entries&&entries.length>0)entryStatus=updateCopy.entryAvailable;
+ else if(error===null&&!entries)entryStatus=updateCopy.entryUnavailable;
+ else if(error===null&&entries&&entries.length===0)entryStatus=updateCopy.entryEmpty;
+ else entryStatus=updateCopy.entryRetry;
  return <>
   <div className="page-heading"><div><h1>{updateCopy.centerTitle}</h1><p>{updateCopy.noAutoApply}</p></div></div>
   {[{title:updateCopy.kernelTitle,help:updateCopy.kernelHelp},{title:updateCopy.shellTitle,help:updateCopy.shellHelp}].map(channel=>
@@ -13,8 +26,8 @@ export function SettingsPage(_:SettingsPageProps){
    </Panel>)}
   <Panel title={updateCopy.entryTitle} className="mb-5">
    <p>{updateCopy.entryHelp}</p>
-   <p role="status" className="my-3">{updateCopy.entryUnavailable}</p>
-   <button className="button" disabled>{updateCopy.entryCheckButton}</button>
+   {entries&&entries.length>0?<div className="my-3"><p>{entryStatus}</p><ul>{entries.map(e=><li key={e.kind}>{entryLine(e)}</li>)}</ul></div>:<p role={error?'alert':'status'} className="my-3">{entryStatus}</p>}
+   <button className="button" disabled={loading||!entryToken.current} onClick={()=>detect(entryToken.current)}>{loading?updateCopy.entryChecking:updateCopy.entryCheckButton}</button>
   </Panel>
  </>;
 }

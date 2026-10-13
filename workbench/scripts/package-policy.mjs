@@ -5,7 +5,7 @@ export const packageFiles=[
  'workbench/scripts/skill-catalog.mjs',
  'workbench/scripts/prepare-learn.mjs','workbench/scripts/prepare-learn.py',
  'scripts/start-p2-workbench.ps1','scripts/install-p2-package.ps1','workbench/hermes-compatibility.json',
- ...['launch-managed.mjs','portable-layout.mjs','check-hermes-baseline.mjs','control-server.mjs','hermes-instance.mjs','hermes-health.mjs','managed-instance.mjs','instance-lock.mjs','owned-process.mjs','windows-job-host.py','package-policy.mjs','install-p2-package.mjs'].map(name=>'workbench/scripts/'+name),
+ ...['launch-managed.mjs','portable-layout.mjs','check-hermes-baseline.mjs','control-server.mjs','hermes-instance.mjs','hermes-health.mjs','managed-instance.mjs','instance-lock.mjs','owned-process.mjs','windows-job-host.py','package-policy.mjs','install-p2-package.mjs','entry-detect.mjs'].map(name=>'workbench/scripts/'+name),
  'docs/project_plan.md','docs/AI_GUIDE.md',
  ...['PROGRESS.md','ENGINEERING.md','ACCEPTANCE.md'].map(name=>'docs/p0/'+name),
  ...['PROGRESS-GUIDE.md','ENGINEERING.md','ACCEPTANCE.md','VALIDATION.md','HANDOFF.md'].map(name=>'docs/p2/'+name),
