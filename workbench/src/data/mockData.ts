@@ -53,7 +53,7 @@ export const navigation = [
   {path:'/capabilities',label:'我的能力',icon:'▦'},
   {path:'/',label:'工作台',icon:'⌂'}, {path:'/chat',label:'AI 对话',icon:'◇'}, {path:'/tools',label:'运维工具',icon:'⊞'},
   {path:'/tasks',label:'任务中心',icon:'≡'}, {path:'/knowledge',label:'知识库',icon:'▤'}, {path:'/skills',label:'Skills',icon:'☆'},
-  {path:'/repository',label:'资源仓库',icon:'▣'}, {path:'/terminal',label:'终端入口',icon:'›_'}, {path:'/settings',label:'设置与更新',icon:'⚙'},
+  {path:'/repository',label:'资源仓库',icon:'▣'}, {path:'/settings',label:'设置与更新',icon:'⚙'},
   {path:'/onboarding',label:'初始化向导',icon:'→'},
 ] as const;
 export const catalogCopy={title:'实例 Skill 草稿目录',help:'只读取此实例 home 下的 skills 文件，按目录内容计算指纹，不执行 Skill。导出后可到能力卡片页导入；不包含脚本正文、验证记录或授权。禁用状态、平台和依赖可用性尚未核验；无 Skill、链接、冲突或超限时不导出。',export:'读取并导出未验证草稿'};
@@ -106,7 +106,6 @@ export const catalogs: Record<string,{title:string;description:string;items:read
   repository:{title:'本地资源仓库',description:'驱动、工具和离线制品的统一目录。',items:[{name:'打印机驱动包',detail:'未加载实际文件；哈希及签名待校验',tag:'驱动'},{name:'诊断工具包',detail:'下载与安装接口未接入',tag:'工具'},{name:'离线制品',detail:'不声称制品已存在或可信',tag:'离线包'}]},
   knowledge:{title:'知识库',description:'连接你的 Obsidian Vault，保留开放的 Markdown 文件。',items:[{name:'00-Inbox',detail:'收集待整理的操作记录',tag:'示例目录'},{name:'运行手册',detail:'经审核的故障排查说明',tag:'示例目录'}]},
   tools:{title:'运维工具',description:'每次系统变更都应有明确范围、审批和结果。',items:[{name:'打印机部署',detail:'在任务中心体验模拟流程',tag:'未接入'},{name:'网络检查',detail:'不扫描实际网络',tag:'未接入'},{name:'Windows 修复',detail:'不修改注册表或服务',tag:'未接入'}]},
-  terminal:{title:'终端与备用入口',description:'保留上游工具入口，不通过解析终端文本获取核心状态。',items:['CLI','TUI','Web Dashboard','Desktop'].map(name=>({name,detail:'请继续使用 P0-Workbench；浏览器启动接口待接入',tag:'未接入'}))},
 };
 export const updates = [{name:'Hermes 内核',description:'沿用官方更新器；展示提交、回执和恢复点。'},{name:'Portable 外壳',description:'独立更新通道；校验整包，保留 Runtime 与用户数据。'}];
 export const updateCopy={
