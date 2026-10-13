@@ -16,7 +16,7 @@ const CASES=Object.freeze([
  'cancel-reimport-held-prepare-no-stale-review',
  'disconnect-during-real-second-prepare-no-replay','explicit-reconnect-no-replay',
  'observed-real-http-network-statuses',
- 'transcript-view-persists-and-reopens','transcript-error-visible-and-retryable',
+ 'transcript-view-persists-and-reopens','transcript-error-visible-and-retryable','transcript-timeout-visible-and-retryable',
  'transcript-switch-session','transcript-main-chat-still-works',
  'transcript-close-blocks-late-success','transcript-close-blocks-late-error',
  'transcript-disconnect-blocks-late-response','transcript-reconnect-new-request-isolates-old'
@@ -110,7 +110,11 @@ try{
  for(const path of ['/','/api/status','/api/start','/api/connection','/api/capabilities/catalog','/api/capabilities/prepare'])assert.ok(network.some(r=>r.path===path&&r.status===200));
  assert.ok(network.some(r=>r.path==='/api/capabilities/prepare'&&r.status===400));record('observed-real-http-network-statuses');
  // --- Transcript view lifecycle tests ---
- // LiveChatPage stays mounted in a hidden div; interact with its buttons directly
+ // Exercise the visible production route, never its hidden mounted copy.
+ await evaluate(`document.querySelector('nav a[href="#/chat"]').click()`);
+ await wait(`location.hash==='#/chat'&&!!document.querySelector('a[href="#/chat/live"]')`);
+ await evaluate(`document.querySelector('a[href="#/chat/live"]').click()`);
+ await wait(`location.hash==='#/chat/live'&&document.querySelector('#live-message').getClientRects().length>0`);
  await wait(`!![...document.querySelectorAll('button')].find(b=>b.textContent==='读取最近 50 条会话')`);
  // If button is disabled, reconnect to clear streaming state
  const listDisabled=await evaluate(`!![...document.querySelectorAll('button')].find(b=>b.textContent==='读取最近 50 条会话'&&b.disabled)`);
@@ -143,14 +147,19 @@ try{
  record('transcript-view-persists-and-reopens');
  // Case: transcript-error-visible-and-retryable — error shows, retry succeeds
  await click('关闭历史正文');
- h.setTranscriptMode('forbidden');
- await clickView(0);
- await wait(`!!document.querySelector('[role=alert]')`);
- assert.equal(await evaluate(`document.body.innerText.includes('Hello history')`),false,'no content on error');
- h.setTranscriptMode('normal');
- await clickView(0);
- await wait(`document.body.innerText.includes('Hello history')`);
+ for(const mode of ['forbidden','invalid','empty','error500']){
+  h.setTranscriptMode(mode);await clickView(0);
+  await wait(`!!document.querySelector('[role=alert]')`);
+  assert.equal(await evaluate(`document.body.innerText.includes('Hello history')`),false,'no content on error');
+  h.setTranscriptMode('normal');await clickView(0);await wait(`document.body.innerText.includes('Hello history')`);
+  await click('关闭历史正文');
+ }
  record('transcript-error-visible-and-retryable');
+ h.holdNextTranscript();await clickView(0);await waitUntil(()=>h.stats.transcriptHeld===1,{signal:controller.signal});
+ await waitUntil(()=>evaluate(`!!document.querySelector('[role=alert]')`),{timeoutMs:18000,signal:controller.signal});
+ h.releaseHeldTranscript();await waitUntil(()=>h.stats.transcriptHeld===0,{signal:controller.signal});
+ await clickView(0);await wait(`document.body.innerText.includes('Hello history')`);
+ record('transcript-timeout-visible-and-retryable');
  // Case: transcript-switch-session — switch to empty session
  await click('关闭历史正文');
  await clickView(1);
@@ -159,18 +168,17 @@ try{
  // Case: transcript-main-chat-still-works — actually send a message and verify display
  await click('关闭历史正文');
  const subBefore=await submissions();
- await evaluate(`(()=>{const ta=document.querySelector('#live-message');ta.value='test after transcript';ta.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await evaluate(`(()=>{const ta=document.querySelector('#live-message');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(ta,'test after transcript');ta.dispatchEvent(new Event('input',{bubbles:true}));})()`);
  await click('发送真实消息');
  await wait(`document.body.innerText.includes('test after transcript')`);
  assert.equal(await submissions(),subBefore+1,'main chat must send after transcript viewing');
  await wait(`document.body.innerText.includes('Synthetic RPC reply')`);
  record('transcript-main-chat-still-works');
  // Case: transcript-close-blocks-late-success — close while loading, late success must not appear
- await click('关闭历史正文');
  h.setTranscriptMode('normal');
  h.holdNextTranscript(); // hold the HTTP response so it arrives after close
  await clickView(0);
- await new Promise(r=>setTimeout(r,200)); // ensure fetch is in-flight
+ await waitUntil(()=>h.stats.transcriptHeld===1,{signal:controller.signal});
  await click('关闭历史正文');
  h.releaseHeldTranscript(); // release the held response now — it must not update the closed view
  await new Promise(r=>setTimeout(r,300));
@@ -180,7 +188,7 @@ try{
  h.setTranscriptMode('forbidden');
  h.holdNextTranscript(); // hold the HTTP error response
  await clickView(0);
- await new Promise(r=>setTimeout(r,200));
+ await waitUntil(()=>h.stats.transcriptHeld===1,{signal:controller.signal});
  await click('关闭历史正文');
  h.releaseHeldTranscript(); // release the held error response
  await new Promise(r=>setTimeout(r,300));
@@ -188,8 +196,9 @@ try{
  h.setTranscriptMode('normal');
  record('transcript-close-blocks-late-error');
  // Case: transcript-disconnect-blocks-late-response — disconnect during loading, late response must not show
- await clickView(0);
- await evaluate(`window.__p2Socket.close()`); // simulate disconnect
+ h.holdNextTranscript();await clickView(0);
+ await waitUntil(()=>h.stats.transcriptHeld===1,{signal:controller.signal});
+ await evaluate(`window.__p2Socket.close()`); // simulate disconnect while request is held
  await new Promise(r=>setTimeout(r,300));
  await wait(`!document.body.innerText.includes('Hello history')`);
  assert.equal(await evaluate(`!!document.querySelector('[role=alert]')`),false,'no transcript error after disconnect (phase changed)');
@@ -202,8 +211,12 @@ try{
  await click('读取最近 50 条会话');
  await wait(`!![...document.querySelectorAll('button')].find(b=>b.textContent==='只读查看最近 50 条')`);
  h.setTranscript('hist-1',{session_id:'hist-1',messages:[{role:'user',content:'New session content'}]});
- await clickView(0);
- await wait(`document.body.innerText.includes('New session content')`);
+ h.holdNextTranscript();await clickView(0);
+ await waitUntil(()=>h.stats.transcriptHeld===2,{signal:controller.signal});
+ h.releaseHeldTranscript();
+ await waitUntil(()=>h.stats.transcriptHeld===1,{signal:controller.signal});
+ assert.equal(await evaluate(`document.body.innerText.includes('正在读取历史消息')`),true,'old completion must not clear new loading');
+ h.releaseHeldTranscript();await wait(`document.body.innerText.includes('New session content')`);
  assert.equal(await evaluate(`document.body.innerText.includes('Hello history')`),false,'old content must not appear');
  record('transcript-reconnect-new-request-isolates-old');
  assert.equal(results.length,CASES.length);
@@ -224,7 +237,7 @@ finally{
  if(browserTemp){try{await rm(browserTemp,{recursive:true,force:true});if(!await absent(browserTemp))cleaned=false;}catch{cleaned=false;}}
 }
  if(!cleaned)failure='BROWSER_CLEANUP_FAILED';
- return {methodVersion:2,status:failure?'failed':'passed',failure,results,network,cleaned,rpc:'synthetic',hermesModelExecuted:false};
+ return {methodVersion:3,status:failure?'failed':'passed',failure,results,network,cleaned,rpc:'synthetic',hermesModelExecuted:false};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

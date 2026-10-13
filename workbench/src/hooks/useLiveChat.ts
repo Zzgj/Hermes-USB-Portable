@@ -45,7 +45,8 @@ export function useLiveChat(){
   setSkills([]);setSkillsLoading(false);setSkillsLoaded(false);
   setProfiles([]);setProfilesLoading(false);setProfilesLoaded(false);
   setLearnDraft(null);setLearnConfirmed(false);
-  setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);historyAccess.current={port:0,token:managementTokenRef.current};
+  // Keep RPC identity for capability/learning guards; never substitute the management token.
+  setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);historyAccess.current={port:targetPort,token:targetToken.trim()};
   const endpoint=`ws://127.0.0.1:${targetPort}/api/ws?token=${encodeURIComponent(targetToken.trim())}`;setToken('');
   const live=()=>epoch.current===generation;
   try{connection.current=connectHermes({endpoint,onState:state=>{
@@ -57,7 +58,7 @@ export function useLiveChat(){
      if(identity.contract!==6)throw new Error('Unsupported contract');
      session.current=identity;setPhase('ready');
     }).catch(()=>{if(live()){end();setPhase('failed');setError(true);}});
-   }else if(state==='closed'||state==='failed'){historyAccess.current=null;transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscriptLoading(false);setTranscriptError(null);setPhase(state);setStopping(false);setApproval(false);}
+   }else if(state==='closed'||state==='failed'){historyAccess.current=null;transcriptRequest.current?.abort();transcriptRequest.current=null;setTranscript(null);setTranscriptLoading(false);setTranscriptError(null);setPhase(state);setStopping(false);setApproval(false);}
   },onEvent:event=>{
    if(!live()||event.sessionId!==session.current?.runtimeId)return;
    if(event.seq!==undefined&&event.seq<=sequence.current)return;
@@ -78,7 +79,7 @@ export function useLiveChat(){
   if(!access||phase!=='ready'||transcriptRequest.current||!sessions.some(item=>item.id===id))return;
   const controller=new AbortController();transcriptRequest.current=controller;setTranscriptLoading(true);setTranscript(null);setTranscriptError(null);
   const timeout=setTimeout(()=>controller.abort(),15000);
-  void readTranscript(access,id,controller.signal).then(value=>{
+  void readTranscript({port:0,token:managementTokenRef.current},id,controller.signal).then(value=>{
    if(epoch.current===generation&&transcriptRequest.current===controller)setTranscript(value);
   }).catch((error:unknown)=>{
    if(epoch.current===generation&&transcriptRequest.current===controller){

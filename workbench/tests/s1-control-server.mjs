@@ -16,12 +16,12 @@ export async function startS1Harness({assets=fileURLToPath(new URL('../dist',imp
  const home=await mkdtemp(join(tmpdir(),'p2-r4-lead-'));
  const skillPath=join(home,'skills','fixture-skill','SKILL.md');
  const rpc={port:12345,token:'fixture-rpc-token'};
- const stats={starts:0,stops:0,catalogCalls:0,prepareCalls:0,changedRejections:0,held:false};
+ const stats={starts:0,stops:0,catalogCalls:0,prepareCalls:0,changedRejections:0,held:false,transcriptHeld:0,transcriptCalls:0,transcriptReleased:0};
  let server,mockHttp,closing=false,closePromise,holdNext=false,release,heldWaiters=[];
  const releasePrepare=()=>{release?.();release=undefined;};
  const transcripts=new Map();
  let transcriptMode='normal';
- let holdTranscript=false,releaseTranscript,transcriptWaiters=[];
+ let holdTranscript=false;const transcriptReleases=[];
  try{
   // Mock HTTP server on the fake RPC port to serve transcript endpoint for browser tests.
   mockHttp=createServer(async(req,res)=>{
@@ -29,12 +29,14 @@ export async function startS1Harness({assets=fileURLToPath(new URL('../dist',imp
    const url=new URL(req.url,`http://127.0.0.1:${rpc.port}`);
    const match=url.pathname.match(/^\/api\/sessions\/([^/]+)\/messages$/);
    if(!match){res.writeHead(404);res.end();return;}
-   if(transcriptMode==='forbidden'){res.writeHead(403);res.end(JSON.stringify({error:'forbidden'}));return;}
-   if(transcriptMode==='empty'){res.writeHead(200,{'Content-Type':'application/json'});res.end('');return;}
-   if(transcriptMode==='invalid'){res.writeHead(200,{'Content-Type':'text/plain'});res.end('not json');return;}
-   if(transcriptMode==='error500'){res.writeHead(500);res.end('internal error');return;}
-   if(holdTranscript){holdTranscript=false;const wait=new Promise(resolve=>{releaseTranscript=resolve;});await wait;transcriptWaiters.splice(0).forEach(resolve=>resolve());if(closing)return;}
+   stats.transcriptCalls++;const mode=transcriptMode;
+   // Capture upstream-format payload and error mode before holding either response.
    const data=transcripts.get(match[1])||{session_id:match[1],messages:[]};
+   if(holdTranscript){holdTranscript=false;stats.transcriptHeld++;await new Promise(resolve=>transcriptReleases.push(resolve));stats.transcriptHeld--;stats.transcriptReleased++;if(closing||res.destroyed)return;}
+   if(mode==='forbidden'){res.writeHead(403);res.end(JSON.stringify({error:'forbidden'}));return;}
+   if(mode==='empty'){res.writeHead(200,{'Content-Type':'application/json'});res.end('');return;}
+   if(mode==='invalid'){res.writeHead(200,{'Content-Type':'text/plain'});res.end('not json');return;}
+   if(mode==='error500'){res.writeHead(500);res.end('internal error');return;}
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));
   });
   await new Promise((resolve,reject)=>{mockHttp.once('error',reject);mockHttp.listen(0,'127.0.0.1',()=>{rpc.port=mockHttp.address().port;resolve();});});
@@ -56,12 +58,12 @@ export async function startS1Harness({assets=fileURLToPath(new URL('../dist',imp
    setTranscript(id,data){transcripts.set(id,data);},
    setTranscriptMode(mode){transcriptMode=mode;},
    holdNextTranscript(){holdTranscript=true;},
-   releaseHeldTranscript(){releaseTranscript?.();releaseTranscript=undefined;},
+   releaseHeldTranscript(){transcriptReleases.shift()?.();},
    holdNextPrepare(){if(closing||holdNext||stats.held)throw new Error('HARNESS_BUSY');holdNext=true;},
    waitForHeldPrepare(){if(stats.held)return Promise.resolve();return new Promise(resolve=>heldWaiters.push(resolve));},
    releasePrepare,
    changeSkill:()=>writeFile(skillPath,'# Synthetic fixture changed\nDo not execute tools.\n'),
-   close(){if(closePromise)return closePromise;closing=true;releasePrepare();releaseTranscript?.();releaseTranscript=undefined;heldWaiters.splice(0).forEach(resolve=>resolve());transcriptWaiters.splice(0).forEach(resolve=>resolve());closePromise=(async()=>{await new Promise(resolve=>mockHttp.close(resolve));await server.close();await rm(home,{recursive:true,force:true});})();return closePromise;}
+   close(){if(closePromise)return closePromise;closing=true;releasePrepare();transcriptReleases.splice(0).forEach(resolve=>resolve());heldWaiters.splice(0).forEach(resolve=>resolve());closePromise=(async()=>{await server.close();await new Promise(resolve=>mockHttp.close(resolve));await rm(home,{recursive:true,force:true});})();return closePromise;}
   };
  }catch(error){if(mockHttp)await new Promise(resolve=>mockHttp.close(resolve));if(server)await server.close();await rm(home,{recursive:true,force:true});throw error;}
 }

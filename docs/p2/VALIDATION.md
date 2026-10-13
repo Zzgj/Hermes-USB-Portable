@@ -1,5 +1,40 @@
 # P2 验证记录
 
+## 2026-10-13 HISTORY 提交推送前复验
+
+- 用户追加授权“提交推送”。本轮接手 HEAD e83f0600f11fc0e8decf471c4604ae61d1f79485，分支 feat/portable-initializer，现场为已核对的 11 修复文件与四份文档，没有额外改动或暂存。`git ls-remote --heads origin refs/heads/feat/portable-initializer` 返回相同 SHA；最终推送成功与否以提交后精确远端回读为准。
+- 11 个实现/测试文件仍与修复清单哈希一致。在主工作区 workbench 再次执行 `node --test tests/*.test.mjs`：退出 0、280/280、零失败/跳过；`npm run validate`：退出 0、16 组件；`npm run test:s1-browser`：退出 0，包含 tsc/Vite 新构建、methodVersion 3 的 19/19、cleaned=true。日志位于本 Profile deliveries/p2-history-integration-20261013-0850/prepush-{test,validate,browser}.log。
+- 本次只交付源码、测试和项目文档，不纳入 dist/node_modules/Runtime/个人配置，不改变 release_ready。真实模型/审批、Windows/U盘与公司既有基线失败未通过本轮 Linux 结果替代；没有宣称公司四文件未提交补丁已逐字节审完或已同步。
+
+## 2026-10-13 HISTORY 主工作区整合后重新验证
+
+- 授权：用户明确同意“先本地整合并验证，暂不提交推送”。接手核对实际路径、feat/portable-initializer、HEAD c346ab4595ab4e3326f0b6f3c2f4bfd555c96835、origin/upstream 配置；现场仅四份已知文档修改，无暂存或未跟踪文件。本轮不联网更新远程引用。
+- 保护：四份文档原字节、原 diff、SHA-256 清单保存于本 Profile deliveries/p2-history-integration-20261013-0850/original、original-docs.diff 和 original-manifest.json。验证旧 HEAD 为 e83f060 的祖先，文档与快进文件无交集，交付补丁哈希与 patch-manifest.json 相符。
+- 实际整合：`git -c core.hooksPath=/dev/null merge --ff-only e83f0600f11fc0e8decf471c4604ae61d1f79485` 退出 0，快进而非新建合并提交；随后对 HISTORY-REPAIR-e83f060.diff 执行 `git apply --check` 和 `git apply` 均退出 0。没有 stash/reset/强制覆盖。11 个修复文件与交付清单逐一哈希一致；四份文档在整合后与备份一致，再作本轮记录更新。
+- 本轮以下命令实际在 `/home/zgj/桌面/CodeRepository/Hermes-USB-Portable/workbench` 运行：`node --test tests/*.test.mjs` 退出 0、280/280；`npm test` 退出 0、280/280；两者均零失败/零取消/零跳过。`npm run validate` 退出 0、16 组件；`npm run test:s1-browser` 退出 0，包含 tsc/Vite 新构建，浏览器 methodVersion 3、19/19、cleaned=true。
+- 证据：上述主工作区命令的独立日志及 results.json 在 deliveries/p2-history-integration-20261013-0850；不把前一轮隔离测试日志当本轮复跑结果。验证层级仍为 Linux 单测/生产 hook 合成调度、实际 Chrome/React/管理 HTTP 和合成上游/RPC；未执行真实模型/原生审批/Windows/U盘。
+- 当前 HEAD 为 e83f0600f11fc0e8decf471c4604ae61d1f79485，修复及文档保持未提交；不声称该 SHA 已含修复。没有 fetch/push/公司侧同步，没有更新旧 ZIP、真实实例或 release_ready。公司 Windows startup recovery marker 的原失败仍待平台复验，未被本次 Linux 全绿关闭。
+
+## 2026-10-13 HISTORY 负责人隔离审查与修复
+
+- 用户在群聊授权负责人接管修复，暂不通知另两名 Agent。检查时主工作区仍为 `c346ab4595ab4e3326f0b6f3c2f4bfd555c96835`，保留四份文档修改；本地 Git 对象已有 `3f2c5fd` 与 `e83f0600f11fc0e8decf471c4604ae61d1f79485`，本轮没有 fetch/pull/merge/commit/push。原四份文档另存于本 Profile scratch/history-repair-evidence/original-docs。
+- 交付身份：公司只提供了 `workbench/history-patch-e83f060.diff` 的远端机器路径和文字摘要，未传来可读补丁字节，本机该路径不存在。因此本次审查已提交的 c346ab4..e83f060，并在 scratch/history-repair-e83f060 的 detached worktree 独立修复；不宣称应用或逐字节审完公司四文件未提交补丁。公司报告的 270 项结果不与本次测试数混用。
+- 复现：真实 loopback 管理 HTTP + 合成上游在响应头后停滞，17.5 秒客户端截止先触发；同时 catalog 返回 409，客户端断开/服务关闭未能及时取消。确认原 15 秒定时器只包围 fetch 响应头阶段。服务端投影 `{sessionId,messages:[{role,text}],omitted}` 与客户端 raw decoder 契约不一致；此外 historyAccess 被改为管理令牌/port=0，使能力和学习的 RPC 身份校验失败。原提交新构建成功，但浏览器在能力提交阶段 UI_WAIT_TIMEOUT，仅前 4 项完成，尚未到达历史正文测试，不把这个失败当原用户闪退根因证明。
+- 修复：历史读使用独立最多 8 个在途请求，不占管理变更 busy/pending；15 秒截止覆盖连接取得、响应头和正文；通过响应 close 与完成状态取消断开的上游；停止/关闭先取消并等待在途读，实例/代次变化拒绝旧结果。非成功及超限响应取消 body；限制 1 MiB、50 条、合法解析 ID、20k 单条/100k 总文本，仅投影允许字段。客户端只走同源管理代理；RPC 身份继续供能力/学习守卫使用；断线清除正文；补错误文案。
+- 保留既有压缩会话可解析到新 ID 的契约，不采用回交摘要中的请求 ID 必须与解析 ID 完全相等规则；两端检查解析 ID 的格式。未新增恢复执行、存储、依赖、模型调用或外部监听。
+- 红灯方法：把新增的 history-boundaries/history-hook 两测试文件放入精确 e83f060 导出树，执行 `node --test tests/history-boundaries.test.mjs tests/history-hook.test.mjs`，退出 1，16 项中 2 通过/14 失败；这些是失败断言，不等于 14 个独立产品缺陷，hook 部分失败也受旧投影格式影响。修复后同组 16/16；最终受控补丁在重新导出的基线上 `git apply --check`、实际 apply、11 文件逐字节比对通过，该应用树同组再次 16/16，退出 0。
+- 最终开发侧命令均在隔离 worktree 的 workbench 下执行：`node --test tests/*.test.mjs` 退出 0、280/280；`npm test` 退出 0、280/280；`npm run validate` 退出 0、16 组件；`npm run test:s1-browser` 退出 0，包含 tsc/Vite 新构建与 methodVersion 3 的 19/19 浏览器检查，cleaned=true；`git diff --check` 退出 0。日志和 results.json 在 scratch/history-repair-evidence。
+- 浏览器使用实际 Chrome/React 页面、真实管理 HTTP、合成上游/RPC；保持原生 fetch/XHR。修正旧夹具错误路由/隐藏页面操作、React 输入事件、错误响应绕过 hold、无条件点击不存在关闭按钮、固定等待冒充在途屏障等问题。覆盖持续显示/重开、四种服务错误/重试、15 秒超时/重试、空会话、主聊天、关闭/断线/重连后的隔离。生产 hook 使用最小合成调度器额外验证忽略 abort 的迟到 success/catch/finally 不覆盖新请求；不是把该调度器当真实 React 验证。
+- 本机 Linux 的 lifecycle-boundaries 基线和修复树均通过；公司 Windows 的 startup recovery marker 失败仍未在其平台复验，不推断根因或关闭问题。公司 `npm test` 自报退出 0 但含 fail 1 不算通过。本轮未做 Windows/U盘/真实模型/原生审批，也未更新已有 ZIP 或真实实例，release_ready:false 不变。
+- 源码补丁：本 Profile deliveries/p2-history-repair-20261013/HISTORY-REPAIR-e83f060.diff，随附逐文件哈希清单与命令日志；scratch/history-repair-evidence 保留原验证现场。SHA-256 `9480fdd293219e1ab2588fb66e3b8723152351dc8a6a273ce6da8cc9ea60dc91`，含 9 个修改文件与 2 个新增测试，不含 node_modules 链接、dist、个人配置或公司数据。当前是隔离修复已验证，不是已整合到开发分支或发布。
+
+## 2026-10-12 群聊接手证据与待核验失败
+
+- 负责人本机 HEAD 为 c346ab4595ab4e3326f0b6f3c2f4bfd555c96835，feat/portable-initializer；首次接手 fetch 与 pull --ff-only 均完成，远程跟踪差异 0/0，工作区干净。后续派单前再次核对本地 HEAD、分支、远程配置及工作区；未再次联网同步或宣称新的远端状态。
+- 本机 Node v26.7.0、npm 11.19.0、npm ls --depth=0 通过，已有 Chrome；这是环境检查，不是本轮应用构建或功能回归。
+- 公司实现者群聊报告：同一基线，node --test tests/*.test.mjs 为 250 项、240 通过、1 失败、9 跳过。失败名 startup rechecks recovery marker；未收到精确断言与命令退出码，负责人未独立复现。当前仅记为基线失败报告，平台根因未定，不引用历史 installer/skill-catalog 失败为其证明，不声明 S1 全量通过。
+- 本轮仅更新计划/派单/证据文档，未修 HISTORY、未运行模型/真实实例、未修改内核或配置、未提交/推送。实现及独立页面验收须由后续实际执行补证。
+
 ## 2026-10-12 P2-S1-SYNC-01 推送前复验与用户反馈边界
 
 - 推送前核对本地 b986738，分支 feat/portable-initializer，origin 远端 b11bd5a 为本地祖先；现有中文批次与三份文档修改均保留。本轮将当前文件及交接更新纳入提交，不新增功能修复，不重新生成安装包。

@@ -13,7 +13,7 @@ test('readTranscript requests same-origin /api/sessions/:id/messages via managem
   let calledUrl=null,calledAuth=null;
   const result=await readTranscript({port:0,token:'mgmt-token'},'test-id_1',new AbortController().signal,async(url,opts)=>{
     calledUrl=url;calledAuth=opts.headers.Authorization;
-    return new Response(JSON.stringify({session_id:'test-id_1',messages:[{role:'user',content:'hello'}]}),{status:200,headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify({sessionId:'test-id_1',messages:[{role:'user',text:'hello'}],omitted:false}),{status:200,headers:{'Content-Type':'application/json'}});
   });
   // Should use relative same-origin URL, not http://127.0.0.1:{port}/...
   assert.ok(calledUrl.startsWith('/api/sessions/'),'URL should be same-origin relative path: '+calledUrl);
@@ -26,7 +26,7 @@ test('readTranscript with port 0 uses relative URL (same-origin management proxy
   let calledUrl=null;
   await readTranscript({port:0,token:'mgmt-token'},'test-id_2',new AbortController().signal,async(url)=>{
     calledUrl=url;
-    return new Response(JSON.stringify({session_id:'test-id_2',messages:[]}),{status:200});
+    return new Response(JSON.stringify({sessionId:'test-id_2',messages:[],omitted:false}),{status:200});
   });
   assert.ok(!calledUrl.includes('127.0.0.1'),'should not include host when port=0: '+calledUrl);
   assert.ok(calledUrl.startsWith('/api/sessions/'),'should be relative path');

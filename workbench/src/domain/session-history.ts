@@ -19,12 +19,11 @@ export function decodeTranscript(value:unknown):SessionTranscript {
  }
  return {sessionId:value.session_id,messages,omitted};
 }
-/** Read-only transcript via same-origin management proxy (port=0) or direct loopback (legacy). */
+/** Read-only projected transcript via the same-origin management proxy only. */
 export async function readTranscript(connection:{readonly port:number;readonly token:string},sessionId:string,signal:AbortSignal,send:typeof fetch=fetch):Promise<SessionTranscript>{
  if(!Number.isInteger(connection.port)||connection.port<0||connection.port>65535||!connection.token.trim()||connection.token.length>4096||!identity(sessionId))throw new Error('HISTORY_INVALID');
- // When port=0, use same-origin relative URL (management service proxy avoids CORS).
- // When port>0, use direct loopback (legacy path, may trigger CORS preflight).
- const url=connection.port===0?`/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`:`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
+ if(connection.port!==0)throw new Error('HISTORY_DIRECT_UNSUPPORTED');
+ const url=`/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
  // Preserve distinct error categories so the UI can show meaningful messages and allow retry.
  let response:Response;
  try{response=await send(url,{method:'GET',headers:{Authorization:'Bearer '+connection.token},credentials:'omit',cache:'no-store',redirect:'error',signal});}
@@ -39,5 +38,15 @@ export async function readTranscript(connection:{readonly port:number;readonly t
  const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
  let decoded:unknown;
  try{decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{throw new Error('HISTORY_INVALID');}
- return decodeTranscript(decoded);
+ // Proxy output is already projected, unlike the raw upstream decodeTranscript input.
+ // Compacted sessions may resolve to another valid ID; preserve that established contract.
+ if(!object(decoded)||!identity(decoded.sessionId)||!Array.isArray(decoded.messages)||decoded.messages.length>50||typeof decoded.omitted!=='boolean')throw new Error('HISTORY_INVALID');
+ const messages: {role:'user'|'assistant';text:string}[]=[];let total=0,omitted=decoded.omitted;
+ for(const row of decoded.messages){
+  if(!object(row)||(row.role!=='user'&&row.role!=='assistant')||typeof row.text!=='string')throw new Error('HISTORY_INVALID');
+  const text=row.text.slice(0,Math.max(0,Math.min(20_000,100_000-total)));
+  total+=text.length;omitted=omitted||text.length<row.text.length;
+  if(text)messages.push({role:row.role,text});
+ }
+ return {sessionId:decoded.sessionId,messages,omitted};
 }

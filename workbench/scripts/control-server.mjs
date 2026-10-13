@@ -7,6 +7,9 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
  let origin,instance=null,busy=false,closing=false,pending=Promise.resolve();
+ // Read requests are bounded separately; they must not hold the lifecycle mutex.
+ const historyReads=new Map();let historyGeneration=0;
+ const cancelHistory=()=>{historyGeneration++;for(const controller of historyReads.keys())controller.abort();};
  const json=(response,status,value)=>{response.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});response.end(JSON.stringify(value));};
  const authorized=request=>{
   const value=request.headers.authorization;
@@ -54,29 +57,36 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
      const sessionId=match[1];
      if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/.test(sessionId)){json(response,400,{error:'INVALID_SESSION'});return;}
      if(busy||instance?.state!=='ready'){json(response,409,{error:'NOT_READY'});return;}
-     const connection=await instance.connection;
-     if(!connection||!Number.isInteger(connection.port)||connection.port<1||connection.port>65535||typeof connection.token!=='string'||!connection.token){json(response,503,{error:'NO_BACKEND'});return;}
-     busy=true;
-     pending=(async()=>{
+     if(historyReads.size>=8){json(response,429,{error:'HISTORY_BUSY'});return;}
+     const owner=instance,generation=historyGeneration,controller=new AbortController();
+     const timer=setTimeout(()=>controller.abort(),15000);
+     const disconnected=()=>{if(!response.writableEnded)controller.abort();};
+     response.once('close',disconnected);
+     const reply=(status,value)=>{if(!response.destroyed&&!response.writableEnded)json(response,status,value);};
+     let rejectAbort;
+     const aborted=new Promise((_,reject)=>{rejectAbort=()=>reject(new Error('HISTORY_CANCELLED'));controller.signal.addEventListener('abort',rejectAbort,{once:true});});
+     // The initial await ensures registration before any asynchronous completion.
+     const reading=(async()=>{
       try{
+       const connection=await Promise.race([Promise.resolve(owner.connection),aborted]);
+       if(closing||instance!==owner||generation!==historyGeneration||owner.state!=='ready'||controller.signal.aborted)throw new Error('HISTORY_CANCELLED');
+       if(!connection||!Number.isInteger(connection.port)||connection.port<1||connection.port>65535||typeof connection.token!=='string'||!connection.token){reply(503,{error:'NO_BACKEND'});return;}
        const upstreamUrl=`http://127.0.0.1:${connection.port}/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=50&offset=0&order=latest`;
-       const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
        let upstreamResponse;
        try{upstreamResponse=await fetch(upstreamUrl,{method:'GET',headers:{Authorization:'Bearer '+connection.token},redirect:'error',signal:controller.signal});}
-       catch(error){clearTimeout(timer);json(response,502,{error:'UPSTREAM_UNREACHABLE'});return;}
-       clearTimeout(timer);
-       if(!upstreamResponse.ok||!upstreamResponse.body){json(response,502,{error:'UPSTREAM_ERROR'});return;}
+       catch{reply(502,{error:'UPSTREAM_UNREACHABLE'});return;}
+       if(!upstreamResponse.ok||!upstreamResponse.body){await upstreamResponse.body?.cancel().catch(()=>{});reply(502,{error:'UPSTREAM_ERROR'});return;}
        // Server-side size limit: read and decode, reject over 1 MiB.
        const reader=upstreamResponse.body.getReader();const chunks=[];let length=0;
-       try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>1_048_576){json(response,502,{error:'UPSTREAM_TOO_LARGE'});return;}chunks.push(value);}}
+       try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>1_048_576){reply(502,{error:'UPSTREAM_TOO_LARGE'});return;}chunks.push(value);}}
        finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
-       if(length===0){json(response,502,{error:'UPSTREAM_EMPTY'});return;}
+       if(length===0){reply(502,{error:'UPSTREAM_EMPTY'});return;}
        const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
        let decoded;
-       try{decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{json(response,502,{error:'UPSTREAM_INVALID'});return;}
+       try{decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{reply(502,{error:'UPSTREAM_INVALID'});return;}
        // Server-side projection: only return safe transcript shape, never raw upstream data.
        try{
-        if(typeof decoded!=='object'||decoded===null||Array.isArray(decoded)||typeof decoded.session_id!=='string'||!Array.isArray(decoded.messages))throw new Error();
+        if(typeof decoded!=='object'||decoded===null||Array.isArray(decoded)||typeof decoded.session_id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/.test(decoded.session_id)||!Array.isArray(decoded.messages)||decoded.messages.length>50)throw new Error();
         const messages=[];let omitted=false,total=0;
         for(const row of decoded.messages){
          if(typeof row!=='object'||row===null||Array.isArray(row)){omitted=true;continue;}
@@ -88,11 +98,12 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
          total+=text.length;omitted=omitted||text.length<content.length;
          if(text)messages.push({role:row.role,text});
         }
-        json(response,200,{sessionId:decoded.session_id,messages,omitted});
-       }catch{json(response,502,{error:'UPSTREAM_INVALID'});return;}
-      }catch{json(response,502,{error:'UPSTREAM_ERROR'});}
-      finally{busy=false;}
-     })();await pending;return;
+        if(closing||instance!==owner||generation!==historyGeneration||owner.state!=='ready'||controller.signal.aborted)throw new Error();
+        reply(200,{sessionId:decoded.session_id,messages,omitted});
+       }catch{reply(502,{error:'UPSTREAM_INVALID'});return;}
+      }catch{reply(502,{error:'UPSTREAM_ERROR'});}
+      finally{clearTimeout(timer);response.removeListener('close',disconnected);controller.signal.removeEventListener('abort',rejectAbort);historyReads.delete(controller);}
+     })();historyReads.set(controller,reading);await reading;return;
     }
     if(url.pathname==='/api/status'&&request.method==='GET'){
      json(response,200,{state:busy?'changing':instance?.state??'idle'});return;
@@ -114,6 +125,7 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
        const connection=await instance.connection;
        json(response,200,{state:instance.state,connection});
       }else{
+       cancelHistory();await Promise.allSettled([...historyReads.values()]);
        if(instance){await instance.stop();instance=null;}
        json(response,200,{state:'idle'});
       }
@@ -142,9 +154,10 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
  return {origin,token,close:()=>{
   if(closePromise)return closePromise;
   closing=true;
+  cancelHistory();
   closePromise=(async()=>{
    let failure;
-   try{await pending;if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
+   try{await pending;await Promise.allSettled([...historyReads.values()]);if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
    // A failed instance stop must not retain an unusable HTTP listener.
    // Keep the instance handle and original error for an explicit cleanup retry.
    try{await closeListener();}catch(error){failure??=error;}
