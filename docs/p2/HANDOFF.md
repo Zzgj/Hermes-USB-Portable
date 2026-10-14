@@ -1,8 +1,27 @@
 # P2 单分支交接与剩余审查
 
+## 最新整合交接（2026-10-13）
+
+用户已授权双方提交推送及负责人检查合并；当前代码合并提交为 `2cd4c0aa3a6d55ded3e406c36f71c02c017775c6`，包含负责人 `4ff953c31335ada8581afd541bb6acaa8d0cdbf6` 与公司 `d0c5fb388887f542417e4a10dbb079508d874e1a`。最新实现、测试和剩余门禁只见 PROGRESS-GUIDE 顶部整合节。下方 WIN/HISTORY 派单与“不提交”限制为原批次历史，不覆盖本次明确授权。
+
+公司实现者继续暂停写入；独立审查以最终交付 SHA 为目标，先保护已有补丁和未跟踪文件，不强制覆盖。同步源码不等于更新真实便携实例；本批没有 E 盘部署、真实锁清理或发布授权。
+
 ## 当前接续说明（2026-10-13，优先于下方历史派单）
 
-用户在本地整合复验后追加授权“提交推送”。本批将已验证的 11 文件修复与四份项目文档纳入同一 Git 交付，目标仅为 origin 的 feat/portable-initializer；提交的精确 SHA 和推送后远端回读以负责人交付消息为准，不在提交中自引用 SHA 或预宣告推送成功。公司两名 Agent 暂不追加任务，公司四文件未提交修改仍须保留，不能直接 pull/reset 覆盖。下一次接手先读 PROGRESS-GUIDE 与 VALIDATION 最新节，不重复应用旧补丁或按历史派单开工；Git 交付不更新已有安装包、U盘或真实实例，也不关闭 Windows 既有失败和 S1 实机门禁。
+HISTORY 修复已提交推送为 7a85c864cb39f9859fe9f3bb0863ff0b747b6d35，并完成远端回读；公司双方报告已同步，原四文件修改由实现者保存补丁与 stash。用户随后要求继续下发任务，本轮只启动下方 WIN-BASELINE-01，取代先前“暂不追加任务”的安排。公司旧补丁/stash 不恢复、不删除，不因本次派单自动获得提交推送、依赖安装、真实实例更新或发布权限。负责人本轮只维护项目文档，不与公司并行改实现。
+
+### P2-S1-WIN-BASELINE-01：Windows 恢复标记回归定位与测试夹具修复
+
+- 固定基线：`7a85c864cb39f9859fe9f3bb0863ff0b747b6d35`；分支 `feat/portable-initializer`。唯一测试代码写入者为公司实现者，审查者先只读；负责人维护文档。当前群聊任务单作为正式交接，不要求拉取本机尚未提交的派单文档。
+- 目标：定位 `lifecycle-boundaries.test.mjs` 的 `startup rechecks recovery marker under its newly acquired lock before spawning`，区分子进程/注入/断言夹具失败与真实生产保护缺陷；只在确认为夹具问题时完成最小测试修复，不凭 Windows 标签认定根因。
+- 允许修改：`workbench/tests/lifecycle-boundaries.test.mjs`；确有必要时新增专用 `workbench/tests/lifecycle-recovery-fixture.test.mjs`。生产 scripts/src、package.json、锁文件、项目文档均只读，不顺带改 HISTORY/四入口。若需修改启动、锁、恢复、Windows Job Object 或其他生产机制，交回最小复现，由负责人直接实现，禁止越界代修。
+- 先红灯：在相同基线上复跑原失败，记录命令/cwd/真实进程退出码/Node 与 Windows 版本；最小化脱敏诊断应区分 spawnSync error/status/signal、测试注入是否命中、是否到达 spawn、预期拒绝是否发生、marker 是否存在、锁是否释放。不要仅重复 `1 !== 0`，也不要直接公开原始 stderr、环境变量、路径或令牌。
+- 调查线索而非已定根因：生产 hermes-instance 对 home/source 做 realpath，测试注入点比较 mkdir 路径是否严格等于拼接 home；需在 Windows 运行证实路径等价与注入是否命中。禁止简单全路径转小写、吞掉 ENOENT 或制造 marker 存在来掩盖失败。
+- 契约/验收：恢复标记必须在取得本实例锁的过程中注入，生产持锁复核随后拒绝；spawn 调用计数为 0；marker 原内容保留；仅本批所获锁释放；测试子进程正常退出。不能改成启动前预放标记测试，不能删除断言、跳过该 Windows 用例、放宽安全保护或只增加 timeout 使其假绿。若修复注入 helper，补独立断言防止注入失效被误报通过。
+- 验证：既有依赖、合成临时目录与自有子进程；先跑原定向红灯，再跑修复后 `node --test tests/lifecycle-boundaries.test.mjs`（以及新增专用测试）、直接 `node --test tests/*.test.mjs`、`npm test`、`npm run validate`、`npm run build`。逐条记录真实退出码；退出 0 与失败数量矛盾必须查清，不能算通过；POSIX 跳过与其他失败分别列出。生产未改不要求用户实机试零散补丁。
+- 审查者：先对同一基线只读核对注入位置、断言敏感性和退出码链；实现者回交并暂停后，在隔离环境验证补丁，禁止在共享目录并行构建/切换/写文件。审查关注补丁是否仍能捕获“持锁前新增 marker 却到达 spawn”的真实回归，而非仅测试 fixture 自己。
+- 回交：基线/结果身份（本批不提交，写明补丁）、完整文件清单、原失败与修复后命令/退出码、诊断证据和失败/跳过/未测范围、接口/存储/隐私影响；必须传递包含新增文件的补丁实际附件及 SHA-256，不能仅给公司机器路径。审查者给通过/返工/待环境验证及证据。本批不 commit/push/stash pop，不上传依赖或私人数据。
+- 预算：一个独立批次，同一路径最多三轮诊断/修复；未知工作区变更、新依赖、提权、真实服务/模型、生产缺陷或超出允许文件即暂停受影响操作并报告。只清理本批自有临时目录/进程，不修改个人配置或真实 U 盘。
 
 更新：2026-10-12。共享开发分支：`feat/portable-initializer`，远程为 `Zzgj/Hermes-USB-Portable` 的 origin，不是 upstream。
 此前 SYNC 批次已同步至 c346ab4；用户随后在群聊要求下发开发任务并更新文档。当前正式下发 HISTORY-01，其他新增需求按总计划登记；不更新真实实例、不发布 RC，不将此前单次推送授权扩展到后续批次。
