@@ -28,6 +28,20 @@ const ALL_ROWS=[
 ];
 
 // Test 1: renders five entries with correct Chinese titles
+test('authentication guidance does not require starting or connecting Hermes',()=>{
+ const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:null,loading:false,failed:false,canInspect:false,onInspect:()=>{}}));
+ assert.ok(html.includes('读取服务状态'));assert.ok(!html.includes('连接实例获取管理令牌'));
+});
+test('unknown metadata is not misreported as a missing implementation',()=>{
+ const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:false,canInspect:true,onInspect:()=>{}}));
+ assert.ok(html.includes('资产状态未知'));assert.ok(!html.includes('探测尚未接入'));
+ assert.ok(html.includes('资产检查结果'));assert.ok(!html.includes('检测到以下入口文件'));
+});
+test('authenticated idle button is enabled and rendering never inspects automatically',()=>{
+ let calls=0;
+ const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:null,loading:false,failed:false,canInspect:true,onInspect:()=>{calls++;}}));
+ assert.ok(!html.includes('disabled'));assert.equal(calls,0);
+});
 test('renders five entry kinds with Chinese titles',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:false,canInspect:true,onInspect:()=>{}}));
  assert.ok(html.includes('本工作台'));
@@ -41,15 +55,15 @@ test('renders five entry kinds with Chinese titles',()=>{
 test('asset states are described distinctly, not as installed or runnable',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:false,canInspect:true,onInspect:()=>{}}));
  // present: file exists but not runnable
- assert.ok(html.includes('入口文件存在'));
+ assert.ok(html.includes('预期资产存在'));
  assert.ok(!html.includes('已安装'));
  assert.ok(!html.includes('可运行'));
  // missing: not found at expected path
- assert.ok(html.includes('未发现入口文件'));
+ assert.ok(html.includes('指定位置未发现预期资产'));
  // unknown: detection not connected
- assert.ok(html.includes('探测尚未接入'));
+ assert.ok(html.includes('资产状态未知'));
  // invalid: check failed
- assert.ok(html.includes('检测异常'));
+ assert.ok(html.includes('资产类型或路径不符合检查要求'));
 });
 
 // Test 3: loading state overrides rows — no stale success
@@ -57,28 +71,28 @@ test('loading state shows checking message and hides row results',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:true,failed:false,canInspect:true,onInspect:()=>{}}));
  assert.ok(html.includes('正在检测'));
  // Should not show entry file results while loading
- assert.ok(!html.includes('入口文件存在'));
+ assert.ok(!html.includes('预期资产存在'));assert.ok(!html.includes('<li'));
 });
 
 // Test 4: failed state overrides rows — no stale success
 test('failed state shows error and hides row results',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:true,canInspect:true,onInspect:()=>{}}));
  assert.ok(html.includes('检测失败'));
- assert.ok(!html.includes('入口文件存在'));
+ assert.ok(!html.includes('预期资产存在'));assert.ok(!html.includes('<li'));
 });
 
 // Test 5: null rows with no loading/failed shows "not yet inspected"
 test('null rows without loading or failed shows not yet inspected',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:null,loading:false,failed:false,canInspect:true,onInspect:()=>{}}));
  assert.ok(html.includes('尚未检测'));
- assert.ok(!html.includes('入口文件存在'));
+ assert.ok(!html.includes('预期资产存在'));assert.ok(!html.includes('<li'));
 });
 
 // Test 6: priority — unauthenticated (canInspect=false) shows first
 test('canInspect false shows unauthenticated message and disables button',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:false,canInspect:false,onInspect:()=>{}}));
  assert.ok(html.includes('未认证'));
- assert.ok(!html.includes('入口文件存在'));
+ assert.ok(!html.includes('预期资产存在'));assert.ok(!html.includes('<li'));
  // Button must be disabled
  assert.ok(html.includes('disabled'));
 });

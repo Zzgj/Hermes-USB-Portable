@@ -1,5 +1,62 @@
 # P2 单分支交接与剩余审查
 
+## 当前三分支交接（取代下方历史单分支派单）
+
+用户已批准以 `6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f` 为共同基线：lead 创建并发布 `dev/lead` 的能力 API/面板接线工作；employee 创建 `dev/company` 并保存 CLI-BASELINE-03 三文件返工，保留退出码失败用例；reviewer 读取两分支的固定提交复审并向 lead 汇总。正式集成分支 `feat/portable-initializer` 暂不推进，Windows 退出码缺陷未关闭，不将开发检查点当作发布。
+
+lead 本次保护并逐字节保留 15 个原 WIP 文件后创建分支。本次为源码传输与规则更新，没有重新运行应用测试/构建；此前 360 项和浏览器证据是历史验证，reviewer 应审查最终发布 SHA。提交后两侧分别回交 branch/base/result、文件清单、失败/未测范围及远端回读。授权与组织细则以 AI_GUIDE 顶部为准。
+
+## 当前派单：P2-CLI-BASELINE-03（一个工作包、三个子任务）
+
+- 用户补充：lead 可直接向 employee 下发原始任务并同步 reviewer；日常进度/返工仍 employee → reviewer → lead。本工作包集中交付，不逐补丁反复派单。基线 `6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f`，分支 `feat/portable-initializer`；公司可立即基于已有基线执行，不依赖负责人尚未发布的 API/页面接线代码。
+- 唯一实现者 employee；reviewer 组织测试及返工后汇总。公司共享目录不得并发编辑/构建。允许文件仅：新增 `workbench/tests/entry-lock-concurrency.test.mjs`；修改 `workbench/tests/test_windows_job_host.py`；在 `docs/p2/ACCEPTANCE.md` 新增本工作包的开发侧验收矩阵（保留旧证据）。不改 package.json、任何生产 scripts/src、现有面板测试、其他文档或配置。
+- **T1 同 home 锁并发与隔离测试**：调用生产 acquireInstanceLock，使用本批临时 home 与已有 Node，自有子进程以 IPC/管道屏障同时争抢。两个独立进程同 home 恰一成功、另一个 INSTANCE_LOCKED，失败者不改 owner；持有者显式释放后可重取；不同 home 可同时持锁；owner 被替换后释放拒绝且替换内容保留。不得复制锁实现、只用固定 sleep 同步、以 PID 失活回收，不能扫描或清理真实锁。测试退出前回收本批子进程，再清理本批临时根。
+- **T2 Windows Job Host 隔离补证**：扩充现有 unittest，保留 host 终止及管道 EOF 两个用例；增加直接子正常退出而孙进程仍在时的清理和退出码传播、关闭 A 不影响独立自有 B、containment 拒绝时不产生业务子进程。使用已有可确认的 Python 标准库和合成 sleeper；真实 Windows handles 判定进程结束，超时不能算通过。mock 的失败注入与真实 Job 测试分层报告；不安装 Python、不借用 E 盘 data/真实 Hermes、不读取配置。只终止本批创建且持有句柄的测试进程，无法确认清理则阻塞，不全局 taskkill。无原生 Windows/Python 环境则明确阻塞/跳过，不改 Linux skip 为通过。
+- T2 的生产局限必须保留：windows-job-host.py:82 的子 stdin 为 DEVNULL，owned-process 是无头健康探测服务监督，均不能据此宣布交互式 CLI 完成；测试不能伪造终端输入支持，也不由员工改宿主代码绕过。核心接口和交互终端方案由 lead 负责。
+- **T3 验收矩阵**：逐项记录 T1/T2 的测试名、源码调用位置、合成或真实 Windows 层级、实际命令/退出码/证据与未测项；另列 CLI 后续门禁：终端交互输入、同 home 模式切换、旧 launch/Gateway 路径协调、身份不明拒绝启动、断线未知、不自动重试、正常退出完整进程树回收。已通过的旧模型/历史正文反馈不重复派给用户；不得把开发侧测试写成 E 盘验收。
+- 顺序：先保护现场并核对基线/已有测试 → 写可暴露问题的测试 → T1/T2 独立完成 → 汇总 T3 → employee 暂停 → reviewer 在同一受控快照复验。既有实现已满足新增测试时如实写覆盖补充；导入错误不是行为红灯。若暴露生产缺陷，员工交最小复现给组长，组长上报 lead，禁止越界修复或删除断言。
+- 验证范围：公司在 workbench 运行 `node --test tests/entry-lock-concurrency.test.mjs tests/instance-lock-recovery.test.mjs`、用已核实 Python 执行 `tests/test_windows_job_host.py`，随后 `npm test`、`npm run validate`、`npm run build`；每项命令独立记录退出码，Python 路径不猜测。reviewer 每批必须实际验证，缺环境则待环境验证；lead 本轮只读检查和派单，不执行测试，阶段复验另报总监决定。
+- 统一回交：完整基线/结果身份、三文件清单、测试证据、失败/跳过/未测矩阵、接口/存储/隐私影响、清理结果及建议；结果未提交就明确说明，无提交 SHA 不造数。每个失败路径最多三轮，不能无限试验。提交推送/真实实例部署须另获批准；负责人当前未发布代码的独立复审继续等待传输授权，不把本任务当该批复审。
+
+## 最新交接（2026-10-14）
+
+公司 VIEW-02 的两文件提交 `6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f` 已获取、独立复跑并快进接入主工作区；原 7 个 WIP 文件备份并逐字节保留。负责人已完成语义修正、客户端校验/请求隔离及 SettingsPage 新 API 接线，本地验证结果见 PROGRESS-GUIDE 顶部。源码仍未提交推送，不能按 6e2f64a 部署负责人修改。
+
+公司 employee/reviewer 暂停写入，原 VIEW-02 派单转为历史；不要求公司重复实现或以群内摘要审定尚未取得的负责人代码。当前实现仅资产检查，统一锁和 CLI 交互监督未完成；没有 E 盘更新或新发布授权。
+
+## 当前开发：P2-ENTRY-CAP-02 / P2-ENTRY-VIEW-02
+
+- 用户已要求开始开发及下发任务。固定 base 为 `980d42c46e207be63528c103531ff2472d9ae1a8`，分支 `feat/portable-initializer`；本机原三份文档修改保留。负责人写核心，employee 仅在公司独立工作区写下述两个新文件，不共享目录并行构建，不并发推送。本批开发不自动授权提交推送、安装依赖或更新 E 盘。
+- **负责人 CAP-02**：新增 `scripts/entry-capabilities.mjs` 并实际接入 control-server 的 `GET /api/entry-capabilities`；旧 `/api/entries` 不改。固定 schemaVersion=1，五类 kind 为 workbench/cli/tui/dashboard/desktop；assetState 为 present/missing/invalid/unknown，dependencies 固定 unverified，runtime 固定 unknown，launch 固定 `{allowed:false,reason:'LIFECYCLE_NOT_INTEGRATED'}`。不提供任意路径/命令/URL，不读取配置/正文，不探测端口，不启动进程；仅观察服务端既有根下固定资产元数据，根内符号链接保守拒绝。资产存在不证明命令、版本或依赖兼容。
+- 新 GET 接口沿用管理认证/Origin/Host 门禁，无请求参数或正文，最多 8 个并行读取，5 秒截止；断开/关闭取消且不占启动停止 busy 锁；响应固定白名单投影，不泄露原始异常。CLI 交互监督和统一入口锁尚未实现，绝不启用启动按钮。
+- **Employee VIEW-02 唯一允许新增**：`workbench/src/components/EntryCapabilitiesPanel.tsx`、`workbench/tests/entry-capabilities-panel.test.mjs`。先补失败测试，再写独立纯展示组件；不改任何现有文件，不调用网络或启动器，不添加依赖，不接入 SettingsPage/hook/server。负责人后续负责客户端 decoder、请求身份与页面接线。
+- 冻结组件契约：命名导出 `EntryCapabilitiesPanel`；导出 `EntryCapabilityRow`，字段仅 kind（上述五类）、assetState（上述四态）；props 为 `rows:readonly EntryCapabilityRow[]|null`、`loading:boolean`、`failed:boolean`、`canInspect:boolean`、`onInspect:()=>void`。不收令牌、路径、URL或任意错误正文。canInspect=false 时优先显示需认证并隐藏旧结果；其次 loading、failed、rows=null，均不展示旧成功；成功态展示结果。按钮名称“检测入口”，仅 canInspect 且非 loading 时可用；所有模式均无启动/打开动作。依赖未验证、运行状态未知、生命周期未接入须明确说明，present 仅表示资产存在。
+- 验收：五类中文标题分别为本工作台、CLI、TUI、原生 Dashboard、Desktop；四种资产状态不得合并为未安装/可用；未认证、加载、失败即便传旧 rows 也不得显示旧成功；空初始态明确；按钮禁用条件正确且不自动调用 onInspect；不得出现命令/路径链接或启动按钮。测试必须导入实际组件，静态渲染不冒充浏览器交互验证。使用现有 React/TypeScript 与 node:test；定向、npm test、validate、build 分别回交退出码，失败/跳过如实列出。
+- **Reviewer**：先只读审查上述冻结契约；employee 回交暂停后对其两文件差异和测试敏感性独立验证，不代写核心或并行修改同一目录。负责人未发布的核心源码尚不可在公司复审，不根据群内摘要宣布其通过。
+- 回交基线、文件清单、先红后绿证据、命令/退出码、失败/未测项、接口/存储/隐私影响与无越界写入确认；尚未提交时明确结果 SHA 无。代码传输依用户要求经获批 GitHub 提交及精确 SHA，不提供公司本地路径或默认推送授权。同一路径最多三轮失败后报告阻塞，扩大范围先停。
+
+## 四入口方案决定（负责人方案，实施分批验收）
+
+依据 CONTRACT-01A 回交及负责人对 open-hermes.ps1、instance-lock.mjs 的核对，采用“先分清检测语义，再建立协作入口互斥与受控生命周期，最后启用动作”的顺序，不从浏览器直接执行 PowerShell/bat。此节是设计决定，不代表实现或实机验证完成，也不扩大安装、真实实例更新及发布授权。
+
+- 五个展示对象：本工作台、CLI、TUI、原生 Dashboard、Desktop；Gateway 作为相关后台服务风险项，不自动新增产品入口。旧 web 字段兼容解释为本工作台，不直接改名破坏旧响应；新增语义须先锁定版本化接口与未知版本拒绝策略。
+- 文件存在、依赖检查、允许启动、运行健康分别表示；缺资产/版本不支持/尚未探测/被占用/结果未知不能混为未安装。路径目录存在不等于依赖可用，禁止自动安装。
+- 入口动作由管理服务按固定枚举映射固定适配器；前端不能提交任意命令、参数、路径或 URL。保留认证、Origin、规范路径约束、安全错误投影及请求去重；CLI/TUI 需要本机交互终端，不能用静默后台 Python 或新增浏览器 shell 冒充入口完成。
+- 同一规范化 home 的本项目受控入口采用互斥模式切换：P2 管理服务本身可保留，P2 托管实例与备用入口不可并发。停止旧实例需要明确用户操作，确认自有进程树退出并释放本批所有锁后才允许显式启动新模式；失败/断线/未知不自动切换、重试或回收锁。
+- 现有锁只协调遵守协议的入口；不能仅凭 manager idle、PID 不存在、检查一次目录或新入口获得锁断言无其他使用者。启用前须将相关便携启动路径纳入共同所有权/锁契约，含 Gateway 与配置写入路径的兼容审计；无法确认的外部旧入口不提供强行启动。避免父包装器与子进程重复取得同一锁，锁由覆盖完整实例生命周期的唯一监督者持有。
+- 停止需验证本次进程身份和进程树，优先支持的正常退出；不直接复用 taskkill /T /F，不全局杀进程，不自动清真实锁。正常退出与 Windows 终端宿主/子进程所有权无法验证的模式保持禁用并显示原因。
+- 首个候选是 CLI，但仅在固定源码命令、Windows 终端交互、互斥及完整生命周期均有证据后启用；TUI/Desktop/原生 Dashboard 按资产和适配证据逐项开启，不承诺同时完成。新模式不复用 P2 RPC 连接状态来伪造连接成功。
+- 核心契约、启动适配、锁/进程监督和安全验证由负责人亲自实施；公司后续仅在接口冻结后承接限定展示层及补充测试，当前不启动新的公司代码批次。最低回归包含已有 P2 实例拒绝、双击一次启动、非自有进程不可停、启动失败/断线未知、父退出子存活不释放锁、缺资产/错误版本拒绝、正常退出后可再次启动、不同 home 隔离。先合成与隔离验证，再集中 Windows 验收。
+
+## 当前任务：P2-ADAPTER-CONTRACT-01A（四入口证据盘点）
+
+- 基线 `980d42c46e207be63528c103531ff2472d9ae1a8`，分支 `feat/portable-initializer`；群聊任务单即正式交接，不要求拉取负责人未提交的文档。此前公司暂停仅对本批只读工作解除。
+- Employee：只读盘点仓库启动器、入口检测、兼容清单及其明确固定的 Hermes 源码身份。分别列出 CLI、TUI、原生 Dashboard、Desktop 与本工作台的真实入口定义、参数/工作目录/实例 home 传递位置、依赖与 Windows 适用性、是否创建进程/监听/读写配置，以及未知项；每项提供相对文件:行号和固定 SHA。找不到源码就报告缺证据，禁止猜命令或使用宿主个人安装替代便携目标。仅查非敏感源码和清单，不读取 data、配置、会话或进程命令行；不下载、不安装、不运行启动器或真实模型。
+- Reviewer：对同一清单独立只读核查引用、CLI/TUI 是否同一入口、工作台与原生 Dashboard 是否混淆，以及是否涉及另起实例/数据目录冲突；列出漏项和最低验收案例，不并发构建或代写实现。
+- 本批不改任何源码/测试/接口，不提交推送，不更新 E 盘，不改变锁或审批。负责人仅维护 HANDOFF/PROGRESS-GUIDE/project_plan；核心适配接口、认证/路径白名单、进程与锁生命周期由负责人亲自设计实现，不委派公司执行。
+- 验收：五类对象各有带固定版本的源码证据或明确未知标记；将文件存在、依赖满足、可启动、运行健康四层分开；不得由 entry kind/path 推导任意命令或 URL。回交基线、实际只读命令/退出码、证据矩阵、缺口、无写入确认及下一建议；只读批次结果 SHA 与基线相同。群内回交脱敏矩阵，不提供公司本地文件路径作为交付。最多一轮盘点加一轮补证，缺源或需扩权即停止该项。
+- 后续：负责人据证据锁定第一个可安全实施的入口及接口，再下发限定展示层/补充测试批次；本任务不等于四入口实现完成。
+
 ## 最新整合交接（2026-10-13）
 
 用户已授权双方提交推送及负责人检查合并；当前代码合并提交为 `2cd4c0aa3a6d55ded3e406c36f71c02c017775c6`，包含负责人 `4ff953c31335ada8581afd541bb6acaa8d0cdbf6` 与公司 `d0c5fb388887f542417e4a10dbb079508d874e1a`。最新实现、测试和剩余门禁只见 PROGRESS-GUIDE 顶部整合节。下方 WIN/HISTORY 派单与“不提交”限制为原批次历史，不覆盖本次明确授权。

@@ -1,6 +1,7 @@
 export const packageFiles=[
  'P2-Workbench.bat',
  'workbench/scripts/launcher-ui.mjs',
+ 'workbench/scripts/entry-capabilities.mjs',
  'workbench/scripts/prepare-capability.mjs',
  'workbench/scripts/skill-catalog.mjs',
  'workbench/scripts/prepare-learn.mjs','workbench/scripts/prepare-learn.py',

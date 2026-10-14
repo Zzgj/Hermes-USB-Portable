@@ -2,16 +2,18 @@ import {createServer} from 'node:http';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {realpath,readFile,stat} from 'node:fs/promises';
 import {join,relative,extname,isAbsolute} from 'node:path';
+import {inspectEntryCapabilities,projectEntryCapabilities} from './entry-capabilities.mjs';
 
 // Only fixed codes cross the HTTP boundary; never expose exception text, paths or output.
 const operationReasons=new Set(['INSTANCE_LOCKED','LOCK_CREATE_FAILED','LOCK_INITIALIZATION_FAILED','LOCK_IDENTITY_CHANGED','LOCK_OWNER_CHANGED','INTERRUPTED_INSTALL_REQUIRES_RECOVERY','SOURCE_ENV_REQUIRES_REVIEW','INVALID_HERMES_PATHS','INVALID_HERMES_LAYOUT','HERMES_ENTRY_MISSING','PROCESS_SPAWN_FAILED','PROCESS_STARTUP_TIMEOUT','PROCESS_HEALTH_FAILED','PROCESS_EXITED_BEFORE_READY','PROCESS_STOPPED_BEFORE_READY','PROCESS_CONTROL_FAILED','PROCESS_OUTPUT_LIMIT','PROCESS_INVALID_PORT']);
 
-export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home}) {
+export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home,inspectEntries=inspectEntryCapabilities}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
  let origin,instance=null,busy=false,closing=false,pending=Promise.resolve();
  // Read requests are bounded separately; they must not hold the lifecycle mutex.
  const historyReads=new Map();let historyGeneration=0;
+ const entryReads=new Map();
  const cancelHistory=()=>{historyGeneration++;for(const controller of historyReads.keys())controller.abort();};
  const json=(response,status,value)=>{response.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});response.end(JSON.stringify(value));};
  const authorized=request=>{
@@ -108,6 +110,27 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
       finally{clearTimeout(timer);response.removeListener('close',disconnected);controller.signal.removeEventListener('abort',rejectAbort);historyReads.delete(controller);}
      })();historyReads.set(controller,reading);await reading;return;
     }
+    if(url.pathname==='/api/entry-capabilities'&&request.method==='GET'){
+     if(url.search||request.headers['transfer-encoding']||Number(request.headers['content-length']??0)!==0){request.resume();json(response,400,{error:'INVALID_REQUEST'});return;}
+     if(entryReads.size>=8){json(response,429,{error:'ENTRY_CAPABILITIES_BUSY'});return;}
+     const controller=new AbortController();
+     const timer=setTimeout(()=>controller.abort(),5000);
+     const disconnected=()=>{if(!response.writableEnded)controller.abort();};
+     response.once('close',disconnected);
+     let rejectAbort;
+     const aborted=new Promise((_,reject)=>{rejectAbort=()=>reject(new Error('ENTRY_READ_CANCELLED'));controller.signal.addEventListener('abort',rejectAbort,{once:true});});
+     const reading=(async()=>{
+      try{
+       const value=await Promise.race([Promise.resolve().then(()=>{
+        controller.signal.throwIfAborted();return inspectEntries({source,assetsDir:root,signal:controller.signal});
+       }),aborted]);
+       if(closing||controller.signal.aborted||response.destroyed)return;
+       json(response,200,projectEntryCapabilities(value));
+      }catch{
+       if(!response.destroyed&&!response.writableEnded)json(response,400,{error:'ENTRY_CAPABILITIES_FAILED'});
+      }finally{clearTimeout(timer);response.removeListener('close',disconnected);controller.signal.removeEventListener('abort',rejectAbort);entryReads.delete(controller);}
+     })();entryReads.set(controller,reading);await reading;return;
+    }
     if(url.pathname==='/api/entries'&&request.method==='GET'){
      if(typeof detectEntries!=='function'){json(response,404,{error:'UNAVAILABLE'});return;}
      try{
@@ -167,10 +190,11 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
  return {origin,token,close:()=>{
   if(closePromise)return closePromise;
   closing=true;
+  for(const controller of entryReads.keys())controller.abort();
   cancelHistory();
   closePromise=(async()=>{
    let failure;
-   try{await pending;await Promise.allSettled([...historyReads.values()]);if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
+   try{await pending;await Promise.allSettled([...historyReads.values(),...entryReads.values()]);if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
    // A failed instance stop must not retain an unusable HTTP listener.
    // Keep the instance handle and original error for an explicit cleanup retry.
    try{await closeListener();}catch(error){failure??=error;}

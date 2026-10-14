@@ -37,13 +37,14 @@ test('learning source rejects active tasks and bounds failed/interrupted observa
 test('unconnected settings render unavailable with disabled actions, not fake update results',async()=>{
  const panel=await moduleUrl('../src/components/Panel.tsx');
  const copy=await moduleUrl('../src/data/mockData.ts');
- const entryDetectUrl=`data:text/javascript;base64,${Buffer.from('export function entryLabel(k){return k;}').toString('base64')}`;
- const useEntryDetectUrl=`data:text/javascript;base64,${Buffer.from('export function useEntryDetect(){return{entries:null,loading:false,error:null,detect:()=>{}};}').toString('base64')}`;
- const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy,'../domain/entry-detect':entryDetectUrl,'../hooks/useEntryDetect':useEntryDetectUrl}));
+ const domain=await moduleUrl('../src/domain/entry-capabilities.ts');
+ const hook=await moduleUrl('../src/hooks/useEntryCapabilities.ts',{'../domain/entry-capabilities':domain});
+ const entryPanel=await moduleUrl('../src/components/EntryCapabilitiesPanel.tsx',{'./Panel':panel});
+ const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy,'../components/EntryCapabilitiesPanel':entryPanel,'../hooks/useEntryCapabilities':hook}));
  const html=renderToStaticMarkup(React.createElement(SettingsPage,{}));
  assert.equal((html.match(/disabled=""/g)||[]).length,3);
  assert.ok(html.includes('更新接口尚未接入'));
- assert.ok(html.includes('尚未检测入口文件'));
+ assert.ok(html.includes('未认证'));
  assert.equal(html.includes('暂无更新'),false);
  assert.equal(html.includes('未检测到可用入口'),false);
  assert.equal(html.includes('0.21.0'),false);
