@@ -130,3 +130,73 @@ $target = 'E:\Hermes-P2-Test'
 记录包哈希、外壳版本、内核完整提交、Windows 版本、文件系统及运行根路径；
 每项记录通过/失败/未测及对应日志位置。分享前移除 API Key、临时令牌、私人会话和环境文件内容。
 可选组件未安装记为“未安装/未测”，不能通过修改检查结果把它变成通过。
+
+## P2-CLI-BASELINE-03：CLI 接入前的锁并发、进程所有权与验收证据
+
+基线：`6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f`
+
+### T1：锁并发与隔离测试
+
+- 测试文件：`workbench/tests/entry-lock-concurrency.test.mjs`
+- 生产调用位置：`workbench/scripts/instance-lock.mjs`（`acquireInstanceLock`）
+- 命令：`node --test tests/entry-lock-concurrency.test.mjs`，退出码 0，5/5 通过
+- 合成层级：Node.js 子进程通过 IPC 争抢同一 `home` 目录的 `.p2-manager-lock`
+- 验证内容：
+  1. 两进程同时争抢同一 home：恰好一个取得锁，另一个收到 `INSTANCE_LOCKED`
+  2. 失败者不修改持有者的 `owner.json` 内容
+  3. 持有者释放后可重新取得锁
+  4. 不同 home 可同时持锁，释放一个不影响另一个
+  5. `owner.json` 被替换后释放拒绝，替换内容保留
+
+### T2：Windows Job Host 生命周期补证
+
+- 测试文件：`workbench/tests/test_windows_job_host.py`
+- 生产调用位置：`workbench/scripts/windows-job-host.py`、`workbench/scripts/hermes-instance.mjs:23`
+- 命令：`python tests/test_windows_job_host.py -v`，退出码 1，5 pass / 1 fail
+- 合成层级：Windows 原生 Job Object + 合成 Python 子进程 + importlib 导入生产模块
+- 验证内容与结果：
+
+| 测试 | 结果 | 说明 |
+|------|------|------|
+| `test_host_termination_cleans_child_and_grandchild` | ✅ 通过 | 宿主终止后子进程和孙进程被回收 |
+| `test_manager_pipe_loss_cleans_child_and_grandchild` | ✅ 通过 | 管道断开后子进程和孙进程被回收 |
+| `test_direct_child_exits_grandchild_survives_then_host_cleans` | ✅ 通过 | 子进程退出后孙进程仍被回收 |
+| `test_two_independent_instances_closing_a_does_not_affect_b` | ✅ 通过 | 关闭 A 不影响 B 的子进程 |
+| `test_containment_failure_aborts_before_child_starts` | ✅ 通过 | importlib 导入生产模块，mock containment 失败，断言 RuntimeError 抛出且 Popen 未调用 |
+| `test_child_exit_code_propagation` | ❌ **失败（生产缺陷）** | 期望退出码 42，实际 3221225477 |
+
+**生产缺陷最小复现**：
+- Python 3.14.7，Windows 10
+- 子进程 `sys.exit(42)`，宿主 `host.wait()` 返回 3221225477（0xC0000005 ACCESS_VIOLATION）
+- stderr 含 `Fatal Python error: _enter_buffered_busy: could not acquire lock for <_io.BufferedReader name='<stdin>'> at interpreter shutdown, possibly due to daemon threads`
+- 原因：`windows-job-host.py` 的 daemon `parent_watch` 线程在解释器关闭时崩溃，损坏退出码传播
+- 此缺陷由 lead 负责修复
+
+### 集中验证矩阵
+
+| 命令 | 工作目录 | 退出码 | 结果 |
+|------|----------|--------|------|
+| `node --test tests/entry-lock-concurrency.test.mjs` | workbench | 0 | 5/5 通过 |
+| `python tests/test_windows_job_host.py -v` | workbench | 1 | 5 pass / 1 fail（退出码传播生产缺陷） |
+| `npm test` | workbench | 见回交 | 全量结果 |
+| `npm run validate` | workbench | 见回交 | 组件检查 |
+| `npm run build` | workbench | 见回交 | tsc/Vite 构建 |
+
+### 尚未实现、不能勾选通过的 CLI 门禁
+
+以下门禁由 lead 负责实现，本批不声称完成：
+
+- [ ] 终端交互输入（`windows-job-host.py` 的 `stdin=DEVNULL` 不支持 CLI 交互）
+- [ ] 同 home 模式切换（P2 托管实例与 CLI 互斥）
+- [ ] 旧启动器（`launch.bat`）及 Gateway 路径的协调与锁纳入
+- [ ] 身份不明时拒绝启动
+- [ ] 断线保持未知，不自动重试
+- [ ] 完整进程树退出后才释放锁（`managed-instance.mjs` 的 `lock.release()` 在 `child.exited` 后执行）
+- [ ] 子进程退出码正确传播（**生产缺陷已复现**：daemon 线程崩溃导致退出码损坏，`test_child_exit_code_propagation` 失败，由 lead 修复）
+
+### 未测范围
+
+- 未做浏览器端 CLI 启动交互验证（功能未实现）
+- 未做真实 Hermes CLI 进程启动（仅合成测试进程）
+- 未做 E 盘实机验收
+- POSIX 进程组测试在 Windows 上跳过（9 项），不作为通过
