@@ -160,14 +160,13 @@ $target = 'E:\Hermes-P2-Test'
 - 生产调用位置：`workbench/scripts/windows-job-host.py`、`workbench/scripts/hermes-instance.mjs:23`
 - 命令：`python tests/test_windows_job_host.py -v`，退出码 1，5 pass / 1 fail
 - 合成层级：Windows 原生 Job Object + 合成 Python 子进程 + importlib 导入生产模块
-- 测试稳定化（P2-CLI-BASELINE-04 返工3）：
-  - Test 1 子进程打印 PID 后轮询等待信号文件 `go.txt`（30s 超时），测试取得全部 OpenProcess 句柄后创建该文件释放子进程
-  - 子进程收到 `go.txt` 后创建 `done.txt` 作为独立退出许可证据；测试在验证孙进程回收前检查 `done.txt` 存在，区分正常退出和超时退出
-  - Test 1b 用 `lines.get(timeout=15)` 等待子进程 PID 输出替代 `time.sleep(1)`
-  - stderr 从 `stderr_buf` 获取实际输出，不再为空字符串
-  - 多行 Python 代码用 `\n` 分隔替代单行分号语法
-  - reader 线程（stdout/stderr）在关闭流前 `join(timeout=5)` 确认回收
-  - 异常路径清理顺序：kill host → 等待退出 → 清理句柄 → join readers → 关闭流 → 删除信号文件和临时目录
+- 测试稳定化（P2-CLI-BASELINE-05）：
+  - T1 `LineQueue` 每次等待独立管理 timer 和完成状态；成功/超时/退出时 `clearTimeout`；旧 timer 不能拒绝新请求；只允许一个挂起 `nextLine()`
+  - T1 `trackChild` SIGKILL 后有界等待并确认退出，不用固定 500ms sleep；`CleanupTracker` 确认所有子进程退出后才删根目录；`t.after` 按注册顺序(FIFO)执行，root cleanup 最后注册
+  - T1 `LineQueue` 处理 stdout `end` 事件，保留最后一行不丢失
+  - T2 `_cleanup_handles_and_readers` 统一清理：kill host → 检查 `TerminateProcess` 返回值 → 检查 `WaitForSingleObject` 返回值为 `WAIT_OBJECT_0` → `join(timeout=5)` 后检查 `is_alive()` → 关闭流
+  - T2 异常路径和正常路径统一进入清理流程；两个 reader 都 join 并检查 `is_alive`
+  - T2 A/B 存活断言只接受 `WAIT_TIMEOUT(258)`，不接受 `WAIT_FAILED` 或其他非零值
   - 退出码断言保留失败状态，不跳过
   - containment 测试通过 importlib 导入生产模块 + mock 验证
 - 验证内容与结果：

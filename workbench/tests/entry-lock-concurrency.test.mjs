@@ -1,7 +1,6 @@
-// P2-CLI-BASELINE-04 T1: Lock concurrency and isolation tests.
+// P2-CLI-BASELINE-05 T1: Lock concurrency and isolation tests.
 // Uses production acquireInstanceLock with real subprocess contention.
-// Children report 'ready' and wait for 'go' before attempting lock acquisition,
-// ensuring true simultaneous contention rather than sequential startup.
+// Children report 'ready' and wait for 'go' before attempting lock acquisition.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,rm,lstat} from 'node:fs/promises';
@@ -13,13 +12,13 @@ const LOCK_MODULE=new URL('../scripts/instance-lock.mjs',import.meta.url).href;
 
 async function makeRoot(t){
  const root=await mkdtemp(join(tmpdir(),'p2-lock-conc-'));
- t.after(()=>rm(root,{recursive:true,force:true}));
  return root;
 }
 
-// Spawn a child that reports 'ready', waits for 'go' on stdin, then attempts lock.
-// After acquiring or failing, writes a JSON result line. On 'release' stdin,
-// releases and writes 'released', then exits.
+function registerRootCleanup(t,cleanup){
+ t.after(async()=>{const ok=await cleanup.cleanupRoot();if(!ok)throw new Error('Root cleanup failed: not all children confirmed exited');});
+}
+
 function spawnLockAcquirer(home,label){
  const code=`
   import {acquireInstanceLock} from ${JSON.stringify(LOCK_MODULE)};
@@ -53,61 +52,118 @@ function spawnLockAcquirer(home,label){
  return spawn(process.execPath,['--input-type=module','-e',code],{stdio:['pipe','pipe','pipe']});
 }
 
-// Message queue for robust stdout line reading. Handles chunked data,
-// multiple lines, and child exit. Errors on timeout or unexpected exit.
+// Message queue with per-wait timer isolation. Each nextLine() call creates
+// its own timer and completion flag; the timer is cleared on success, timeout,
+// or child exit. Old timers cannot reject new waits via shared state.
 class LineQueue{
  constructor(child,timeoutMs=15000){
-  this.buf='';this.queue=[];this.resolveWait=null;this.rejectWait=null;this.exited=false;
+  this.buf='';this.queue=[];this.exited=false;this.exitInfo=null;
   this.timeoutMs=timeoutMs;this.child=child;
+  this.pending=null; // {resolve, reject, timer, done}
   child.stdout.on('data',chunk=>{
    this.buf+=chunk.toString();
    let idx;
    while((idx=this.buf.indexOf('\n'))>=0){
     const line=this.buf.slice(0,idx);
     this.buf=this.buf.slice(idx+1);
-    if(this.resolveWait){const r=this.resolveWait;this.resolveWait=null;this.rejectWait=null;r(line);}
-    else this.queue.push(line);
+    if(this.pending&&!this.pending.done){
+     this.pending.done=true;clearTimeout(this.pending.timer);
+     const r=this.pending.resolve;this.pending=null;r(line);
+    }else{
+     this.queue.push(line);
+    }
+   }
+  });
+  child.stdout.on('end',()=>{
+   // Process any remaining buffered data as a final line if non-empty
+   if(this.buf.length>0){
+    const line=this.buf;
+    this.buf='';
+    if(this.pending&&!this.pending.done){
+     this.pending.done=true;clearTimeout(this.pending.timer);
+     const r=this.pending.resolve;this.pending=null;r(line);
+    }else{
+     this.queue.push(line);
+    }
    }
   });
   child.on('exit',(code,signal)=>{
-   this.exited=true;
-   if(this.rejectWait){const r=this.rejectWait;this.resolveWait=null;this.rejectWait=null;
-    r(new Error(`Child exited code=${code} signal=${signal} before next line. Remaining buffer: ${this.buf.slice(0,200)}`));}
+   this.exited=true;this.exitInfo={code,signal};
+   if(this.pending&&!this.pending.done){
+    this.pending.done=true;clearTimeout(this.pending.timer);
+    const r=this.pending.reject;this.pending=null;
+    r(new Error(`Child exited code=${code} signal=${signal} before next line. Remaining: ${this.buf.slice(0,200)}`));
+   }
   });
   child.on('error',err=>{
-   if(this.rejectWait){const r=this.rejectWait;this.resolveWait=null;this.rejectWait=null;r(err);}
+   if(this.pending&&!this.pending.done){
+    this.pending.done=true;clearTimeout(this.pending.timer);
+    const r=this.pending.reject;this.pending=null;r(err);
+   }
   });
  }
  async nextLine(){
   if(this.queue.length>0)return this.queue.shift();
-  if(this.exited)throw new Error('Child already exited, no more lines');
+  if(this.exited)throw new Error(`Child already exited (code=${this.exitInfo?.code}), no more lines`);
+  if(this.pending)throw new Error('Concurrent nextLine() not supported — only one pending wait at a time');
   return new Promise((resolve,reject)=>{
-   this.resolveWait=resolve;this.rejectWait=reject;
-   setTimeout(()=>{if(this.rejectWait){const r=this.rejectWait;this.resolveWait=null;this.rejectWait=null;
-    r(new Error(`TIMEOUT after ${this.timeoutMs}ms waiting for line`));}},this.timeoutMs);
+   const timer=setTimeout(()=>{
+    if(!this.pending||this.pending.done)return;
+    this.pending.done=true;
+    this.pending=null;
+    reject(new Error(`TIMEOUT after ${this.timeoutMs}ms waiting for line`));
+   },this.timeoutMs);
+   this.pending={resolve,reject,timer,done:false};
   });
  }
 }
 
-// Cleanup helper: send release, wait for exit with bounded timeout, kill if needed.
-// Registered at spawn time so it runs even on assertion failure.
-function trackChild(child,t){
- let exited=false;
- child.on('exit',()=>{exited=true;});
+// Track child for cleanup. Creates exit promise at spawn time.
+// Sends release, bounded wait, SIGKILL if needed, then CONFIRMS exit.
+// Root deletion happens only after all tracked children confirm exited.
+function trackChild(child,t,cleanupTracker){
+ const exitPromise=new Promise(resolve=>{child.on('exit',()=>resolve());});
  child.stdin.on('error',()=>{});
+ cleanupTracker.addChild(child);
+ child.on('exit',()=>{cleanupTracker.childExited(child);});
  t.after(async()=>{
-  if(!exited){
+  if(child.exitCode===null&&child.signalCode===null){
    try{child.stdin.end('release\n');}catch{}
-   const result=await Promise.race([
-    new Promise(r=>{child.on('exit',()=>r(true));}),
+   let exited=await Promise.race([
+    exitPromise.then(()=>true),
     new Promise(r=>setTimeout(()=>r(false),5000)),
    ]);
-   if(!result){try{child.kill('SIGKILL');}catch{} await new Promise(r=>setTimeout(r,500));}
+   if(!exited){
+    try{child.kill('SIGKILL');}catch{}
+    exited=await Promise.race([
+     exitPromise.then(()=>true),
+     new Promise(r=>setTimeout(()=>r(false),3000)),
+    ]);
+    if(!exited){
+     throw new Error(`Cleanup failure: child PID ${child.pid} did not exit after SIGKILL`);
+    }
+   }
   }
  });
 }
 
-// Wait for child to report 'ready'
+// CleanupTracker ensures root dir is only deleted after all children confirmed exited.
+class CleanupTracker{
+ constructor(){this.root=null;this.exitedCount=0;this.totalCount=0;this.childSet=new Set();}
+ setRoot(root){this.root=root;}
+ addChild(child){this.totalCount++;this.childSet.add(child);}
+ childExited(child){
+  if(this.childSet.has(child)){this.exitedCount++;this.childSet.delete(child);}
+ }
+ async cleanupRoot(){
+  if(!this.root)return true;
+  if(this.exitedCount<this.totalCount){
+   return false;
+  }
+  try{await rm(this.root,{recursive:true,force:true});return true;}catch{return false;}
+ }
+}
+
 async function waitReady(lq,label){
  const line=await lq.nextLine();
  const msg=JSON.parse(line);
@@ -116,26 +172,25 @@ async function waitReady(lq,label){
  return msg;
 }
 
-// Test 1: two subprocesses racing for the same home — exactly one acquires, one gets INSTANCE_LOCKED
+// Test 1: two subprocesses racing for the same home
 test('two concurrent acquirers on same home: exactly one wins, one gets INSTANCE_LOCKED',async t=>{
+ const cleanup=new CleanupTracker();
  const root=await makeRoot(t);
+ cleanup.setRoot(root);
  const home=join(root,'data');
  await mkdir(home);
 
  const childA=spawnLockAcquirer(home,'A');
  const childB=spawnLockAcquirer(home,'B');
- trackChild(childA,t);trackChild(childB,t);
+ trackChild(childA,t,cleanup);trackChild(childB,t,cleanup);
+ registerRootCleanup(t,cleanup);
  const lqA=new LineQueue(childA),lqB=new LineQueue(childB);
 
- // Wait for both to report ready
  await waitReady(lqA,'A');
  await waitReady(lqB,'B');
-
- // Send go to both simultaneously
  childA.stdin.write('go\n');
  childB.stdin.write('go\n');
 
- // Collect both results
  const results=[];
  results.push(JSON.parse(await lqA.nextLine()));
  results.push(JSON.parse(await lqB.nextLine()));
@@ -149,12 +204,14 @@ test('two concurrent acquirers on same home: exactly one wins, one gets INSTANCE
 
 // Test 2: loser does not modify winner's owner.json content
 test('loser does not modify winner owner content',async t=>{
+ const cleanup=new CleanupTracker();
  const root=await makeRoot(t);
+ cleanup.setRoot(root);
  const home=join(root,'data');
  await mkdir(home);
 
  const childA=spawnLockAcquirer(home,'A');
- trackChild(childA,t);
+ trackChild(childA,t,cleanup);
  const lqA=new LineQueue(childA);
  await waitReady(lqA,'A');
  childA.stdin.write('go\n');
@@ -165,7 +222,8 @@ test('loser does not modify winner owner content',async t=>{
  const ownerBefore=await readFile(ownerPath,'utf8');
 
  const childB=spawnLockAcquirer(home,'B');
- trackChild(childB,t);
+ trackChild(childB,t,cleanup);
+ registerRootCleanup(t,cleanup);
  const lqB=new LineQueue(childB);
  await waitReady(lqB,'B');
  childB.stdin.write('go\n');
@@ -178,27 +236,27 @@ test('loser does not modify winner owner content',async t=>{
 
 // Test 3: after release, the same home can be re-acquired
 test('after release, same home can be re-acquired',async t=>{
+ const cleanup=new CleanupTracker();
  const root=await makeRoot(t);
+ cleanup.setRoot(root);
  const home=join(root,'data');
  await mkdir(home);
 
  const childA=spawnLockAcquirer(home,'A');
- trackChild(childA,t);
+ trackChild(childA,t,cleanup);
  const lqA=new LineQueue(childA);
  await waitReady(lqA,'A');
  childA.stdin.write('go\n');
  assert.equal(JSON.parse(await lqA.nextLine()).result,'acquired');
 
- // Release A
  childA.stdin.write('release\n');
  assert.equal(JSON.parse(await lqA.nextLine()).result,'released');
 
- // Lock dir should be gone
  await assert.rejects(()=>lstat(join(home,'.p2-manager-lock')),/ENOENT/);
 
- // Re-acquire with C
  const childC=spawnLockAcquirer(home,'C');
- trackChild(childC,t);
+ trackChild(childC,t,cleanup);
+ registerRootCleanup(t,cleanup);
  const lqC=new LineQueue(childC);
  await waitReady(lqC,'C');
  childC.stdin.write('go\n');
@@ -207,13 +265,16 @@ test('after release, same home can be re-acquired',async t=>{
 
 // Test 4: different homes can hold locks simultaneously, releasing one doesn't affect the other
 test('different homes hold locks simultaneously, independent release',async t=>{
+ const cleanup=new CleanupTracker();
  const root=await makeRoot(t);
+ cleanup.setRoot(root);
  const homeA=join(root,'homeA'),homeB=join(root,'homeB');
  await mkdir(homeA);await mkdir(homeB);
 
  const childA=spawnLockAcquirer(homeA,'A');
  const childB=spawnLockAcquirer(homeB,'B');
- trackChild(childA,t);trackChild(childB,t);
+ trackChild(childA,t,cleanup);trackChild(childB,t,cleanup);
+ registerRootCleanup(t,cleanup);
  const lqA=new LineQueue(childA),lqB=new LineQueue(childB);
 
  await waitReady(lqA,'A');await waitReady(lqB,'B');
@@ -221,23 +282,20 @@ test('different homes hold locks simultaneously, independent release',async t=>{
  assert.equal(JSON.parse(await lqA.nextLine()).result,'acquired');
  assert.equal(JSON.parse(await lqB.nextLine()).result,'acquired');
 
- // Release A
  childA.stdin.write('release\n');
  assert.equal(JSON.parse(await lqA.nextLine()).result,'released');
 
- // A's lock should be gone
  await assert.rejects(()=>lstat(join(homeA,'.p2-manager-lock')),/ENOENT/);
- // B's lock should still exist
  const bStat=await lstat(join(homeB,'.p2-manager-lock'));
  assert.ok(bStat.isDirectory(),'B lock must survive A release');
 });
 
 // Test 5: owner content replaced → release rejects, replacement content preserved
-// This test uses same-process verification (not subprocess) because it tests
-// the lock's internal identity check, not concurrent behavior.
+// Same-process verification (not subprocess) — tests lock's internal identity check.
 test('tampered owner blocks release, replacement content preserved',async t=>{
  const {acquireInstanceLock}=await import('../scripts/instance-lock.mjs');
- const root=await makeRoot(t);
+ const root=await mkdtemp(join(tmpdir(),'p2-lock-conc-'));
+ t.after(()=>rm(root,{recursive:true,force:true}));
  const home=join(root,'data');
  await mkdir(home);
 

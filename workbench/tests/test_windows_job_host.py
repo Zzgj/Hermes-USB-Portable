@@ -66,6 +66,34 @@ class JobHostTests(unittest.TestCase):
             host.stdin.close()
 
 
+    def _cleanup_handles_and_readers(self, kernel, handles, host, stdout_reader, stderr_reader, stderr_buf):
+        """Unified cleanup: kill host, wait, clean handles, join readers, close streams."""
+        cleanup_errors = []
+        if host.poll() is None:
+            host.kill()
+            host.wait(timeout=10)
+        for handle in handles:
+            wait_result = kernel.WaitForSingleObject(handle, 0)
+            if wait_result != 0:  # Still alive
+                if not kernel.TerminateProcess(handle, 1):
+                    cleanup_errors.append(f'TerminateProcess failed for handle')
+                else:
+                    term_wait = kernel.WaitForSingleObject(handle, 5000)
+                    if term_wait != 0:  # WAIT_OBJECT_0 = 0
+                        cleanup_errors.append(f'Process did not exit after TerminateProcess (wait={term_wait})')
+            kernel.CloseHandle(handle)
+        # Join both readers with is_alive check
+        stdout_reader.join(timeout=5)
+        if stdout_reader.is_alive():
+            cleanup_errors.append('stdout_reader still alive after join timeout')
+        stderr_reader.join(timeout=5)
+        if stderr_reader.is_alive():
+            cleanup_errors.append('stderr_reader still alive after join timeout')
+        host.stdout.close()
+        host.stderr.close()
+        host.stdin.close()
+        return cleanup_errors
+
     def test_direct_child_exits_grandchild_survives_then_host_cleans(self):
         """Child exits normally but grandchild is still alive; host exit must clean it.
 
@@ -135,21 +163,7 @@ class JobHostTests(unittest.TestCase):
             self.assertEqual(kernel.WaitForSingleObject(grandchild_handle, 5000), 0,
                              'Grandchild survived host exit')
         finally:
-            if host.poll() is None:
-                host.kill()
-                host.wait(timeout=10)
-            for handle in handles:
-                if kernel.WaitForSingleObject(handle, 0) != 0:
-                    kernel.TerminateProcess(handle, 1)
-                    kernel.WaitForSingleObject(handle, 5000)
-                kernel.CloseHandle(handle)
-            # Wait for reader threads to finish before closing streams
-            stdout_reader.join(timeout=5)
-            stderr_reader.join(timeout=5)
-            host.stdout.close()
-            host.stderr.close()
-            host.stdin.close()
-            # Clean up signal files and temp dir
+            cleanup_errors = self._cleanup_handles_and_readers(kernel, handles, host, stdout_reader, stderr_reader, stderr_buf)
             for f in [go_file, done_file]:
                 try:
                     os.remove(f)
@@ -159,6 +173,8 @@ class JobHostTests(unittest.TestCase):
                 os.rmdir(tmpdir)
             except OSError:
                 pass
+            if cleanup_errors:
+                raise AssertionError(f'Cleanup failures: {cleanup_errors}')
 
     def test_child_exit_code_propagation(self):
         """Child exits with code 42; host must propagate that exit code.
@@ -215,13 +231,8 @@ class JobHostTests(unittest.TestCase):
                              f'Exit code propagation failed: expected 42, got {host.returncode}. '
                              f'stderr snippet: {stderr_output[:200]!r}')
         finally:
-            if host.poll() is None:
-                host.kill()
-                host.wait(timeout=10)
-            stdout_reader.join(timeout=5)
-            host.stdout.close()
-            host.stderr.close()
-            host.stdin.close()
+            cleanup_errors = self._cleanup_handles_and_readers(
+                None, [], host, stdout_reader, stderr_reader, stderr_buf)
             try:
                 os.remove(go_file)
             except OSError:
@@ -230,6 +241,10 @@ class JobHostTests(unittest.TestCase):
                 os.rmdir(tmpdir)
             except OSError:
                 pass
+            if cleanup_errors:
+                # Don't mask the test assertion failure, but record cleanup issues
+                import warnings
+                warnings.warn(f'Cleanup failures in exit code test: {cleanup_errors}')
 
     def test_two_independent_instances_closing_a_does_not_affect_b(self):
         """Two independent job host instances; closing A must not kill B's children."""
@@ -268,14 +283,18 @@ class JobHostTests(unittest.TestCase):
             # Terminate host_a
             host_a.terminate()
             host_a.wait(timeout=10)
-            # A's children must be cleaned
+            # A's children must be cleaned: only WAIT_OBJECT_0 (0) counts as exited
             for handle in handles_a:
-                self.assertEqual(kernel.WaitForSingleObject(handle, 5000), 0,
-                                 'Instance A descendant survived A host exit')
-            # B's children must still be alive
+                wait_result = kernel.WaitForSingleObject(handle, 5000)
+                self.assertEqual(wait_result, 0,
+                                 f'Instance A descendant survived A host exit (wait_result={wait_result})')
+            # B's children must still be alive: only WAIT_TIMEOUT (258) counts as alive
+            WAIT_TIMEOUT = 258
             for handle in handles_b:
-                self.assertNotEqual(kernel.WaitForSingleObject(handle, 1000), 0,
-                                    'Instance B descendant was affected by A host exit')
+                wait_result = kernel.WaitForSingleObject(handle, 1000)
+                self.assertEqual(wait_result, WAIT_TIMEOUT,
+                                 f'Instance B wait returned {wait_result}, expected WAIT_TIMEOUT({WAIT_TIMEOUT}) '
+                                 f'— either B was affected by A or wait API failed')
         finally:
             for host in [host_a, host_b]:
                 if host.poll() is None:
@@ -283,9 +302,14 @@ class JobHostTests(unittest.TestCase):
                     host.wait(timeout=10)
             for handles in [handles_a, handles_b]:
                 for handle in handles:
-                    if kernel.WaitForSingleObject(handle, 0) != 0:
+                    wait_result = kernel.WaitForSingleObject(handle, 0)
+                    if wait_result != 0:
                         kernel.TerminateProcess(handle, 1)
-                        kernel.WaitForSingleObject(handle, 5000)
+                        term_wait = kernel.WaitForSingleObject(handle, 5000)
+                        # Check that termination actually succeeded
+                        if term_wait != 0:
+                            import warnings
+                            warnings.warn(f'Failed to confirm process exit after TerminateProcess (wait={term_wait})')
                     kernel.CloseHandle(handle)
             for host in [host_a, host_b]:
                 host.stdout.close()
