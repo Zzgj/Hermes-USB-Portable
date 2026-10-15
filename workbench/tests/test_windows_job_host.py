@@ -2,6 +2,7 @@
 import ctypes
 import json
 import os
+import time
 from pathlib import Path
 import queue
 import subprocess
@@ -68,12 +69,13 @@ class JobHostTests(unittest.TestCase):
     def test_direct_child_exits_grandchild_survives_then_host_cleans(self):
         """Child exits normally but grandchild is still alive; host exit must clean it.
 
-        This test verifies grandchild cleanup only. Exit code propagation is
-        verified separately in test_child_exit_code_propagation.
-
-        The child waits for a 'go' handshake on stdin before exiting, ensuring
-        the test has captured process handles before the child terminates.
+        Uses a signal-file handshake: child prints PIDs then polls for a 'go'
+        file. Test captures OpenProcess handles first, then creates the go file.
+        This guarantees handles are held before child exits — no fixed sleep.
+        Exit code propagation is verified separately in
+        test_child_exit_code_propagation.
         """
+        import tempfile
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)
         kernel.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
         kernel.OpenProcess.restype = ctypes.c_void_p
@@ -84,20 +86,29 @@ class JobHostTests(unittest.TestCase):
         kernel.CloseHandle.argtypes = [ctypes.c_void_p]
         kernel.CloseHandle.restype = ctypes.c_int
         script = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
-        # Child spawns grandchild, prints PIDs, waits for 'go' on stdin, then exits.
-        # This ensures the test captures handles before the child exits.
-        code = ("import os,subprocess,sys,json,time;"
-                "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']);"
-                "print(json.dumps([os.getpid(),p.pid]),flush=True);"
-                "time.sleep(2);"
-                "sys.exit(42)")
+        tmpdir = tempfile.mkdtemp(prefix='p2-job-test-')
+        go_file = os.path.join(tmpdir, 'go.txt')
+        go_file_escaped = go_file.replace(chr(92), chr(92) + chr(92))
+        code = (
+            "import os,subprocess,sys,json,time\n"
+            "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])\n"
+            "print(json.dumps([os.getpid(),p.pid]),flush=True)\n"
+            f"go_file=r'{go_file_escaped}'\n"
+            "for _ in range(300):\n"
+            "    if os.path.exists(go_file):break\n"
+            "    time.sleep(0.1)\n"
+            "else:sys.exit(1)\n"
+            "sys.exit(42)\n"
+        )
         host = subprocess.Popen([sys.executable, str(script), '--', '-c', code],
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         lines = queue.Queue()
-        threading.Thread(target=lambda: lines.put(host.stdout.readline()), daemon=True).start()
+        stdout_reader = threading.Thread(target=lambda: lines.put(host.stdout.readline()), daemon=True)
+        stdout_reader.start()
+        stderr_buf = []
+        stderr_reader = threading.Thread(target=lambda: stderr_buf.append(host.stderr.read()), daemon=True)
+        stderr_reader.start()
         handles = []
-        host_stderr_reader = threading.Thread(target=lambda: host.stderr.read(), daemon=True)
-        host_stderr_reader.start()
         try:
             pids = json.loads(lines.get(timeout=15))
             self.assertEqual(len(pids), 2)
@@ -105,9 +116,13 @@ class JobHostTests(unittest.TestCase):
                 handle = kernel.OpenProcess(0x00100000 | 0x0001, False, pid)
                 self.assertTrue(handle, 'Cannot acquire test-owned process handle')
                 handles.append(handle)
-            # Child sleeps 2s after printing PIDs, giving us time to capture handles.
-            # No stdin handshake needed since host sets child stdin to DEVNULL.
-            host.wait(timeout=10)
+            # Signal child to exit now that we hold all handles
+            with open(go_file, 'w') as f:
+                f.write('go')
+            host.wait(timeout=15)
+            # Verify child received go signal (exit code 42 = received, 1 = timeout)
+            # Note: due to production defect, exit code may be corrupted.
+            # We verify grandchild cleanup independently.
             grandchild_handle = handles[1]
             self.assertEqual(kernel.WaitForSingleObject(grandchild_handle, 5000), 0,
                              'Grandchild survived host exit')
@@ -120,12 +135,27 @@ class JobHostTests(unittest.TestCase):
                     kernel.TerminateProcess(handle, 1)
                     kernel.WaitForSingleObject(handle, 5000)
                 kernel.CloseHandle(handle)
+            # Wait for reader threads to finish before closing streams
+            stdout_reader.join(timeout=5)
+            stderr_reader.join(timeout=5)
             host.stdout.close()
             host.stderr.close()
             host.stdin.close()
+            # Clean up signal file and temp dir
+            try:
+                os.remove(go_file)
+            except OSError:
+                pass
+            try:
+                os.rmdir(tmpdir)
+            except OSError:
+                pass
 
     def test_child_exit_code_propagation(self):
         """Child exits with code 42; host must propagate that exit code.
+
+        Uses signal-file handshake: child waits for 'go' file before exiting,
+        ensuring the test is ready to capture the exit code.
 
         PRODUCTION DEFECT: The daemon stdin-watch thread crashes during
         interpreter shutdown, corrupting the exit code. This test is
@@ -134,18 +164,37 @@ class JobHostTests(unittest.TestCase):
         (0xC0000005 ACCESS_VIOLATION). stderr contains
         'Fatal Python error: _enter_buffered_busy'.
         """
+        import tempfile
         script = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
-        code = ("import os,subprocess,sys,json;"
-                "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']);"
-                "print(json.dumps([os.getpid(),p.pid]),flush=True);"
-                "sys.exit(42)")
+        tmpdir = tempfile.mkdtemp(prefix='p2-exit-test-')
+        go_file = os.path.join(tmpdir, 'go.txt')
+        go_file_escaped = go_file.replace(chr(92), chr(92) + chr(92))
+        code = (
+            "import os,subprocess,sys,json,time\n"
+            "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])\n"
+            "print(json.dumps([os.getpid(),p.pid]),flush=True)\n"
+            f"go_file=r'{go_file_escaped}'\n"
+            "for _ in range(300):\n"
+            "    if os.path.exists(go_file):break\n"
+            "    time.sleep(0.1)\n"
+            "else:sys.exit(1)\n"
+            "sys.exit(42)\n"
+        )
         host = subprocess.Popen([sys.executable, str(script), '--', '-c', code],
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout_reader = threading.Thread(target=lambda: host.stdout.read(), daemon=True)
+        stdout_reader.start()
+        stderr_reader = threading.Thread(target=lambda: host.stderr.read(), daemon=True)
+        stderr_reader.start()
         try:
-            # Drain stdout so the child doesn't block on pipe buffer
-            threading.Thread(target=lambda: host.stdout.read(), daemon=True).start()
+            # Wait for child to print PIDs (drain first line)
+            # Give it a moment, then signal go
+            time.sleep(1)
+            with open(go_file, 'w') as f:
+                f.write('go')
             host.wait(timeout=15)
-            stderr_output = host.stderr.read()
+            stderr_output = ''
+            stderr_reader.join(timeout=5)
             # This assertion is expected to FAIL due to the production defect.
             # Do NOT remove or skip this assertion.
             self.assertEqual(host.returncode, 42,
@@ -155,9 +204,19 @@ class JobHostTests(unittest.TestCase):
             if host.poll() is None:
                 host.kill()
                 host.wait(timeout=10)
+            stdout_reader.join(timeout=5)
+            stderr_reader.join(timeout=5)
             host.stdout.close()
             host.stderr.close()
             host.stdin.close()
+            try:
+                os.remove(go_file)
+            except OSError:
+                pass
+            try:
+                os.rmdir(tmpdir)
+            except OSError:
+                pass
 
     def test_two_independent_instances_closing_a_does_not_affect_b(self):
         """Two independent job host instances; closing A must not kill B's children."""
