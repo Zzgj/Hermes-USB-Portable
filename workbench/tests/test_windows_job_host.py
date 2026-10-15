@@ -13,6 +13,23 @@ from unittest.mock import Mock
 
 
 class CleanupRegressionTests(unittest.TestCase):
+    def test_failed_termination_accepts_only_confirmed_exit(self):
+        for final_wait in [0, 258, 0xffffffff, 17]:
+            with self.subTest(final_wait=final_wait):
+                host = Mock(); host.poll.return_value = 0
+                kernel = Mock()
+                kernel.WaitForSingleObject.side_effect = [258, final_wait]
+                kernel.TerminateProcess.return_value = 0
+                stdout_reader = Mock(); stdout_reader.is_alive.return_value = False
+                stderr_reader = Mock(); stderr_reader.is_alive.return_value = False
+                errors = JobHostTests()._cleanup_handles_and_readers(
+                    kernel, [123], host, stdout_reader, stderr_reader, [])
+                self.assertEqual(bool(errors), final_wait != 0)
+                self.assertEqual(kernel.WaitForSingleObject.call_args_list,
+                                 [((123, 0),), ((123, 5000),)])
+                kernel.TerminateProcess.assert_called_once_with(123, 1)
+                kernel.CloseHandle.assert_called_once_with(123)
+
     def test_termination_failures_are_reported_and_other_handles_continue(self):
         for terminated, final_wait in [(0, 258), (1, 258), (1, 0xffffffff)]:
             with self.subTest(terminated=terminated, final_wait=final_wait):
@@ -128,9 +145,12 @@ class JobHostTests(unittest.TestCase):
             def stop_handle():
                 result = kernel.WaitForSingleObject(handle, 0)
                 if result == 258:
-                    if not kernel.TerminateProcess(handle, 1):
-                        cleanup_errors.append('TerminateProcess failed')
+                    terminated = kernel.TerminateProcess(handle, 1)
+                    # The process may exit between the zero-time wait and termination.
+                    # Only a signaled original handle proves cleanup, not the request.
                     if kernel.WaitForSingleObject(handle, 5000) != 0:
+                        if not terminated:
+                            cleanup_errors.append('TerminateProcess failed')
                         cleanup_errors.append('descendant exit unconfirmed')
                 elif result != 0:
                     cleanup_errors.append('WaitForSingleObject failed')
