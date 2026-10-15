@@ -67,18 +67,26 @@ def contain_current_process():
     return job
 
 
+def watch_parent(parent_fd):
+    # Never hold a Python BufferedReader lock in a daemon at interpreter shutdown.
+    # This dedicated manager pipe is not the business child's stdin.
+    try:
+        while os.read(parent_fd, 1):
+            pass
+    except OSError:
+        # Loss of the supervision pipe is fail-closed, just like EOF.
+        pass
+    os._exit(104)
+
+
 def main():
     if len(sys.argv) < 3 or sys.argv[1] != '--':
         return 2
     # Do not close this handle explicitly: the host is itself a member, and process
     # teardown must retain the child exit code while closing all OS handles.
     job = contain_current_process()
-    def parent_watch():
-        # Manager owns the only writer; parent crash closes it without a console event.
-        while sys.stdin.buffer.read(1):
-            pass
-        os._exit(104)
-    threading.Thread(target=parent_watch, daemon=True).start()
+    parent_fd = sys.stdin.fileno()
+    threading.Thread(target=watch_parent, args=(parent_fd,), daemon=True).start()
     child = subprocess.Popen([sys.executable, *sys.argv[2:]], stdin=subprocess.DEVNULL,
                              stdout=sys.stdout, stderr=sys.stderr, close_fds=True)
     try:

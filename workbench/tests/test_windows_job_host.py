@@ -13,6 +13,24 @@ from unittest.mock import Mock
 
 
 class CleanupRegressionTests(unittest.TestCase):
+    def test_parent_watch_uses_raw_descriptor_and_fails_closed(self):
+        import importlib.util
+        from unittest.mock import patch, call
+        path = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
+        spec = importlib.util.spec_from_file_location('job_host_watch_test', path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for reads in [[b'x', b''], [OSError('pipe lost')]]:
+            with self.subTest(reads=reads):
+                with patch.object(module.os, 'read', side_effect=reads) as read, \
+                     patch.object(module.os, '_exit', side_effect=SystemExit(104)) as exit_process:
+                    with self.assertRaises(SystemExit) as caught:
+                        module.watch_parent(123)
+                    self.assertEqual(caught.exception.code, 104)
+                    self.assertEqual(read.call_args_list, [call(123, 1)] * len(reads))
+                    exit_process.assert_called_once_with(104)
+
     def test_failed_termination_accepts_only_confirmed_exit(self):
         for final_wait in [0, 258, 0xffffffff, 17]:
             with self.subTest(final_wait=final_wait):
