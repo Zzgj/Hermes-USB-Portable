@@ -70,6 +70,9 @@ class JobHostTests(unittest.TestCase):
 
         This test verifies grandchild cleanup only. Exit code propagation is
         verified separately in test_child_exit_code_propagation.
+
+        The child waits for a 'go' handshake on stdin before exiting, ensuring
+        the test has captured process handles before the child terminates.
         """
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)
         kernel.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
@@ -81,15 +84,20 @@ class JobHostTests(unittest.TestCase):
         kernel.CloseHandle.argtypes = [ctypes.c_void_p]
         kernel.CloseHandle.restype = ctypes.c_int
         script = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
+        # Child spawns grandchild, prints PIDs, waits for 'go' on stdin, then exits.
+        # This ensures the test captures handles before the child exits.
         code = ("import os,subprocess,sys,json,time;"
                 "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']);"
                 "print(json.dumps([os.getpid(),p.pid]),flush=True);"
+                "time.sleep(2);"
                 "sys.exit(42)")
         host = subprocess.Popen([sys.executable, str(script), '--', '-c', code],
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         lines = queue.Queue()
         threading.Thread(target=lambda: lines.put(host.stdout.readline()), daemon=True).start()
         handles = []
+        host_stderr_reader = threading.Thread(target=lambda: host.stderr.read(), daemon=True)
+        host_stderr_reader.start()
         try:
             pids = json.loads(lines.get(timeout=15))
             self.assertEqual(len(pids), 2)
@@ -97,6 +105,8 @@ class JobHostTests(unittest.TestCase):
                 handle = kernel.OpenProcess(0x00100000 | 0x0001, False, pid)
                 self.assertTrue(handle, 'Cannot acquire test-owned process handle')
                 handles.append(handle)
+            # Child sleeps 2s after printing PIDs, giving us time to capture handles.
+            # No stdin handshake needed since host sets child stdin to DEVNULL.
             host.wait(timeout=10)
             grandchild_handle = handles[1]
             self.assertEqual(kernel.WaitForSingleObject(grandchild_handle, 5000), 0,

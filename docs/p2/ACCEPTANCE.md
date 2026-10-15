@@ -133,20 +133,26 @@ $target = 'E:\Hermes-P2-Test'
 
 ## P2-CLI-BASELINE-03：CLI 接入前的锁并发、进程所有权与验收证据
 
-基线：`6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f`
+基线：`4136c30c08847b68656982b3d6971b5333935142`（P2-CLI-BASELINE-04 返工）
 
 ### T1：锁并发与隔离测试
 
 - 测试文件：`workbench/tests/entry-lock-concurrency.test.mjs`
 - 生产调用位置：`workbench/scripts/instance-lock.mjs`（`acquireInstanceLock`）
 - 命令：`node --test tests/entry-lock-concurrency.test.mjs`，退出码 0，5/5 通过
-- 合成层级：Node.js 子进程通过 IPC 争抢同一 `home` 目录的 `.p2-manager-lock`
+- 合成层级：Node.js 子进程通过 ready/go 屏障同步争抢同一 `home` 目录的 `.p2-manager-lock`
+- 测试稳定化（P2-CLI-BASELINE-04）：
+  - 子进程先报告 `ready`，父进程确认双方就绪后发送 `go`，确保真实同时争抢
+  - 使用 `LineQueue` 消息队列处理分块/多行 stdout，超时和提前退出均报错
+  - `trackChild` 在 spawn 时即注册退出观察，所有路径（含断言失败）均清理子进程
+  - 先回收进程再删临时目录；stdin `end()` + `on('error')` 防止 EPIPE
+  - Test 5 文案已修正为"同进程验证"（非子进程）
 - 验证内容：
-  1. 两进程同时争抢同一 home：恰好一个取得锁，另一个收到 `INSTANCE_LOCKED`
+  1. 两进程经 ready/go 同步后争抢同一 home：恰好一个取得锁，另一个收到 `INSTANCE_LOCKED`
   2. 失败者不修改持有者的 `owner.json` 内容
   3. 持有者释放后可重新取得锁
   4. 不同 home 可同时持锁，释放一个不影响另一个
-  5. `owner.json` 被替换后释放拒绝，替换内容保留
+  5. `owner.json` 被替换后释放拒绝，替换内容保留（同进程验证）
 
 ### T2：Windows Job Host 生命周期补证
 
@@ -154,6 +160,11 @@ $target = 'E:\Hermes-P2-Test'
 - 生产调用位置：`workbench/scripts/windows-job-host.py`、`workbench/scripts/hermes-instance.mjs:23`
 - 命令：`python tests/test_windows_job_host.py -v`，退出码 1，5 pass / 1 fail
 - 合成层级：Windows 原生 Job Object + 合成 Python 子进程 + importlib 导入生产模块
+- 测试稳定化（P2-CLI-BASELINE-04）：
+  - Test 1 子进程打印 PID 后 sleep 2s 再退出，确保测试取得进程句柄前不竞态
+  - stderr reader 线程防止管道阻塞
+  - 退出码断言保留失败状态，不跳过
+  - containment 测试通过 importlib 导入生产模块 + mock 验证
 - 验证内容与结果：
 
 | 测试 | 结果 | 说明 |
