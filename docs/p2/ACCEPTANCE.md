@@ -160,9 +160,12 @@ $target = 'E:\Hermes-P2-Test'
 - 生产调用位置：`workbench/scripts/windows-job-host.py`、`workbench/scripts/hermes-instance.mjs:23`
 - 命令：`python tests/test_windows_job_host.py -v`，退出码 1，5 pass / 1 fail
 - 合成层级：Windows 原生 Job Object + 合成 Python 子进程 + importlib 导入生产模块
-- 测试稳定化（P2-CLI-BASELINE-04 返工2）：
-  - Test 1 子进程打印 PID 后轮询等待信号文件 `go.txt`（30s 超时），测试取得全部 OpenProcess 句柄后创建该文件释放子进程——消除竞态，不用固定 sleep
-  - 多行 Python 代码用 `\n` 分隔替代单行分号语法，避免 for 循环体解析错误
+- 测试稳定化（P2-CLI-BASELINE-04 返工3）：
+  - Test 1 子进程打印 PID 后轮询等待信号文件 `go.txt`（30s 超时），测试取得全部 OpenProcess 句柄后创建该文件释放子进程
+  - 子进程收到 `go.txt` 后创建 `done.txt` 作为独立退出许可证据；测试在验证孙进程回收前检查 `done.txt` 存在，区分正常退出和超时退出
+  - Test 1b 用 `lines.get(timeout=15)` 等待子进程 PID 输出替代 `time.sleep(1)`
+  - stderr 从 `stderr_buf` 获取实际输出，不再为空字符串
+  - 多行 Python 代码用 `\n` 分隔替代单行分号语法
   - reader 线程（stdout/stderr）在关闭流前 `join(timeout=5)` 确认回收
   - 异常路径清理顺序：kill host → 等待退出 → 清理句柄 → join readers → 关闭流 → 删除信号文件和临时目录
   - 退出码断言保留失败状态，不跳过

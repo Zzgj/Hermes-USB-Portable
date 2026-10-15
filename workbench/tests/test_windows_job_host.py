@@ -88,16 +88,20 @@ class JobHostTests(unittest.TestCase):
         script = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
         tmpdir = tempfile.mkdtemp(prefix='p2-job-test-')
         go_file = os.path.join(tmpdir, 'go.txt')
+        done_file = os.path.join(tmpdir, 'done.txt')
         go_file_escaped = go_file.replace(chr(92), chr(92) + chr(92))
+        done_file_escaped = done_file.replace(chr(92), chr(92) + chr(92))
         code = (
             "import os,subprocess,sys,json,time\n"
             "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])\n"
             "print(json.dumps([os.getpid(),p.pid]),flush=True)\n"
             f"go_file=r'{go_file_escaped}'\n"
+            f"done_file=r'{done_file_escaped}'\n"
             "for _ in range(300):\n"
             "    if os.path.exists(go_file):break\n"
             "    time.sleep(0.1)\n"
             "else:sys.exit(1)\n"
+            "open(done_file,'w').close()\n"
             "sys.exit(42)\n"
         )
         host = subprocess.Popen([sys.executable, str(script), '--', '-c', code],
@@ -120,9 +124,13 @@ class JobHostTests(unittest.TestCase):
             with open(go_file, 'w') as f:
                 f.write('go')
             host.wait(timeout=15)
-            # Verify child received go signal (exit code 42 = received, 1 = timeout)
-            # Note: due to production defect, exit code may be corrupted.
-            # We verify grandchild cleanup independently.
+            # Independent evidence: child must have received go signal and
+            # created done.txt before exiting. If child timed out, done.txt
+            # won't exist and we must not count this as a pass.
+            self.assertTrue(os.path.exists(done_file),
+                            'Child did not receive go signal (done.txt missing) — '
+                            'grandchild cleanup cannot be attributed to normal exit')
+            # Now verify grandchild cleanup
             grandchild_handle = handles[1]
             self.assertEqual(kernel.WaitForSingleObject(grandchild_handle, 5000), 0,
                              'Grandchild survived host exit')
@@ -141,11 +149,12 @@ class JobHostTests(unittest.TestCase):
             host.stdout.close()
             host.stderr.close()
             host.stdin.close()
-            # Clean up signal file and temp dir
-            try:
-                os.remove(go_file)
-            except OSError:
-                pass
+            # Clean up signal files and temp dir
+            for f in [go_file, done_file]:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
             try:
                 os.rmdir(tmpdir)
             except OSError:
@@ -155,7 +164,8 @@ class JobHostTests(unittest.TestCase):
         """Child exits with code 42; host must propagate that exit code.
 
         Uses signal-file handshake: child waits for 'go' file before exiting,
-        ensuring the test is ready to capture the exit code.
+        ensuring the test is ready to capture the exit code. Child prints PIDs
+        first; test waits for that output before signaling.
 
         PRODUCTION DEFECT: The daemon stdin-watch thread crashes during
         interpreter shutdown, corrupting the exit code. This test is
@@ -182,19 +192,23 @@ class JobHostTests(unittest.TestCase):
         )
         host = subprocess.Popen([sys.executable, str(script), '--', '-c', code],
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        stdout_reader = threading.Thread(target=lambda: host.stdout.read(), daemon=True)
+        lines = queue.Queue()
+        stdout_reader = threading.Thread(target=lambda: lines.put(host.stdout.readline()), daemon=True)
         stdout_reader.start()
-        stderr_reader = threading.Thread(target=lambda: host.stderr.read(), daemon=True)
+        stderr_buf = []
+        stderr_reader = threading.Thread(target=lambda: stderr_buf.append(host.stderr.read()), daemon=True)
         stderr_reader.start()
         try:
-            # Wait for child to print PIDs (drain first line)
-            # Give it a moment, then signal go
-            time.sleep(1)
+            # Wait for child to print PIDs (no fixed sleep)
+            pids = json.loads(lines.get(timeout=15))
+            self.assertEqual(len(pids), 2)
+            # Signal child to exit
             with open(go_file, 'w') as f:
                 f.write('go')
             host.wait(timeout=15)
-            stderr_output = ''
+            # Get stderr from reader buffer
             stderr_reader.join(timeout=5)
+            stderr_output = stderr_buf[0] if stderr_buf else ''
             # This assertion is expected to FAIL due to the production defect.
             # Do NOT remove or skip this assertion.
             self.assertEqual(host.returncode, 42,
@@ -205,7 +219,6 @@ class JobHostTests(unittest.TestCase):
                 host.kill()
                 host.wait(timeout=10)
             stdout_reader.join(timeout=5)
-            stderr_reader.join(timeout=5)
             host.stdout.close()
             host.stderr.close()
             host.stdin.close()
