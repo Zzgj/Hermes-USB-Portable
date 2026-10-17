@@ -234,7 +234,7 @@ $target = 'E:\Hermes-P2-Test'
 
 | 场景 | 期望行为 | 证据层级 | 对应测试 |
 |---|---|---|---|
-| 未认证 / 请求进行中 | 隐藏旧成功结果，全部动作禁用 | 自动合成 | `unauthenticated and pending panels cannot invoke any action`、`pending unauthenticated and failed states hide stale success and block actions` |
+| 未认证 / 请求进行中 | 隐藏旧成功结果，全部动作禁用 | 自动合成 | `unauthenticated and pending panels cannot invoke any action`、`pending and unauthenticated states hide stale success and block every action` |
 | 未勾选确认 | 启动/停止按钮禁用，直接触发事件也不产生动作 | 自动合成 | `unconfirmed gate blocks every mutating action even for stray events` |
 | 确认后启动 | 仅一次动作，确认被消耗 | 自动合成 | `confirming enables the idle start action and the click consumes the confirmation` |
 | 刷新 | 清除确认，只读状态，不触发动作 | 自动合成 | `refresh clears the confirmation and only refreshes` |
@@ -244,7 +244,9 @@ $target = 'E:\Hermes-P2-Test'
 | 403/409/500 | 只暴露固定错误码，不泄露正文，正文被取消 | 自动合成 | `error responses expose no body text and are cancelled` |
 | 身份切换 / 往返 / 卸载 | 旧请求被中止，迟到响应不覆盖新状态，旧回调不发起动作 | 自动合成 | `identity round trip fences the previous generation and its actions`、`late rejection after unmount cannot mark a failed state` |
 | CLI 入口打开 Dashboard | 始终禁用/无效 | 自动合成 | `a CLI entry can never open a Dashboard view` |
-| 停止 | 需确认；`idle` 时按钮禁用 | 自动合成 | `stop requires an explicit confirmation and never applies to an idle entry` |
+| 停止 | 需确认；`idle` 时按钮禁用（只断言渲染态） | 自动合成 | `stop requires an explicit confirmation; only the disabled state is asserted while idle` |
+| 失败后显式停止 | failed 时启动/打开被抑制，刷新可用，确认后仍可显式停止 | 自动合成 | `failed state blocks start and open but keeps refresh and an explicit confirmed stop` |
+| 未知后显式停止 | `unknown`+failed 仍可经确认显式停止，不自动启动 | 自动合成 | `unknown after a failed request still permits an explicit confirmed stop` |
 
 ### 仍未验证（不得勾选为通过）
 
@@ -257,3 +259,43 @@ $target = 'E:\Hermes-P2-Test'
 - [ ] 模型调用与实际任务执行：本批不调用模型，CLI 进程创建不等于交互可用。
 
 自动合成测试通过只说明上述客户端/组件契约成立，不替代 Windows／U 盘验收，也不构成发布授权。
+
+## P2-09-NATIVE-PACKAGE-03 P2 增量包完整性与启动器匹配
+
+**P2 增量包不是完整启动外壳。** 它只把白名单内的源码与构建产物放进 `Hermes-Portable-P2`，`release_ready` 固定为 `false`；`launch.bat`、`scripts/open-hermes.ps1`、`scripts/start-web-workbench.ps1` 属于 P0 外壳，**不在增量包内**，必须由已安装的 P0 交付提供，且与包内 `portable-entry-guard.json` 记录的哈希一致。有包内文件名不等于安装后可启动。
+
+### 运行前提（缺一项即拒绝，不自动修复）
+
+| 前提 | 校验方式 | 拒绝表现 |
+|---|---|---|
+| 目标根含 `data/` 且与传入 home 指向同一目录 | `realpath(root/data) === realpath(home)` | `PORTABLE_ENTRY_HOME_MISMATCH` |
+| 四个协调文件存在且哈希匹配（`launch.bat`、`scripts/open-hermes.ps1`、`scripts/start-web-workbench.ps1`、`workbench/scripts/legacy-hermes-entry.mjs`） | 按 LF 归一化后的 SHA-256 与包内 guard JSON 比对 | `ENTRY_COORDINATION_UNCONFIRMED`（缺失时为 ENOENT） |
+| 无进行中的安装/恢复 | 不存在 `logs/diagnostics/p2-install-active.json`、`updates/hermes-restore-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY` |
+| 无外部旧入口占用 | 不存在 `<home>/gateway.pid`（不做 PID 存活推断、不自动回收） | `EXTERNAL_ENTRY_REQUIRES_REVIEW` |
+
+### 场景矩阵（`node --test tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs`，本机 15 通过 / 0 失败）
+
+| 场景 | 期望 | 证据层级 | 对应测试 |
+|---|---|---|---|
+| 白名单真实源码 staging | 逐文件字节/大小/SHA-256 与源一致，manifest 无重复，`release_ready=false` | 自动合成 | `staging copies real whitelisted sources byte for byte and stays non-releasable` |
+| 原生模块完整性 | host/协议/adapter/manager/guard/JSON 等 12 个文件在包内且非空 | 自动合成 | 同上 |
+| P0 文件不在增量包内 | `launch.bat` 等不出现在 manifest | 自动合成 | 同上、`native payload includes complete composition without taking over P0 launchers` |
+| 匹配的 P0 启动器组合 | 真实 guard 正常返回，LF/CRLF 等价 | 自动合成 | `the staged guard accepts a matching P0 launcher set` |
+| 只有 P2 输出、缺 P0 启动器 | 拒绝 | 自动合成 | `the guard rejects a P2-only root without the P0 launchers` |
+| 旧版或被篡改启动器 | `ENTRY_COORDINATION_UNCONFIRMED` | 自动合成 | `the guard rejects a stale or tampered launcher` |
+| 缺 legacy 协调模块 | 拒绝 | 自动合成 | `the guard rejects a missing legacy coordination module` |
+| 安装/恢复标记存在 | 拒绝且两个标记原文保留 | 自动合成 | `the guard refuses interrupted-install markers and leaves both markers untouched` |
+| 外部 gateway 收据 | 拒绝，收据与既有实例锁都不被清除 | 自动合成 | `an external gateway receipt is refused without clearing the receipt or an existing lock` |
+| home 不是 `<root>/data` | `PORTABLE_ENTRY_HOME_MISMATCH` | 自动合成 | `a home that is not the portable data directory is refused` |
+
+### 被拒绝后的处理
+
+拒绝只说明安装一致性未确认，**不清理实例锁、不删除或改写恢复标记、不自动停止外部进程、不自动安装/构建**。处置顺序：确认没有运行中的旧实例 → 用户明确处理后，重装匹配的 P0 外壳或删除残留标记 → 重新校验。`accepted` 只代表操作被接收，CLI 进程被创建也不等于交互可用。
+
+### 本批仍未验证（不得勾选）
+
+- [ ] Windows 实机安装/升级、真实 `zip` 归档与 U 盘复制
+- [ ] 真实 P0 外壳与真实 Hermes 配置共同运行的端到端流程
+- [ ] 浏览器点击、CLI 交互输入与模型调用
+- [ ] 增量包安装后的整棵进程树退出与锁释放实机证据
+
