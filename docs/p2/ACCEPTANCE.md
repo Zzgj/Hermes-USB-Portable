@@ -215,3 +215,45 @@ $target = 'E:\Hermes-P2-Test'
 - 未做真实 Hermes CLI 进程启动（仅合成测试进程）
 - 未做 E 盘实机验收
 - POSIX 进程组测试在 Windows 上跳过（9 项），不作为通过
+
+## P2-09-NATIVE-01 原生入口验收矩阵（NATIVE-COVERAGE-02，源码 `41387cdb`）
+
+本批只补回归测试与验收指引，不改生产实现。以下“自动合成证据”均为 Node 测试证据，**不是浏览器点击、Windows 实机或模型验证**。历史记录上方保留，不复用旧结论。
+
+### 操作步骤（设置页，仅认证后可用）
+
+1. 在 AI 对话页完成管理服务认证；未认证时面板只显示“需认证”，所有动作禁用。
+2. 点“读取原生入口状态”。状态为 `unknown` 时必须先读取，不自动启动、不清锁。
+3. 勾选风险确认（启动可能读取本实例配置；停止可能中断任务）。
+4. 点“启动 CLI”或“启动原生 Dashboard”；确认随即被消耗，重复点击无效。
+5. 管理器回报 `accepted` 后**自动重读状态**；读取失败则回到 `unknown`，不自动重试。
+6. 仅当 `kind=dashboard` 且 `state=running` 时“打开已运行的 Dashboard”可用；CLI 入口永远不可打开 Dashboard。
+7. 停止需再次确认；停止后须确认整棵进程树退出才释放锁，本页不断言进程已退出。
+
+### 场景矩阵
+
+| 场景 | 期望行为 | 证据层级 | 对应测试 |
+|---|---|---|---|
+| 未认证 / 请求进行中 | 隐藏旧成功结果，全部动作禁用 | 自动合成 | `unauthenticated and pending panels cannot invoke any action`、`pending unauthenticated and failed states hide stale success and block actions` |
+| 未勾选确认 | 启动/停止按钮禁用，直接触发事件也不产生动作 | 自动合成 | `unconfirmed gate blocks every mutating action even for stray events` |
+| 确认后启动 | 仅一次动作，确认被消耗 | 自动合成 | `confirming enables the idle start action and the click consumes the confirmation` |
+| 刷新 | 清除确认，只读状态，不触发动作 | 自动合成 | `refresh clears the confirmation and only refreshes` |
+| 状态 `unknown` | 禁止启动，需显式读取；动作失败后仍 `unknown` | 自动合成 | `unknown cannot start…`、`status read failure after acknowledgement stays unknown without retry` |
+| 动作已应答但状态读取失败 | 保持 `unknown` 且标记失败，无自动重试 | 自动合成 | 同上 |
+| 响应正文异常 | 正文挂起取消、累计超 4096 字节、非法 UTF-8、截断 JSON 一律拒绝 | 自动合成 | `cancelling a pending body…`、`chunked bodies over the byte limit…`、`invalid utf-8 and truncated json are rejected` |
+| 403/409/500 | 只暴露固定错误码，不泄露正文，正文被取消 | 自动合成 | `error responses expose no body text and are cancelled` |
+| 身份切换 / 往返 / 卸载 | 旧请求被中止，迟到响应不覆盖新状态，旧回调不发起动作 | 自动合成 | `identity round trip fences the previous generation and its actions`、`late rejection after unmount cannot mark a failed state` |
+| CLI 入口打开 Dashboard | 始终禁用/无效 | 自动合成 | `a CLI entry can never open a Dashboard view` |
+| 停止 | 需确认；`idle` 时按钮禁用 | 自动合成 | `stop requires an explicit confirmation and never applies to an idle entry` |
+
+### 仍未验证（不得勾选为通过）
+
+- [ ] 浏览器真实点击与页面渲染：本批为合成调度器事件回调，三个浏览器脚本仍在 setup 阶段失败，未进入业务断言。
+- [ ] Windows 实机：CLI 独立控制台交互输入、整棵进程树退出确认、Job 归属与父管道关闭。
+- [ ] 同 home 互斥：P2 托管实例与 CLI/Gateway 的模式切换。
+- [ ] 旧入口（`launch.bat`、Gateway）与配置写入路径的绕行拒绝。
+- [ ] 未知状态不清锁、不自动重启在真实锁文件上的行为。
+- [ ] 固定 Hermes 版本与 P0 启动器匹配前提（版本/资产不一致时应拒绝而非安装或构建）。
+- [ ] 模型调用与实际任务执行：本批不调用模型，CLI 进程创建不等于交互可用。
+
+自动合成测试通过只说明上述客户端/组件契约成立，不替代 Windows／U 盘验收，也不构成发布授权。
