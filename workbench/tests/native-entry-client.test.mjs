@@ -19,12 +19,12 @@ test('transport sends fixed bodyless actions and strictly checks acknowledgement
  }
 });
 function harness(){
- const slots=[],calls=[];let cursor=0;
- const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],v=>slots[i]=v];},useRef(initial){const i=cursor++;return slots[i]??(slots[i]={current:initial});},useCallback(fn){return fn;},useEffect(fn,deps){const i=cursor++;if(!slots[i]||slots[i].identity!==deps[0]){slots[i]?.cleanup?.();slots[i]={identity:deps[0],cleanup:fn()};}}};
+ const slots=[],calls=[];let cursor=0,writes=0;
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],v=>{writes++;slots[i]=v;}];},useRef(initial){const i=cursor++;return slots[i]??(slots[i]={current:initial});},useCallback(fn){return fn;},useEffect(fn,deps){const i=cursor++;if(!slots[i]||slots[i].identity!==deps[0]){slots[i]?.cleanup?.();slots[i]={identity:deps[0],cleanup:fn()};}}};
  const module={exports:{}};
  const requestNativeEntry=(identity,action,signal)=>new Promise((resolve,reject)=>calls.push({identity,action,signal,resolve,reject}));
  new Function('require','module','exports',compile('../src/hooks/useNativeEntry.ts'))(name=>name==='react'?react:{requestNativeEntry},module,module.exports);
- return {calls,render(identity='synthetic'){cursor=0;return module.exports.useNativeEntry(identity);},close(){for(const slot of slots)slot?.cleanup?.();}};
+ return {calls,get writes(){return writes;},render(identity='synthetic'){cursor=0;return module.exports.useNativeEntry(identity);},close(){for(const slot of slots)slot?.cleanup?.();}};
 }
 test('unknown cannot start; duplicate action blocked; acknowledgement requires status read',async()=>{
  const h=harness();await h.render().act('cli');assert.equal(h.calls.length,0);
@@ -115,6 +115,9 @@ test('identity round trip fences the previous generation and its actions',async(
 });
 test('late rejection after unmount cannot mark a failed state',async()=>{
  const h=harness(),old=h.render(),p=old.refresh();h.close();assert.equal(h.calls[0].signal.aborted,true);
+ const writesAfterClose=h.writes;
  h.calls[0].reject(new Error('late'));await p;await old.refresh();
- assert.equal(h.calls.length,1);h.close();
+ assert.equal(h.writes,writesAfterClose,'no state write after unmount');
+ const view=h.render();assert.equal(view.failed,false);assert.equal(view.status.state,'unknown');
+ assert.equal(h.calls.length,1);
 });
