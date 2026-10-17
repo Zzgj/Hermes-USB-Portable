@@ -122,12 +122,12 @@ test('no launch or open button in any state',()=>{
  }
 });
 
-// Test 10: shows dependency unverified and lifecycle not connected disclaimers
+// Test 10: asset observations remain separate from lifecycle control
 test('shows dependency and lifecycle disclaimers',()=>{
  const html=renderToStaticMarkup(React.createElement(EntryCapabilitiesPanel,{rows:ALL_ROWS,loading:false,failed:false,canInspect:true,onInspect:()=>{}}));
  assert.ok(html.includes('依赖未验证'));
  assert.ok(html.includes('运行状态未知'));
- assert.ok(html.includes('生命周期未接入'));
+ assert.ok(html.includes('本检测列表不管理生命周期'));
 });
 
 // Test 11: loading priority over failed

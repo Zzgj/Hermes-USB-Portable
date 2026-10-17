@@ -18,6 +18,12 @@ REM Resolve portable root (directory containing this script)
 set "PORTABLE_ROOT=%~dp0"
 set "PORTABLE_ROOT=%PORTABLE_ROOT:~0,-1%"
 
+REM P2 early guard is advisory; run_hermes acquires the shared lock atomically.
+if exist "%PORTABLE_ROOT%\data\.p2-manager-lock" (
+    echo [错误] 当前实例正在使用或退出状态未确认。请在持有它的控制器中停止，不要删除锁。
+    exit /b 1
+)
+
 set "HERMES_HOME=%PORTABLE_ROOT%\data"
 set "CACHE_DIR=%PORTABLE_ROOT%\.cache"
 set "RUNTIME_DIR=%CACHE_DIR%\runtimes\windows-x64"
@@ -52,6 +58,10 @@ if not exist "%RUNTIME_DIR%\git\bin\bash.exe" set "NEED_RUNTIME_SETUP=1"
 if not exist "%RUNTIME_DIR%\venv\Scripts\python.exe" set "NEED_RUNTIME_SETUP=1"
 if not exist "%SRC_DIR%\hermes-agent\.git" set "NEED_RUNTIME_SETUP=1"
 if "!NEED_RUNTIME_SETUP!"=="1" (
+    if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+        echo [错误] 已安装 P2 协调入口，运行环境缺失或已迁移。请停止所有实例后执行独立修复，不在启动中自动安装。
+        exit /b 1
+    )
     echo.
     echo %BRIGHT_CYAN%================================================================%RESET%
     echo %BOLD%%BRIGHT_WHITE%  HERMES PORTABLE  /  便携工作台%RESET%
@@ -109,7 +119,7 @@ set "LOCALAPPDATA=%PORTABLE_ROOT%\.cache\windows-localappdata"
 REM ---------------------------------------------------------------------------
 REM Update pyvenv.cfg with the current absolute path to ensure portability
 REM ---------------------------------------------------------------------------
-if exist "%VIRTUAL_ENV%\pyvenv.cfg" (
+if not exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" if exist "%VIRTUAL_ENV%\pyvenv.cfg" (
     for /f "tokens=2" %%v in ('"%RUNTIME_DIR%\python\python.exe" --version 2^>nul') do set "PYTHON_VERSION=%%v"
     if not defined PYTHON_VERSION set "PYTHON_VERSION=3.11.15"
     (
@@ -141,7 +151,7 @@ if /I "%~1"=="hermes" (
 REM If explicit arguments were passed, run Hermes directly (skip menu)
 if not "%ARGS%"=="" (
     call :write_portable_event launcher direct-command started
-    "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" %ARGS%
+    call :run_hermes %ARGS%
     set "DIRECT_EXIT=!errorlevel!"
     if not "!DIRECT_EXIT!"=="0" (
         call :write_portable_event launcher direct-command failed
@@ -276,7 +286,7 @@ goto :detect_status
 :menu_chat
 echo.
 call :write_portable_event launcher chat started
-"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()"
+call :run_hermes
 if errorlevel 1 (
     call :write_portable_event launcher chat failed
 ) else (
@@ -287,7 +297,7 @@ goto :show_menu
 :menu_setup
 echo.
 call :write_portable_event launcher hermes-setup started
-"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" setup
+call :run_hermes setup
 if errorlevel 1 (
     call :write_portable_event launcher hermes-setup failed
 ) else (
@@ -298,7 +308,7 @@ goto :detect_status
 :menu_gateway
 if "!GATEWAY_STATUS!"=="运行中 - PID !GATEWAY_PID!" (
     call :write_portable_event launcher gateway-stop started
-    "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway stop
+    call :run_hermes gateway stop
     if errorlevel 1 (
         call :write_portable_event launcher gateway-stop failed
     ) else (
@@ -310,7 +320,11 @@ if "!GATEWAY_STATUS!"=="运行中 - PID !GATEWAY_PID!" (
     echo.
     echo %CYAN%正在请求后台启动原生网关，请稍候…%RESET%
     call :write_portable_event launcher gateway-start started
-    start "" "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway
+    if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+        start "Hermes Gateway Controller" "%RUNTIME_DIR%\node\node.exe" "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" --root "%PORTABLE_ROOT%" -- gateway
+    ) else (
+        start "" "%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway
+    )
     call :write_portable_event launcher gateway-start observed
     timeout /t 2 /nobreak >nul
 )
@@ -359,6 +373,11 @@ goto :show_advanced
 
 :adv_doctor
 echo.
+if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+    call :run_hermes doctor
+    pause
+    goto :show_advanced
+)
 call :write_portable_event doctor doctor started
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation doctor
 if errorlevel 1 (
@@ -387,11 +406,11 @@ goto :show_advanced
 
 :adv_config
 echo.
-"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" config edit
+call :run_hermes config edit
 goto :show_advanced
 
 :adv_restart
-"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" gateway restart
+call :run_hermes gateway restart
 echo.
 echo %CYAN%网关重启命令已返回，请核对上方结果和刷新后的状态。%RESET%
 pause
@@ -399,6 +418,11 @@ goto :detect_status
 
 :adv_update
 echo.
+if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+    echo [提示] P2 协调模式不从此菜单执行运行环境更新。请先正常停止所有实例，再进入独立维护流程。
+    pause
+    goto :show_advanced
+)
 echo %CYAN%正在读取 Hermes 官方更新计划…%RESET%
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation update-plan
 if errorlevel 1 (
@@ -422,6 +446,7 @@ goto :show_advanced
 
 :adv_update_apply
 echo.
+if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" exit /b 1
 call :write_portable_event diagnostics update-apply started
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-update.ps1" -Root "%PORTABLE_ROOT%"
 if errorlevel 1 (
@@ -440,6 +465,11 @@ goto :detect_status
 
 :adv_update_check
 echo.
+if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+    echo [提示] 当前版本的 P2 协调模式未接入更新检查；请停止实例后使用独立维护入口。
+    pause
+    goto :show_advanced
+)
 call :write_portable_event diagnostics update-check started
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\invoke-hermes-observation.ps1" -Root "%PORTABLE_ROOT%" -Operation update-check
 if errorlevel 1 (
@@ -450,6 +480,16 @@ if errorlevel 1 (
 )
 pause
 goto :show_advanced
+
+:run_hermes
+if exist "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" (
+    "%RUNTIME_DIR%\node\node.exe" "%PORTABLE_ROOT%\workbench\scripts\legacy-hermes-entry.mjs" --root "%PORTABLE_ROOT%" -- %*
+    exit /b !errorlevel!
+)
+REM Older P0 without P2 retains its original entry; never bypass an active lock.
+if exist "%HERMES_HOME%\.p2-manager-lock" exit /b 1
+"%PORTABLE_PYTHON%" -c "from hermes_cli.main import main; main()" %*
+exit /b !errorlevel!
 
 :write_portable_event
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PORTABLE_ROOT%\scripts\write-portable-log-event.ps1" -Root "%PORTABLE_ROOT%" -Component "%~1" -Event "%~2" -Status "%~3" >nul 2>&1

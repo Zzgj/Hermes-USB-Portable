@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "launch.bat",
+      "sha256": "efbdd3826947d89ec8d6085b491190663a1baefbda75b35052fdf95aadd5cb9d"
+    },
+    {
+      "path": "scripts/open-hermes.ps1",
+      "sha256": "d2954f915f7428722a7f8f73e659ec3b499b5fb2c1004f52c994844bbbb98f57"
+    },
+    {
+      "path": "scripts/start-web-workbench.ps1",
+      "sha256": "b1215b84ae035d00cd676342278c6315540070069ea7819593f7e9c38b6993ba"
+    },
+    {
+      "path": "workbench/scripts/legacy-hermes-entry.mjs",
+      "sha256": "641bc0398e99cb6054fc187aacfdbc5893adb06687a23114cd5563f6b961861f"
+    }
+  ]
+}

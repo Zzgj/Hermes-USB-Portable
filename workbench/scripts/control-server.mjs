@@ -7,7 +7,7 @@ import {inspectEntryCapabilities,projectEntryCapabilities} from './entry-capabil
 // Only fixed codes cross the HTTP boundary; never expose exception text, paths or output.
 const operationReasons=new Set(['INSTANCE_LOCKED','LOCK_CREATE_FAILED','LOCK_INITIALIZATION_FAILED','LOCK_IDENTITY_CHANGED','LOCK_OWNER_CHANGED','INTERRUPTED_INSTALL_REQUIRES_RECOVERY','SOURCE_ENV_REQUIRES_REVIEW','INVALID_HERMES_PATHS','INVALID_HERMES_LAYOUT','HERMES_ENTRY_MISSING','PROCESS_SPAWN_FAILED','PROCESS_STARTUP_TIMEOUT','PROCESS_HEALTH_FAILED','PROCESS_EXITED_BEFORE_READY','PROCESS_STOPPED_BEFORE_READY','PROCESS_CONTROL_FAILED','PROCESS_OUTPUT_LIMIT','PROCESS_INVALID_PORT']);
 
-export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home,inspectEntries=inspectEntryCapabilities}) {
+export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home,inspectEntries=inspectEntryCapabilities,nativeEntries}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
  const root=await realpath(assets),token=randomBytes(32).toString('base64url');
  let origin,instance=null,busy=false,closing=false,pending=Promise.resolve();
@@ -140,6 +140,33 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
      }catch{json(response,400,{error:'ENTRY_DETECTION_FAILED'});}
      return;
     }
+    if(url.pathname==='/api/native-entry/status'&&request.method==='GET'){
+     if(!nativeEntries){json(response,404,{error:'UNAVAILABLE'});return;}
+     if(url.search||request.headers['transfer-encoding']||Number(request.headers['content-length']??0)!==0){request.resume();json(response,400,{error:'BODY_NOT_ALLOWED'});return;}
+     const value=nativeEntries.status();
+     json(response,200,{kind:['cli','dashboard'].includes(value.kind)?value.kind:null,
+      state:['idle','starting','running','stopping','unknown'].includes(value.state)?value.state:'unknown'});return;
+    }
+    const nativeAction=new Map([
+     ['/api/native-entry/cli/start','cli'],['/api/native-entry/dashboard/start','dashboard'],
+     ['/api/native-entry/stop','stop'],['/api/native-entry/dashboard/open','open'],
+    ]).get(url.pathname);
+    if(nativeAction&&request.method==='POST'){
+     if(!nativeEntries){json(response,404,{error:'UNAVAILABLE'});return;}
+     if(url.search||request.headers['transfer-encoding']||Number(request.headers['content-length']??0)!==0){request.resume();json(response,400,{error:'BODY_NOT_ALLOWED'});return;}
+     if(busy){json(response,409,{error:'OPERATION_PENDING'});return;}
+     if(['cli','dashboard'].includes(nativeAction)&&instance){json(response,409,{error:'INSTANCE_EXISTS'});return;}
+     busy=true;
+     pending=(async()=>{
+      try{
+       if(nativeAction==='stop')await nativeEntries.stop();
+       else if(nativeAction==='open')await nativeEntries.open();
+       else await nativeEntries.start(nativeAction);
+       json(response,202,{accepted:true});
+      }catch{json(response,409,{error:'NATIVE_ENTRY_OPERATION_FAILED'});}
+      finally{busy=false;}
+     })();await pending;return;
+    }
     if(url.pathname==='/api/status'&&request.method==='GET'){
      json(response,200,{state:busy?'changing':instance?.state??'idle'});return;
     }
@@ -156,6 +183,7 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
      try{
       if(url.pathname==='/api/start'){
        if(instance){json(response,409,{error:'INSTANCE_EXISTS'});return;}
+       if(nativeEntries&&nativeEntries.status().state!=='idle'){json(response,409,{error:'NATIVE_ENTRY_ACTIVE'});return;}
        instance=await startInstance();
        const connection=await instance.connection;
        json(response,200,{state:instance.state,connection});
@@ -196,6 +224,12 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
    let failure;
    try{await pending;await Promise.allSettled([...historyReads.values(),...entryReads.values()]);if(instance){await instance.stop();instance=null;}}catch(error){failure=error;}
    // A failed instance stop must not retain an unusable HTTP listener.
+   try{
+    if(nativeEntries&&nativeEntries.status().state!=='idle'){
+     if(nativeEntries.status().state!=='stopping')await nativeEntries.stop();
+     if(nativeEntries.status().state!=='idle')throw new Error('NATIVE_ENTRY_EXIT_UNCONFIRMED');
+    }
+   }catch(error){failure??=error;}
    // Keep the instance handle and original error for an explicit cleanup retry.
    try{await closeListener();}catch(error){failure??=error;}
    if(failure)throw failure;

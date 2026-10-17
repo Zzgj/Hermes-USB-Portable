@@ -40,9 +40,14 @@ test('unconnected settings render unavailable with disabled actions, not fake up
  const domain=await moduleUrl('../src/domain/entry-capabilities.ts');
  const hook=await moduleUrl('../src/hooks/useEntryCapabilities.ts',{'../domain/entry-capabilities':domain});
  const entryPanel=await moduleUrl('../src/components/EntryCapabilitiesPanel.tsx',{'./Panel':panel});
- const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy,'../components/EntryCapabilitiesPanel':entryPanel,'../hooks/useEntryCapabilities':hook}));
+ const nativeDomain=await moduleUrl('../src/domain/native-entry.ts');
+ const nativeHook=await moduleUrl('../src/hooks/useNativeEntry.ts',{'../domain/native-entry':nativeDomain});
+ const nativePanel=await moduleUrl('../src/components/NativeEntryPanel.tsx',{'./Panel':panel,'../data/mockData':copy});
+ const {SettingsPage}=await import(await moduleUrl('../src/pages/SettingsPage.tsx',{'../components/Panel':panel,'../data/mockData':copy,'../components/EntryCapabilitiesPanel':entryPanel,'../hooks/useEntryCapabilities':hook,'../components/NativeEntryPanel':nativePanel,'../hooks/useNativeEntry':nativeHook}));
  const html=renderToStaticMarkup(React.createElement(SettingsPage,{}));
- assert.equal((html.match(/disabled=""/g)||[]).length,3);
+ for(const match of html.matchAll(/<button\b([^>]*)>/g))assert.match(match[1],/disabled=""/);
+ assert.ok(html.includes('原生 CLI / Dashboard'));
+ assert.ok(html.includes('读取原生入口状态'));
  assert.ok(html.includes('更新接口尚未接入'));
  assert.ok(html.includes('未认证'));
  assert.equal(html.includes('暂无更新'),false);

@@ -1,5 +1,73 @@
 # P2 当前进度与任务
 
+## 当前版本门槛：CLI 与原生 Dashboard 可实际打开
+
+当前工作包登记为 **P2-09-NATIVE-01**（总任务 P2-09）：lead 负责 CLI/Dashboard 核心生命周期、固定版本适配、管理 API 接线；完成核心后再派展示层任务。用户已确认由当前会话接续未提交修改；编码授权延续，用户随后明确“开始验证”，已完成下述一次集中验证批次，无后台开发任务。已提交基线仍为 `d8f64a8fe831d4db277c221c9bcf47d87be2b882`，接管前原 6 个修改文件及 2 个新增文件已在本 Profile scratch 保存完整副本和 SHA-256 清单，未覆盖或删除原现场。
+
+### NATIVE-01 收尾验证：浏览器准备阶段阻塞
+
+用户批准收尾验证后，lead 实际执行了申报的完整批次，没有修复重跑。基线仍为 `d8f64a8fe831d4db277c221c9bcf47d87be2b882` 加未提交修改；固定源码清单 SHA-256 为 `1ab7ab23024e4ed9698283af6c4fcbbb0d4882119ec9c2ab6791eea524342f4b`，隔离证据目录为本 Profile scratch 下 `native-01-verification-cfbofifx`。验证期间主工作区源码哈希未变化；随后仅更新本进度记录。
+
+| 实际命令 | 结果 | 退出码 |
+|---|---|---|
+| `npm test` | 417 通过，0 失败，0 跳过 | 0 |
+| `python3 -m unittest discover -s tests -p 'test_native_entry_host.py'` | 3 通过、2 个 Windows 原生用例跳过 | 0 |
+| `npm run validate` | 18 个组件通过 | 0 |
+| `npm run build` | TypeScript / Vite 新构建通过 | 0 |
+| `git diff --check` | tracked diff 通过 | 0 |
+| `node tests/native-entry-browser-check.mjs` | setup 失败，checks 为空，starts/stops/opens/managedStarts 全为 0 | 1 |
+| `node tests/entry-control-browser-check.mjs` | setup 失败，checks/network 为空，starts/stops/entryCalls 全为 0 | 1 |
+| `node tests/s1-browser-check.mjs` | CDP_CLOSED，results/network 为空 | 1 |
+
+除只读 diff 检查在主仓库执行外，命令均在隔离 `source/workbench` 执行。三个浏览器脚本均报告 cleaned=true；全量 Node 测试临时根仍有 p2-entry 测试目录及 Node 缓存，保留在本批隔离目录，不声称全目录清空。没有真实 Hermes/模型、依赖安装、真实实例更新、提交/推送或正式集成。包装脚本退出 0 只表示收集流程结束，**不能掩盖三个浏览器命令退出 1**。
+
+**结论：单元/合成接口、结构检查和构建通过，浏览器端到端仍阻塞。** 现有证据只能定位为浏览器/CDP 准备阶段未完成，尚未进入页面业务断言；不能据此声称页面有业务缺陷，也不能声称环境问题已确诊或页面通过。后续需获批收集隔离 Chrome 启动诊断、修复确认的问题并重跑浏览器批次；不绕过 sandbox 或安装门禁。employee 已在群内报告恢复接入，未派重复页面开发；独立审查及 Windows 实机门禁继续保留。
+
+### NATIVE-01 公司侧暂不可用期间的 lead 客户端开发
+
+用户说明 reviewer/employee 暂时无法接入，要求先完成 lead 自己的开发；不将等待公司侧作为停止核心编码的理由，也不以 lead 自审替代独立复审。
+
+- 新增 `src/domain/native-entry.ts`：固定同源 status/start/stop/open 请求，无任意 URL/命令/路径参数、无请求正文，拒绝重定向；正文读取限 4 KiB，严格校验状态组合和 202 accepted 响应。accepted 只表示请求已接受，不能直接当作 running 或停止完成。
+- 新增 `src/hooks/useNativeEntry.ts`：管理身份代际隔离、卸载取消、同步重复操作门禁、请求全程截止；动作应答后重新读取状态。断线/超时/异常保持 unknown，不自动重试或重启；客户端 abort 不被视为服务端动作已取消。初始 unknown 必须显式刷新为 idle 才允许启动。
+- 展示层接入契约：`useNativeEntry(managementToken)` 返回 `status:{kind,state}`、`pending`、`failed`、`canInspect`、`refresh()`、`act(action)`；kind 为 null/cli/dashboard，state 为 idle/starting/running/stopping/unknown，action 为 cli/dashboard/stop/open。展示层不得自行 fetch、持久化凭据或推导启动成功；按钮禁用不能替代服务端互斥。open 仅允许已观察到 running 的 dashboard；最终仍由服务端重核所有权与活性。
+- 新增 `tests/native-entry-client.test.mjs`，覆盖响应拒绝、固定请求、重复动作、动作后状态重核、身份切换迟到成功/失败、卸载及失败后禁止自动重启。**下方 42 项通过证据只覆盖此前固定快照，不覆盖新增客户端和页面。**
+- 按用户“继续推进，直到完成你的全部任务后再汇报”继续收尾：lead 补齐最小 `NativeEntryPanel` 并在 `SettingsPage` 实际调用 hook、绑定刷新/CLI/Dashboard/打开/停止动作，不再等待公司侧组件才能接线。启动/停止要求逐次勾选风险确认；身份切换重置确认，pending 禁止重复操作，unknown 禁止启动，保留显式刷新/停止。原资产面板文案改为只描述资产观察，不与独立生命周期控制区矛盾。没有部署或实际启动原生入口。
+- 补齐 `native-entry-panel.test.mjs`、既有 `merge-handoff.test.mjs` 的真实模块导入与 SettingsPage 断言，并新增 opt-in `native-entry-browser-check.mjs`。浏览器脚本使用真实构建页面、原生 fetch、管理 HTTP 和真实隔离实例锁，但注入合成进程适配器；检查未认证/未确认禁止动作、启动中门禁、明确打开、停止后释放、失败 unknown、管理身份撤销；不运行真实 Hermes/模型。
+- **编码收尾状态**：计划内后端核心、固定适配器、生产启动器/包策略、客户端状态管理及最小页面动作均已写入。本轮新增前端及页面已纳入上节全量测试和构建，浏览器检查在准备阶段失败；独立复审、Windows CLI 交互和进程树、U盘验收仍待，不改变 release_ready。
+- 原集中验证申请已获批准并执行，结果见上节。新增诊断范围及重跑须总监决定；失败先汇报，不自动无限返工。
+
+### NATIVE-01 首轮隔离验证结果
+
+- 代码身份：上述 HEAD 加本轮未提交源码；复制受控源码到独立 scratch 目录，复用现有 node_modules，只在隔离树构建。完整源码清单 `source-manifest.json` 的 SHA-256 为 `2aaf5dea1ee006eb36e4bdce7d094398df4ac2633d8a1bfdbbef18094953df75`，HEAD 本身不包含本轮实现。本机证据目录为 Profile scratch 下 `native-01-verification-34v93jhn`，保存逐命令日志和 `results.json`；这是本机证据，不代表公司已取得审查材料。
+- 在隔离树 `source/workbench` 执行 `node --test tests/native-entry-session.test.mjs tests/native-entry-manager.test.mjs tests/native-process-protocol.test.mjs tests/native-entry-adapters.test.mjs tests/native-entry-control.test.mjs tests/native-owned-process.test.mjs tests/legacy-entry.test.mjs tests/managed-native.test.mjs tests/open-local-browser.test.mjs tests/portable-native-entries.test.mjs tests/package.test.mjs`：**42 通过，0 失败，0 跳过，退出 0**。
+- 同目录执行 `python3 -m unittest discover -s tests -p 'test_native_entry_host.py'`：**3 通过，2 跳过，退出 0**；跳过的是 Windows 直接子正常退出后后代清理、父管道 EOF 后整树退出两项。跨平台 mock/管道契约不构成 Windows 原生证明。
+- 同目录 `npm run validate`：17 个组件结构检查通过，退出 0；`npm run build`：TypeScript/Vite 通过，退出 0。主仓库只读执行 `git diff --check`：退出 0，仅覆盖 tracked diff，不作为新增文件行为验证。
+- 覆盖真实隔离文件/锁、合成回环管理 HTTP、注入适配器/进程/浏览器及包夹具；未启动真实 Hermes、真实浏览器或调用模型，未安装依赖、更新实例、提交、推送或正式集成。验证期间原工作区源码哈希未变化；临时夹具退出后仅余 Node 编译缓存，构建产物留在隔离树。
+- **结论：本批本机检查通过，完整工作包仍待验证/开发。** 未运行全量 npm test、浏览器端到端、Windows/U盘验收；独立复审未完成，展示层与完整使用链路未完成。不得据此冻结为已验原生接口或改变 release_ready。没有失败项、没有执行修复重跑。
+
+### NATIVE-01 接管编码增量（编码时未测，首轮证据见上节）
+
+- 新增 `native-entry-host.py` / `native-owned-process.mjs` / `native-process-protocol.mjs`：Windows 10+ 私有 Job 的监督者留在 Job 外，使用 STARTUPINFOEX 的 JOB_LIST 在创建子进程时完成归属，避免“先创建再归入”之间监督者崩溃留下孤儿；不支持时拒绝，不走无约束降级。Dashboard 仅继承明确列出的三个标准句柄，CLI 创建独立交互控制台；原 `windows-job-host.py` 的既有 WIP 保留，不将其普通 host exit 当作新入口的树退出证明。
+- 新监督协议仅发送 started / port / failed / closed 白名单事件；业务输出丢弃，不能伪造 closed。只有 Job active=0、直接进程退出、输出排空且 host 正常退出才向 session 提交 treeExited=true；管道失联、协议异常或停止超时均不据此释放锁。CLI 的 ready 表示受控进程已创建，不冒充 CLI 提示符或键盘交互已经验收。
+- 新增固定版本 `native-entry-adapters.mjs`，依据本地 Git 对象 `28044757aabd34010bd9f5f3e3f82b0906b46241` 的 main/subcommand/web_server 源码核对命令：CLI 强制 --cli；Dashboard 固定 isolated、loopback、动态端口、no-open、skip-build。显式 HERMES_WEB_DIST 指向已存在且非链接的固定资产，避免上游 skip-build 缺资产时自动恢复构建；拒绝未知版本、tracked dirty、源码 .env 与非法资产。复用带单次令牌的只读 RPC 健康检查，打开前再次核对活性；URL 由服务端生成，不传凭据，不接受浏览器任意命令/路径/URL。
+- 生命周期补充确认退出后的锁释放等待与 Dashboard 显式 open；管理服务新增固定 `/api/native-entry/dashboard/open`，与启动/停止共用认证、Origin、busy 和无正文/无参数限制。新增/扩充 protocol、adapter、session、HTTP 与 Python host 回归源码；Python 用例区分 mock 契约和原生 Windows 进程句柄验证，全部尚未执行。编辑工具的语法反馈不是测试、构建或 Windows 验收证据。
+- **续开发增量（源码，尚未验证）**：已新增 `legacy-hermes-entry` 前台协调入口，将 Windows `launch.bat` 的受控命令路由至共享 home 锁；拒绝 daemon/service、跨 Profile 和运行环境更新路径。P2 模式的 doctor 走协调入口，更新菜单停止而不绕过锁执行。旧版本启动器、Gateway 收据及安装/恢复标记通过 `portable-entry-guard` 拒绝，不清锁、不接管外部进程。该 guard 是安装一致性检查，不是防本地修改的安全沙箱。
+- `launch-managed` 已传入 `createPortableNativeEntries`，接上固定适配器、浏览器打开与持锁后 guard；Windows managed serve 同样改用 Job 外监督和完整树退出证明。补充包白名单与入口版本清单，P2 payload 仍不覆盖 P0 启动器：已有安装需有匹配启动器，否则拒绝启动，不能将本次源码直接视为现有安装的可用更新包。
+- 新增/补充 managed 锁释放、native transport、受控浏览器、legacy 互斥、生产组合、HTTP 并发与关闭重试、Windows 父管道 EOF 退出用例源码。协议流 error 即使后续收到合法 closed 帧也不确认退出。启动器清单随本轮改动重新计算；上述用例均未运行，不能称为已复现或已验证修复。
+- **剩余门禁**：核心接线与旧入口协调的前次定向测试/静态检查/构建已通过；后续新增客户端与页面动作已写入但未验证。独立复审与 Windows 交互/进程树验收未完成，接口尚未冻结，端到端交付未完成，公司侧暂不可接入。因此 P2-09-NATIVE-01 不报已验完成或可用，正式集成不推进。源码未提交/推送，未安装依赖、更新实例、调用模型或改变 release_ready。
+
+用户确定：CLI 与原生 Dashboard 从工作台打开并正常使用后才进入正式集成；lead 先完成核心开发，再下发展示层任务。TUI/Desktop 不混入本版。公司侧维持暂停。
+
+历史基线 dev/lead `289e285e38d9dd32a212f951c95ecd13ca48d809`。reviewer 报告该版本 Windows Python 12/12 通过、退出码传播缺陷关闭；这不是 lead 本机自测，也不覆盖本轮新监督器。下方有关该生产缺陷仍阻塞的文字为历史记录。
+
+历史内部模块批次：新增 native-entry-session 生命周期模块及直接调用它的回归，固定 cli/dashboard 两种模式，启动前置 busy 门、持锁准备、启动结果不明时保留锁、完整树退出确认后才释放。当时仅内部模块，未接真实适配器、HTTP、打包或页面。总监批准后 lead 在 workbench 实际执行 `node --test tests/native-entry-session.test.mjs`，3/3 通过、零跳过、退出码 0；代码身份为上述历史基线加两个当时未提交新增文件。证据仅覆盖当时合成适配器下的重复启动、退出确认/保留锁与非法入口拒绝，不覆盖本轮修改、真实锁、进程或 HTTP。当前实现及待验状态以上方 NATIVE-01 增量为准。
+
+## 双分支审阅与 P2-CLI-BASELINE-04
+
+lead 已实际获取公司 `4136c30c08847b68656982b3d6971b5333935142` 并只读审查三文件与生产 Job Host，未运行测试。公司批次需返工：T1 没有 ready/go 争抢屏障，固定 sleep 清理、异常路径及退出等待不完整，Test 5 实际同进程却称子进程；生成脚本的换行转义与逐行读取须核对实际提交。T2 直接子立即退出后再 OpenProcess 存在竞态。生产退出码失败仍阻塞，核心修复归 lead。reviewer 对 lead `399e93767113a95c59bb8404dcba9da2d14661f3` 的定向 97 pass/1 skip、validate/build 通过仅为公司证据，浏览器未测；需补完整命令、退出码和固定代码身份。正式集成不推进。
+
+下一工作包 P2-CLI-BASELINE-04：employee 在 dev/company 从上述公司 SHA 出发，仅修改原三文件。T1 建立双子 ready/go 屏障、持久逐行消息队列、有界退出及失败清理，取消固定 sleep；T2 以握手确保取得本批句柄后才允许直接子退出，所有 reader/进程有界回收，保留退出码 42 的失败断言和生产 containment mock；T3 更正证据层级并记录精确命令/退出码/环境和未测项。reviewer 在 employee 暂停后独立复验，原生产失败不要求伪造全绿；不得改生产实现、接口、依赖、真实实例或锁。验证沿用 BASELINE-03 范围，任何新清理故障停止并上报；同一失败最多三轮。详细验收见本轮群聊原始任务单，回交固定 base/result 与远端确认，不改写共享历史。
+
 ## 当前交付：三分支开发检查点
 
 用户批准三分支方案，lead 已从共同基线 6e2f64a 创建 dev/lead，发布能力 API/页面接线及规则文档供 reviewer 取得精确源码。最终 SHA 和远端回读见本轮交付消息；不自引用提交 SHA。正式集成分支本轮不推进。公司 CLI-BASELINE-03 返工按回交属于“测试交付已修正，Windows 退出码生产缺陷仍阻塞”，不是整包功能通过；公司三文件由 employee 发布 dev/company 后再由 lead 获取审核。

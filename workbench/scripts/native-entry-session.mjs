@@ -27,8 +27,12 @@ export function createNativeEntrySession({acquire,prepare}){
    // Launch can have taken effect before rejecting. Never infer no process exists.
    state='unknown';throw new Error('ENTRY_START_UNCONFIRMED');
   }
-  state='running';
-  closed=Promise.resolve(child.closed).then(async result=>{
+  const owned=child;
+  state=owned.ready?'starting':'running';
+  if(owned.ready)void Promise.resolve(owned.ready).then(()=>{
+   if(child===owned&&state==='starting')state='running';
+  },()=>{if(child===owned&&state==='starting')state='unknown';});
+  closed=Promise.resolve(owned.closed).then(async result=>{
    if(result?.treeExited!==true){state='unknown';return;}
    try{await lock.release();lock=null;child=null;kind=null;state='idle';}
    catch{state='unknown';}
@@ -36,10 +40,21 @@ export function createNativeEntrySession({acquire,prepare}){
   return status();
  }
  async function stop(){
-  if(state!=='running'||!child)throw new Error('ENTRY_NOT_RUNNING');
+  if(!['running','starting','unknown'].includes(state)||!child)throw new Error('ENTRY_NOT_RUNNING');
+  const owned=child,completion=closed;
   state='stopping';
-  try{await child.stop();}catch{if(state!=='idle')state='unknown';throw new Error('ENTRY_STOP_UNCONFIRMED');}
+  try{
+   const result=await owned.stop();
+   if(result?.treeExited===true){
+    await completion;
+    if(child===owned)throw new Error('ENTRY_RELEASE_UNCONFIRMED');
+   }
+  }catch{if(child===owned&&state!=='idle')state='unknown';throw new Error('ENTRY_STOP_UNCONFIRMED');}
   return status();
  }
- return {start,stop,status,get closed(){return closed;}};
+ async function open(){
+  if(kind!=='dashboard'||state!=='running'||typeof child?.open!=='function')throw new Error('ENTRY_NOT_READY');
+  await child.open();
+ }
+ return {start,stop,open,status,get closed(){return closed;}};
 }

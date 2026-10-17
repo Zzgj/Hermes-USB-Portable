@@ -6,7 +6,7 @@ import {createNativeEntrySession} from './native-entry-session.mjs';
 // Server-owned configuration only. Never accept home, commands or adapters from HTTP.
 // A concrete adapter must provide prepare() (no process effects) and a start closure.
 // This does not certify that legacy launchers participate in the shared lock.
-export async function createNativeEntryManager({home,adapters}){
+export async function createNativeEntryManager({home,adapters,beforePrepare}){
  if(typeof home!=='string'||!isAbsolute(home))throw new Error('INVALID_ENTRY_HOME');
  const root=await realpath(home);
  if(!(await lstat(root)).isDirectory())throw new Error('INVALID_ENTRY_HOME');
@@ -25,6 +25,7 @@ export async function createNativeEntryManager({home,adapters}){
   prepare:async kind=>{
    // Repeat after lock acquisition: installation may have begun during acquisition.
    await checkRecovery();
+   if(beforePrepare)await beforePrepare();
    const adapter=selected[kind];
    if(typeof adapter?.prepare!=='function')throw new Error('ENTRY_ADAPTER_UNAVAILABLE');
    return adapter.prepare({home:root});

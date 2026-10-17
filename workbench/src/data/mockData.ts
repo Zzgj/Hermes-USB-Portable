@@ -22,6 +22,17 @@ export const copy = {
   onboardingTitle:'初始化向导', onboardingIntro:'预览配置步骤。当前不会创建目录、检测磁盘或写入配置。', next:'下一步预览', back:'上一步', complete:'已到预览最后一步；尚未配置实例。',
   selected:'示例详情', scope:'当前页面展示固定示例，不读取 U 盘内容。',
 };
+export const nativeEntryCopy={
+ title:'原生 CLI / Dashboard · 开发入口',
+ help:'仅适用于受控 Windows 便携实例，与工作台后端共用实例锁。先读取状态，再明确启动；CLI 在独立控制台交互，Dashboard 启动后需点击打开。关闭网页不会停止进程，CLI 已创建也不代表交互验收通过。TUI/Desktop 不在本批范围。',
+ unauthenticated:'请先在 AI 对话页认证管理服务；无需启动工作台后端。',
+ pending:'正在等待管理服务确认，请勿关闭管理器或拔盘。',
+ failed:'请求失败或结果未知；不会自动重试。请重新读取状态，必要时明确停止，不要手动清锁。',
+ confirm:'我确认本次启动或停止：启动可能读取本实例配置；停止可能中断任务，不撤销已有修改。原生入口内发送消息可能产生模型费用及工具操作，仍须遵守原生审批。',
+ refresh:'读取原生入口状态',cli:'启动 CLI',dashboard:'启动原生 Dashboard',open:'打开已运行的 Dashboard',stop:'停止本管理器的原生入口',
+ kinds:{cli:'当前入口：CLI',dashboard:'当前入口：原生 Dashboard'},
+ states:{idle:'本管理器没有持有原生入口；其他服务是否占锁由启动时重核。',starting:'原生入口正在启动。',running:'管理器报告原生入口已运行；不代表完整业务验收。',stopping:'正在停止，尚未确认整棵进程树退出。',unknown:'运行状态未知：先读取状态，不自动启动。'},
+};
 export const serviceCopy={
  title:'本实例服务管理 · 实验',help:'仅在 Workbench 管理服务器提供的页面上可用；普通预览服务器没有管理接口。控制令牌不是模型 API Key。关闭浏览器不会停止服务。',
  token:'临时管理令牌',check:'读取服务状态',start:'启动本实例并连接',connect:'连接本实例',stop:'停止本实例',

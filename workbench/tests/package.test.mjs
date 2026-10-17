@@ -24,3 +24,11 @@ test('linked build assets are rejected',async t=>{
  const {root,repo}=await fixture(t);await symlink(join(repo,'data/.env'),join(repo,'workbench/dist/private.js'));
  await assert.rejects(stageP2Package(repo,join(root,'output')),/PACKAGE_LINK_REJECTED/);
 });
+
+test('native payload includes complete composition without taking over P0 launchers',()=>{
+ for(const file of ['native-entry-session.mjs','native-entry-manager.mjs','native-entry-adapters.mjs','native-entry-host.py','native-owned-process.mjs','native-process-protocol.mjs','portable-native-entries.mjs','portable-entry-guard.mjs','portable-entry-guard.json','legacy-hermes-entry.mjs','open-local-browser.mjs']){
+  assert.ok(packageFiles.includes('workbench/scripts/'+file),file);
+ }
+ for(const path of ['launch.bat','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'])assert.equal(packageFiles.includes(path),false,'P0 coordination requires its separate shell delivery');
+ assert.equal(new Set(packageFiles).size,packageFiles.length);
+});

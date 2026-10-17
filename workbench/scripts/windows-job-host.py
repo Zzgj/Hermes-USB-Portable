@@ -79,16 +79,31 @@ def watch_parent(parent_fd):
     os._exit(104)
 
 
+def parse_host_arguments(argv):
+    # Internal launch protocol, never populated from arbitrary HTTP arguments.
+    if len(argv) >= 4 and argv[1:3] == ['--console', '--']:
+        return True, argv[3:]
+    if len(argv) >= 3 and argv[1] == '--':
+        return False, argv[2:]
+    raise ValueError('INVALID_HOST_ARGUMENTS')
+
+
 def main():
-    if len(sys.argv) < 3 or sys.argv[1] != '--':
+    try:
+        console, child_args = parse_host_arguments(sys.argv)
+    except ValueError:
         return 2
     # Do not close this handle explicitly: the host is itself a member, and process
     # teardown must retain the child exit code while closing all OS handles.
     job = contain_current_process()
     parent_fd = sys.stdin.fileno()
     threading.Thread(target=watch_parent, args=(parent_fd,), daemon=True).start()
-    child = subprocess.Popen([sys.executable, *sys.argv[2:]], stdin=subprocess.DEVNULL,
-                             stdout=sys.stdout, stderr=sys.stderr, close_fds=True)
+    # A new console belongs to the child, while the host retains the manager pipe.
+    # Do not forward the supervision pipe as interactive standard input.
+    options = ({'creationflags': subprocess.CREATE_NEW_CONSOLE}
+               if console else {'stdin': subprocess.DEVNULL,
+                                'stdout': sys.stdout, 'stderr': sys.stderr})
+    child = subprocess.Popen([sys.executable, *child_args], close_fds=True, **options)
     try:
         return child.wait()
     finally:

@@ -13,6 +13,41 @@ from unittest.mock import Mock
 
 
 class CleanupRegressionTests(unittest.TestCase):
+    def test_console_mode_preserves_containment_and_separates_stdin(self):
+        import importlib.util
+        from unittest.mock import patch
+        path = Path(__file__).resolve().parents[1] / 'scripts' / 'windows-job-host.py'
+        spec = importlib.util.spec_from_file_location('job_host_console_test', path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for console in [False, True]:
+            with self.subTest(console=console):
+                argv = ['host', *(['--console'] if console else []), '--', '-c', 'pass']
+                order = []
+                child = Mock(); child.wait.return_value = 42
+                def spawn(*args, **kwargs):
+                    order.append('spawn')
+                    return child
+                with patch.object(module.sys, 'argv', argv), \
+                     patch.object(module.sys, 'stdin') as stdin, \
+                     patch.object(module, 'contain_current_process', side_effect=lambda: order.append('contain') or 1), \
+                     patch.object(module.threading, 'Thread'), \
+                     patch.object(module.subprocess, 'CREATE_NEW_CONSOLE', 16, create=True), \
+                     patch.object(module.subprocess, 'Popen', side_effect=spawn) as popen:
+                    stdin.fileno.return_value = 123
+                    self.assertEqual(module.main(), 42)
+                    self.assertEqual(order, ['contain', 'spawn'])
+                    options = popen.call_args.kwargs
+                    self.assertTrue(options['close_fds'])
+                    if console:
+                        self.assertEqual(options['creationflags'], 16)
+                        self.assertNotIn('stdin', options)
+                        self.assertNotIn('stdout', options)
+                        self.assertNotIn('stderr', options)
+                    else:
+                        self.assertEqual(options['stdin'], subprocess.DEVNULL)
+
     def test_parent_watch_uses_raw_descriptor_and_fails_closed(self):
         import importlib.util
         from unittest.mock import patch, call

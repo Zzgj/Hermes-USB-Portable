@@ -5,6 +5,16 @@ if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Window
 $Root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Root)
 $launcher = Join-Path $Root 'launch.bat'
 if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) { throw 'Portable launcher not found.' }
+$coordinator = Join-Path $Root 'workbench/scripts/legacy-hermes-entry.mjs'
+if (Test-Path -LiteralPath $coordinator -PathType Leaf) {
+    # P2 owns the complete Job and shared home lock; do not wrap it in taskkill.
+    $node = Join-Path $Root '.cache/runtimes/windows-x64/node/node.exe'
+    & $node $coordinator --root $Root -- dashboard
+    exit $LASTEXITCODE
+}
+if (Test-Path -LiteralPath (Join-Path $Root 'data/.p2-manager-lock')) {
+    throw 'Instance ownership is active or unknown. No legacy fallback is allowed.'
+}
 # cmd metacharacters in a root need a different quoting strategy. Fail closed.
 if ($Root -match '["%&|<>^!\r\n]') { throw 'This Web controller does not support shell metacharacters in the root path.' }
 $cmd = Join-Path ([Environment]::GetFolderPath('System')) 'cmd.exe'
