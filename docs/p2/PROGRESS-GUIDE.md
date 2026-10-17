@@ -4,7 +4,15 @@
 
 ### 源码提交与恢复公司协作
 
-用户要求推送源码并下发审核/开发任务。lead 已将此前完整 WIP 保存为开发检查点 `41387cdbbea4250482db97d094cd4b2602c8ebef`（base `d8f64a8fe831d4db277c221c9bcf47d87be2b882`）；44 个提交文件与审查归档字节一致，测试状态仍为下方 417 通过、Python 定向 3 通过/2 跳过、浏览器准备失败，不能当作通过正式验收。随后仅追加任务文档提交；远端发布身份以本轮 push 后回读及群内回交为准。
+**最新接收与下一批**：lead 已实际 fetch `9e5c0df9b920f40b79691bd2173a78c43e39d98a` 并读取 `6743c58..9e5c0df` 两测试文件差异，R1 的用例状态隔离、failed/unknown 确认后允许停止、卸载状态写入断言和 idle 标题收窄均已落实。接受本批功能性补证，保留 reviewer 独立副本 27 项/validate/build 通过作为公司证据；lead 未重跑、尚未合入 dev/lead，未安装依赖。failed 用例一处“Open is visually available”注释与实际 disabled 实现不符，仅作非阻塞说明问题，不开启重复生产返工。
+
+用户要求下发下一批，正式派 `P2-09-NATIVE-PACKAGE-03`：employee 在 dev/company 以 `9e5c0df` 完整 SHA 为基线，仅新增 `workbench/tests/native-package-contract.test.mjs` 并修改 `docs/p2/ACCEPTANCE.md`，验证真实白名单源码 staging、guard/P0 分包匹配与失败保留，再更新验收指引。详细目标/命令/边界见 HANDOFF 顶部。该批只需已有 Node 标准库，无 npm 安装、构建或浏览器；reviewer 实测后汇总。浏览器准备阶段诊断、Windows 原生门禁及 lead 核心修复不因此关闭；本轮仅源码读取与任务文档发布。
+
+公司 `6743c58e5740271118865bf8af0b26bb767a9c5a` 已由 lead 实际 fetch，核对相对 `41387cdbbea4250482db97d094cd4b2602c8ebef` 仅改约定三文件。reviewer 回报定向 25 项、validate/build 通过属于公司执行证据，本机未重跑、尚未合入。源码静态复核发现补证需求：面板合成调度器使用全局 slots 且测试间未重置；failed 状态“只保留读取”说明与生产允许确认后显式 stop 的契约不一致；停止 idle 用例仅查 disabled 却以标题声称 never applies；卸载迟到 reject 用例仅检查调用数量，未断言无失败状态写入。结论是测试/说明需有界返工，不据此改动正确的 failed→显式 stop 生产机制。
+
+`P2-09-NATIVE-COVERAGE-02-R1`：employee 继续仅修改原三文件，为每个交互用例创建独立调度器状态并清理全局注入；补 failed/unknown 经确认可 stop、不能 start/open，以及未确认不得 stop 的真实回调断言；idle 明确只断言禁用按钮，不夸大为任意程序调用均被拒绝；卸载迟到成功/失败补 setState 写入计数或等价可观测断言。reviewer 按原三条 Node/validate/build 验证范围独立复验并更正验收说明。第一轮返工，不增加生产文件、依赖、浏览器或真实实例操作；仍遵守最多三轮及生产缺陷立即上报门禁。lead 不编辑员工三文件、不运行新测试，等待固定 R1 结果后再决定整合。
+
+用户要求推送源码并下发审核/开发任务。lead 已将此前完整 WIP 保存为开发检查点 `41387cdbbea4250482db97d094cd4b2602c8ebef`（base `d8f64a8fe831d4db277c221c9bcf47d87be2b882`）；44 个提交文件与审查归档字节一致，测试状态仍为下方 417 通过、Python 定向 3 通过/2 跳过、浏览器准备失败，不能当作通过正式验收。随后仅追加任务单提交；远端发布身份以本轮 push 后回读及群内回交为准。
 
 详细工作包见 HANDOFF 顶部：reviewer 承接 `P2-09-NATIVE-01-STATIC-REVIEW`，在独立工作区只读审查固定 base..result；employee 承接 `P2-09-NATIVE-COVERAGE-02`，仅补客户端/面板测试和 ACCEPTANCE 指引，不重复页面开发，不改生产核心。公司 dev/company 已核实为 source result 的祖先，可本机重核后受控快进；lead 不同时编辑员工三文件。日常 employee → reviewer → lead，组长复验必须实际执行任务单内命令；未获取源码不能称已审阅，未执行不能报通过。
 

@@ -1,5 +1,33 @@
 # P2 单分支交接与剩余审查
 
+## 最新员工任务：P2-09-NATIVE-PACKAGE-03
+
+### 执行主体与额度安排
+
+- **开发 Agent 主体：@usb-project-employee**；本批唯一代码写入者，分支 dev/company。
+- **独立复验主体：@code-reviewer**；组织测试及返工，不默认接管写入。
+- **架构/范围与阶段决策主体：@usb-project-lead**；本批仅派单、审查证据，不重复员工开发或组长全量复验。
+- 按用户新的额度安排，后续每份任务单均明确开发 Agent 主体、审查主体、允许文件、基线和验证范围；常规执行优先交 employee。模型名称/版本由执行实例实际核对回报，不根据换模推断能力或扩大权限。核心机制与安全接口仍由 lead 锁定，任何超范围修改先升级确认。
+
+用户要求下发下一批。employee 在 dev/company 从固定 base `9e5c0df9b920f40b79691bd2173a78c43e39d98a` 开始；lead 已实际 fetch 并读取 R1 差异，功能性返工点已对齐，27 项通过是 reviewer 执行证据而非 lead 重跑。R1 面板 failed 用例中“Open is visually available”注释与 disabled 实现不符，为非阻塞说明问题，本批不借机改生产。下方 COVERAGE-02/R1 作为历史，当前不再重复实现页面。
+
+### 目标与允许文件
+
+验证原生入口生产模块在 P2 增量包中的完整性，以及该增量包依赖匹配 P0 启动器的事实，避免“包白名单有名字”被误报成“安装后可启动”。只开发自动测试和指引，不做真实打包发布/安装。允许新增 `workbench/tests/native-package-contract.test.mjs`，修改 `docs/p2/ACCEPTANCE.md`；禁止修改所有生产 scripts/src、包白名单、guard JSON、启动器、依赖、其他测试与进度文件。
+
+### 一个工作包的三个子任务
+
+1. **T1 实际源码的 staging 契约**：使用现有 `stageP2Package`，从固定源码工作区只复制 packageFiles 白名单中的真实文件到本批临时 repo；仅 dist/index.html 及一个 dist/assets 合成文件可用明确标注的 fixture，不构建/运行业务。断言输出逐文件字节/大小/SHA-256 与输入一致；native host、协议、adapter、manager、legacy/guard JSON 等完整存在；manifest 无重复、release_ready=false。不能把所有源码写成字符串 fixture 冒充生产内容验证。
+2. **T2 分包与一致性失败路径**：动态导入 staging 输出的真实 `portable-entry-guard.mjs`，以本批临时目标 root/data 调用；从固定基线复制匹配的 launch.bat/open-hermes.ps1/start-web-workbench.ps1 到临时目标（不执行）以证明匹配组合通过。对仅有 P2 输出而缺 P0 启动器、旧/篡改启动器、缺失 legacy 协调文件、恢复标记和 gateway.pid 分别断言拒绝；验证 marker 原文保留、未自动创建/清除实例锁。检查 launch.bat 等 P0 文件不在增量包内，不能通过修改白名单/guard 哈希让失败变绿。测试不生成真实进程，不启动监听，不调用安装器。LF/CRLF 等价以临时文件覆盖；平台不能创建链接时明确跳过相关额外场景，不调整系统权限。
+3. **T3 操作前提与证据层级**：在 ACCEPTANCE 补充增量包≠完整启动外壳、需要匹配 P0 文件、失败时不清锁/不自动修复/不安装的指引，逐项关联 T1/T2。修正旧矩阵中已改名的 R1 用例引用，并明确 failed/unknown 仍可经确认显式停止。没有 Windows 运行、模型或浏览器证据的项继续未勾选，不声明已生成可部署包。
+
+### 验证、协作与回交
+
+- 只使用已存在 Node 与标准库；在工作区或独立受控副本 `workbench` 执行 `node --test tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs`。这批无 npm ci/install、无构建、无浏览器、不需借用 node_modules；缺 Node 即报告，不安装。
+- 所有 fixture 在本批自有临时根；仅从源码白名单读入，禁止读真实 data/Runtime/个人配置。注册清理，失败保留必要证据，不删除未知目录。敏感性验证只能内存或独立临时副本。已有实现满足测试则记补充覆盖，不制造虚假红灯。
+- 核心生产问题由 lead 修复；遇到接口变化、缺依赖或真实环境操作需要立即报告，不以补测试为名扩大范围。同一根因最多三轮。reviewer 组织返工，employee 回交固定 commit 后暂停，reviewer 在独立副本实际运行同一定向命令，不并发写同一目录。
+- employee → reviewer → lead 回交完整 base/result、两文件清单、实际命令/退出码、逐用例断言与失败/跳过、临时根清理结果、存储/隐私影响。通过后 employee 正常推送 dev/company 并远端回读；不得改 dev/lead 或正式集成。lead 不同时编辑员工这两文件。浏览器 setup 诊断、原生 Windows 监督/交互与核心审查问题仍是独立门禁，本任务不替代这些工作。
+
 ## 当前派单：NATIVE-01 固定源码审查与补充测试开发
 
 本节取代下方历史“当前派单”。用户已要求推送源码并同步下发 reviewer 审核与 employee 开发任务；不增加第四个审查分支，沿用 dev/lead、dev/company、feat/portable-initializer。正式集成不推进。
