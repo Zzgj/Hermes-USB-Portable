@@ -1,5 +1,40 @@
 # P2 单分支交接与剩余审查
 
+## 当前派单：NATIVE-01 固定源码审查与补充测试开发
+
+本节取代下方历史“当前派单”。用户已要求推送源码并同步下发 reviewer 审核与 employee 开发任务；不增加第四个审查分支，沿用 dev/lead、dev/company、feat/portable-initializer。正式集成不推进。
+
+### 固定代码与获取
+
+- 审查 base：`d8f64a8fe831d4db277c221c9bcf47d87be2b882`；源码 result：`41387cdbbea4250482db97d094cd4b2602c8ebef`，在 dev/lead 发布。此后任务单提交仅文档，不改变该源码身份。
+- result 包含 19 个修改、25 个新增文件；全部 44 个 Git blob 已与此前交付归档逐字节核对一致。完整清单使用 `git diff --name-status d8f64a8fe831d4db277c221c9bcf47d87be2b882 41387cdbbea4250482db97d094cd4b2602c8ebef`，不要只审 tracked WIP 或移动分支尖端。
+- 实际证据：Node 全量 417 通过、零失败/跳过；Python 仅 native host 定向 3 通过、2 个 Windows 用例跳过；validate 18 组件和构建通过。三个浏览器脚本均在准备阶段失败，尚无页面业务断言通过。开发检查点不是已验版本，旧浏览器通过不覆盖本次。
+- 先核对本机 repo/remote/HEAD/工作区，保护未提交内容，再 `git fetch origin dev/lead`，确认上述完整 SHA 可读取。reviewer 用单独 detached worktree，只读审查 result。不要覆盖 employee 正在写入的目录，也不将本机路径当成跨电脑传输。
+
+### Reviewer：P2-09-NATIVE-01-STATIC-REVIEW
+
+目标是固定 base..result 的独立静态审查，不要求等待浏览器问题修复。范围覆盖上述 44 文件及其直接调用者：监督协议/Windows Job 归属、共享锁、legacy 入口、管理 API、生产组装/打包、客户端及页面。
+
+1. 核查创建时 Job 归属和继承句柄；普通 host exit 不可代替整树证明；错误、协议截断、流异常及超时保留 unknown/锁。CLI 控制台与 Dashboard 健康检查证据分开。
+2. 核查旧 launch/Gateway/config/doctor/更新路径有无绕过，版本 guard 与 P0/P2 分包是否导致不可达或不一致；固定 Hermes 版本和资产缺失不能隐式安装/构建。
+3. 核查认证/Origin/无正文接口、管理与 native 互斥、停止重试、错误投影；客户端身份代际、卸载、迟到响应、accepted 后重核、风险确认及无自动重启。
+4. 区分生产缺陷、测试夹具缺陷、覆盖缺口和环境待验；浏览器 setup 失败不能被泛化为页面通过或已证实业务故障。
+
+本任务只读，不修改源码、不运行浏览器/真实实例/模型；如需执行新增验证先报范围。回交 result SHA、所审路径、按严重度排序的问题、文件行号、触发前提/证据、建议及未测项。静态结论只能写“静态审查通过/需返工”，不能冒充测试验收；此任务不授予 reviewer 写 dev/company 权限。
+
+### Employee：P2-09-NATIVE-COVERAGE-02（一个工作包）
+
+页面最小实现已由 lead 补齐，不重复按钮开发。本批独立开发补充回归测试及验收指引，不依赖 reviewer 静态审查完成，不改核心接口或实现。
+
+- 源码开发基线锁定 `41387cdbbea4250482db97d094cd4b2602c8ebef`。lead 核对远端 dev/company 为 `5b6c9ed56e250dc5411a84210bc5d88c47d47fab`，且为源码 result 的祖先；employee 须本机重核。工作区干净且祖先关系仍成立时，在独立开发工作区的 dev/company 执行 `git merge --ff-only 41387cdbbea4250482db97d094cd4b2602c8ebef`；若有额外提交、分叉或脏文件，停止回报，不 reset/rebase/强推。只推 dev/company，不改 dev/lead。
+- 允许文件仅：`workbench/tests/native-entry-client.test.mjs`、`workbench/tests/native-entry-panel.test.mjs`、`docs/p2/ACCEPTANCE.md`。本任务执行期间 lead 不并发编辑这三文件。不得修改 src/scripts、原生 host、锁、服务接口、package.json、依赖或浏览器脚本；发现生产缺陷提交最小复现，由 lead 修复。
+- **T1 请求/状态回归**：使用现有 TypeScript 转译与 node:test 导入真实 domain/hook，补齐正文悬挂时取消、分块累计超限、非法 UTF-8/截断 JSON、403/409/500 不泄露响应正文；显式状态读取在动作应答后失败必须 unknown；同身份旧回调、身份往返及卸载后旧响应不可覆盖新状态或启动请求。按明确屏障控制异步，不用固定 sleep 猜顺序；计数断言零越权动作/无自动重试。
+- **T2 展示交互回归**：在实际 NativeEntryPanel 的事件回调层检验未确认无动作、确认后仅一次、动作消耗确认、刷新清除确认、pending/未认证/failed 隐藏旧成功并限制动作、CLI 不能打开 Dashboard。可用合成 React hook/JSX 调度器，不复制生产判断；明确这种测试不是浏览器点击或 Windows 验收。不修改组件以迎合测试；必要的跨身份重挂由 SettingsPage key 负责，独立面板测试不能冒充已覆盖。
+- **T3 验收指引**：只在 ACCEPTANCE 新增 NATIVE-01 场景矩阵/操作说明，列设置页认证→显式状态读取→风险确认→启动→再次读取→Dashboard 打开→明确停止；注明 CLI 进程创建不等于交互可用、同 home 互斥、外部旧入口拒绝、未知状态不清锁、P0 启动器匹配前提。区分自动合成证据、待 Windows 实机和待模型验证，保留历史记录，不填虚构通过。
+- 冻结测试契约：`requestNativeEntry(identity,action,signal)` 仅 status/cli/dashboard/stop/open；status 为 `{kind:null|cli|dashboard,state:idle|starting|running|stopping|unknown}`；hook 返回 status/pending/failed/canInspect/refresh/act。组件 props 以固定 result 的 readonly NativeEntryPanelProps 为准，不接收令牌或 URL。对现有实现满足的场景如实记覆盖补充，不能制造虚假先红。
+- 允许的开发/组长复验：在各自独立 workbench，使用已安装依赖执行 `node --test tests/native-entry-client.test.mjs tests/native-entry-panel.test.mjs tests/merge-handoff.test.mjs`、`npm run validate`、`npm run build`。无浏览器、无真实锁/进程/模型/实例；无安装。reviewer 静态审核与 employee 编码可以分目录并行，employee 回交后暂停，reviewer 再对固定公司 result 实际执行这些命令。
+- 同一失败最多三轮；清理异常、缺依赖、需改生产/接口立即停止受影响路径。employee 先向 reviewer 交固定 base/result、三文件完整差异、用例敏感性证据、命令/退出码、失败/未测范围和清理情况；reviewer 实测后给通过/需返工/待环境验证及残余风险，再向 lead 汇总。两者使用同机固定提交复验即可，按三分支授权由 employee 发布经复验的 dev/company，禁止并发写同一目录。未审通过允许明确标注失败的开发检查点，不合入正式集成。
+
 ## 当前三分支交接（取代下方历史单分支派单）
 
 用户已批准以 `6e2f64ae947117f6ccbf1efda1b55cb0e2394e4f` 为共同基线：lead 创建并发布 `dev/lead` 的能力 API/面板接线工作；employee 创建 `dev/company` 并保存 CLI-BASELINE-03 三文件返工，保留退出码失败用例；reviewer 读取两分支的固定提交复审并向 lead 汇总。正式集成分支 `feat/portable-initializer` 暂不推进，Windows 退出码缺陷未关闭，不将开发检查点当作发布。
