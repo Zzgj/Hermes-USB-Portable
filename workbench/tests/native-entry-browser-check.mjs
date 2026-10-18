@@ -8,8 +8,8 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {startControlServer} from '../scripts/control-server.mjs';
 import {createNativeEntryManager} from '../scripts/native-entry-manager.mjs';
-import {createCdpClient,closeOwnedBrowser,waitUntil,chromeEnvironment} from './s1-browser-driver.mjs';
-let root,service,chrome,client,session,stage='setup',failure=null,cleaned=true;
+import {createCdpClient,closeOwnedBrowser,waitUntil,chromeEnvironment,createChromeTempRoot} from './s1-browser-driver.mjs';
+let root,temp,service,chrome,client,session,stage='setup',failure=null,cleaned=true;
 let starts=0,stops=0,opens=0,managedStarts=0,releaseReady,failPrepare=false;
 const checks=[],controller=new AbortController();
 const timer=setTimeout(()=>{controller.abort();client?.close('BROWSER_TIMEOUT');},60000);
@@ -21,8 +21,9 @@ async function click(text){await wait(`!!(${button(text)})&&!(${button(text)}).d
 async function navigate(path){await evaluate(`location.hash=${JSON.stringify('#'+path)}`);await wait(`location.hash===${JSON.stringify('#'+path)}`);}
 async function confirm(){await evaluate(`[...document.querySelectorAll('label')].find(l=>l.textContent.includes('我确认本次启动或停止')).querySelector('input').click()`);}
 try{
- root=await mkdtemp(join(tmpdir(),'native-browser-'));const home=join(root,'data'),profile=join(root,'profile'),temp=join(root,'tmp');
- for(const path of [home,profile,temp])await mkdir(path);
+ root=await mkdtemp(join(tmpdir(),'native-browser-'));const home=join(root,'data'),profile=join(root,'profile');
+ temp=await createChromeTempRoot();
+ for(const path of [home,profile])await mkdir(path);
  const adapter={prepare:async()=>{
   if(failPrepare)throw new Error('synthetic preparation failure');
   return {start:()=>{starts++;let closed;
@@ -63,7 +64,7 @@ finally{
  clearTimeout(timer);releaseReady?.({port:12345});
  try{await closeOwnedBrowser(chrome,()=>send('Browser.close',{},null));}catch{cleaned=false;}client?.close();
  try{await service?.close();if(service){try{await fetch(service.origin+'/',{signal:AbortSignal.timeout(1000)});cleaned=false;}catch(error){if(error.name==='TimeoutError')cleaned=false;}}}catch{cleaned=false;}
- if(root&&cleaned)try{await rm(root,{recursive:true,force:true});}catch{cleaned=false;}
+ if(cleaned)for(const path of [root,temp])if(path)try{await rm(path,{recursive:true,force:true});}catch{cleaned=false;}
 }
 console.log(JSON.stringify({methodVersion:1,status:failure||!cleaned?'failed':'passed',failure,checks,starts,stops,opens,managedStarts,cleaned,hermesModelExecuted:false}));
 process.exitCode=failure||!cleaned?1:0;

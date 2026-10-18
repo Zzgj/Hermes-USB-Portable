@@ -1,6 +1,12 @@
 // Test-only CDP transport. Never include request payloads or peer errors in diagnostics.
 import {setTimeout as delay} from 'node:timers/promises';
 import {join} from 'node:path';
+import {mkdtemp} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+
+// Keep Chromium's singleton socket root directly below the configured scratch
+// root, not inside a long fixture/profile path. Never fall back to system /tmp.
+export function createChromeTempRoot(){return mkdtemp(tmpdir()+'/');}
 
 export function chromeEnvironment(profile,tempRoot){
  // Use an owned short temp root: Linux singleton socket paths have a small limit.

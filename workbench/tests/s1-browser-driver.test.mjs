@@ -4,9 +4,28 @@ import {PassThrough} from 'node:stream';
 import {EventEmitter} from 'node:events';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {createCdpClient,closeOwnedBrowser,waitUntil,projectNetwork,chromeEnvironment} from './s1-browser-driver.mjs';
-import {join} from 'node:path';
+import {createCdpClient,closeOwnedBrowser,waitUntil,projectNetwork,chromeEnvironment,createChromeTempRoot} from './s1-browser-driver.mjs';
+import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
+import {mkdir,rm,readFile} from 'node:fs/promises';
+import {createServer} from 'node:net';
+
+test('native browser uses an owned short temp root that fits the Linux singleton socket',async t=>{
+ const root=await createChromeTempRoot();
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ assert.equal(dirname(root),tmpdir());
+ const native=await readFile(new URL('./native-entry-browser-check.mjs',import.meta.url),'utf8');
+ assert.match(native,/temp=await createChromeTempRoot\(\)/);
+ assert.match(native,/\[root,temp\]/);
+ if(process.platform!=='linux')return;
+ const directory=join(root,'com.google.Chrome.XXXXXX');await mkdir(directory);
+ const socket=join(directory,'SingletonSocket');
+ assert.ok(Buffer.byteLength(socket)<108,'configured scratch root must fit a Unix socket; do not bypass it');
+ const server=createServer();
+ t.after(()=>new Promise((resolve,reject)=>{if(!server.listening)return resolve();server.close(error=>error?reject(error):resolve());}));
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(socket,resolve);});
+ await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+});
 
 test('Chrome temp, home and caches remain in owned roots with an environment allowlist',()=>{
  const root=join(tmpdir(),'synthetic-browser-root'),tempRoot=join(tmpdir(),'short'),env=chromeEnvironment(root,tempRoot);
