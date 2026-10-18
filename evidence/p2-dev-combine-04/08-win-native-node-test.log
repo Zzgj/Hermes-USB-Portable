@@ -1,0 +1,33 @@
+✔ legacy entry uses fixed foreground modes; rejects profile and daemon escape (2.2028ms)
+✔ legacy and native/managed lock users exclude each other until confirmed tree exit (28.7156ms)
+✔ unknown legacy exit retains lock and cannot report success (8.1614ms)
+✔ managed native exit proof must resolve before shared lock is released (20.9231ms)
+✔ rejected native exit evidence retains the shared lock (6.1039ms)
+✔ native entry shares the existing instance lock (27.1301ms)
+✔ unavailable adapter releases only its newly acquired lock (7.4173ms)
+✔ recovery marker prevents preparation and launch (9.5142ms)
+✔ entry retains lock until confirmed tree exit; rejects duplicate start (5.0897ms)
+✔ unconfirmed exit preserves ownership and rejects restart (0.3638ms)
+✔ unsupported kind has no acquisition or launch effects (0.2689ms)
+✔ stop while starting fences late readiness (0.4471ms)
+✔ readiness failure preserves owned stop and lock (0.5162ms)
+✔ confirmed stop awaits lock release, not just host acknowledgement (0.5705ms)
+✔ only a ready owned Dashboard can be explicitly opened (0.7724ms)
+✔ real transport parser requires closed proof plus host exit and preserves code (3.7112ms)
+✔ host exit zero alone never proves native tree exit (1.0027ms)
+✔ a protocol stream error invalidates a later otherwise valid exit proof (1.3272ms)
+✔ malformed host output invalidates even a later completion frame (0.807ms)
+✔ stop fences a held Dashboard probe; no late running state (1.2479ms)
+✔ native host protocol accepts split frames, not business output (1.7653ms)
+✔ only a complete host tree confirmation plus clean host exit releases ownership (0.2881ms)
+✔ invalid, truncated, duplicated and oversized protocol fails closed (0.4428ms)
+✔ host failure reports no raw diagnostic and cannot become ready later (0.561ms)
+✔ native direct exit code is preserved only in a valid completion frame (0.4089ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 430.9293
