@@ -316,11 +316,15 @@ $target = 'E:\Hermes-P2-Test'
 | 案例 | 生产调用点 | 屏障/注入点 | 可观测断言 | 证据层级 |
 |---|---|---|---|---|
 | 匹配组合正常启动 | `session.start` → `manager.prepare` → `assertPortableEntryGuard` → 合成 `adapter.prepare` → `adapter.start` | `fs.promises.readFile` 命中 `<root>/launch.bat` 全规范路径（guard 逐文件哈希校验处） | 命中恰 1 次；命中时 `.p2-manager-lock/` 与 `owner.json`（`schema:1`）均已存在；此时 adapter `prepare`/`start` 计数均为 0；随后 `prepare`/`start` 各 1 次；运行中锁仍在；显式 `stop()` 后状态 `idle`、锁目录消失、`acquireInstanceLock` 可重获并释放 | 自动合成（真实 manager/session/guard/锁，合成 adapter，无业务进程） |
-| 屏障内新增安装恢复标记 | `manager.acquire`→`manager.prepare` 的 `checkRecovery()`；guard 首行 `lstat(<home>)` 为屏障 | `fs.promises.lstat` 命中 `realpath(home)`（持锁后、guard 标记校验前）时写入 `logs/diagnostics/p2-install-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；adapter `prepare`/`start` 均为 0；标记原文逐字节保留；本批锁已释放、可重获 | 自动合成 |
+| 屏障内新增安装恢复标记 | `manager.acquire`→`manager.prepare` 的 `checkRecovery()`；屏障取 guard 自身的 `lstat(<root>/data)`（`portable-entry-guard.mjs` 首个文件系统调用，位于持锁后、标记校验前） | `fs.promises.lstat` 命中 `realpath(home)` 时写入 `logs/diagnostics/p2-install-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；adapter `prepare`/`start` 均为 0；标记原文逐字节保留；本批锁已释放、可重获 | 自动合成 |
 | 屏障内篡改协调启动器 | 同上，随后进入 guard 的逐文件 SHA-256 比对 | 同一 `lstat` 屏障内改写 `<root>/launch.bat` 字节 | `ENTRY_COORDINATION_UNCONFIRMED`；guard 读取协调文件发生 1 次且当时锁在；adapter `prepare`/`start` 均为 0；篡改字节保留；锁释放后可重获 | 自动合成 |
 | 预置他人实例锁 | `session.start` 的 `acquireInstanceLock`（guard 之前） | 不注入，启动前写入 `.p2-manager-lock/owner.json` 外部字节 | `INSTANCE_LOCKED`；guard 未读协调文件（0 次）；adapter `prepare`/`start` 均为 0；`owner.json` 原文不变；测试不调用生产 `release()` 清除他人锁，由夹具删除 | 自动合成 |
 
 "匹配组合"与"标记/篡改"两类拒绝的失败处理都来自生产 caller（`manager.acquire`/`manager.prepare` 与 `session` 的 catch 释放锁），不是测试自带判断；断言不修改 `portable-entry-guard.json`、不改生产代码、不预置标记来伪造持锁窗口。
+
+### 测试驱动可靠性（2026-10 返工）
+
+驱动层不是被测断言的一部分，但它的失败路径必须可证：`runChild()` 在子进程输出 `READY`（钩子与生产模块导入完成）之后才启动超时计时；超时后先终止本批自有子进程，等待 `close` 与两条输出流收尾**之后**才判失败；若 `close` 未在有界时间内到达，返回 `CHILD_TIMEOUT_CLEANUP_BLOCKED` 并让夹具跳过临时根删除（保留现场），不以"清理完成"冒充退出确认。`spawn` 的 `error` 事件在进程未启动时直接以 `CHILD_SPAWN_FAILED` 失败；已启动后的运行期错误先记录、待 `close` 收尾再判 `CHILD_ERROR_RUNTIME`。另有两条回归：`timeout after readiness terminates the owned child and fails only after exit`（`hang` 场景 + 2s 期限，断言 `CHILD_TIMEOUT` 且 `childExited=true`、临时根仍在）与 `spawn failure settles as spawn failure without waiting for a deadline`（不存在的可执行文件，断言 `CHILD_SPAWN_FAILED`、不悬挂）。
 
 ### 本批范围与未覆盖（不得外推）
 

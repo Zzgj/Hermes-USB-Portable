@@ -76,6 +76,13 @@ const entriesUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','portable-nat
 const lockUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','instance-lock.mjs')).href;
 const {createPortableNativeEntries}=await import(entriesUrl);
 const {acquireInstanceLock}=await import(lockUrl);
+// Explicit readiness barrier: harness, hooks and production imports are all in
+// place before the parent arms any deadline.
+console.log('READY');
+if(cfg.scenario==='hang'){
+ setInterval(()=>{},1000);
+ await new Promise(()=>{});
+}
 let resolveClosed=null;
 const makeAdapters=()=>({cli:{prepare:async()=>{
  out.events.push('prepare');
@@ -119,30 +126,108 @@ console.log(JSON.stringify(out));
 
 async function fixture(t){
  const root=await mkdtemp(join(tmpdir(),'portable-guard-order-'));
- t.after(()=>rm(root,{recursive:true,force:true}));
+ // Cleanup is opt-out: if a child exit is unconfirmed the fixture is preserved
+ // instead of deleting a directory a live process may still hold.
+ const guard={keep:false};
+ t.after(()=>guard.keep?undefined:rm(root,{recursive:true,force:true}));
  const home=join(root,'data');
  await mkdir(home);
  for(const path of coordination){
   await mkdir(dirname(join(root,path)),{recursive:true});
   await writeFile(join(root,path),await readFile(join(repository,path)));
  }
- return {root:await realpath(root),home:await realpath(home)};
+ return {root:await realpath(root),home:await realpath(home),guard};
 }
 
-function runChild(config){
+function waitFor(promise,ms){
+ return new Promise(resolve=>{
+  const timer=setTimeout(()=>resolve(false),ms);
+  promise.then(()=>{clearTimeout(timer);resolve(true);},()=>{clearTimeout(timer);resolve(false);});
+ });
+}
+
+const exists=async path=>{try{await realpath(path);return true;}catch{return false;}};
+
+// Single-settlement spawn driver. The deadline is armed only after the child
+// proves readiness. A timeout terminates the owned child and waits for `close`
+// plus both output streams before failing; unconfirmed cleanup is reported as
+// such instead of pretending the fixture is safe to delete.
+function runChild(config,{execPath=process.execPath,timeoutMs=60000,readyTimeoutMs=60000,closeGraceMs=10000,streamGraceMs=5000}={}){
  return new Promise((resolve,reject)=>{
-  const child=spawn(process.execPath,['--input-type=module','-e',CHILD],{
+  const child=spawn(execPath,['--input-type=module','-e',CHILD],{
    env:{...process.env,GUARD_ORDER_CONFIG:JSON.stringify({...config,workbench})},
    stdio:['ignore','pipe','pipe'],windowsHide:true});
-  let stdout='',stderr='';
-  const timer=setTimeout(()=>{child.kill();reject(new Error('CHILD_TIMEOUT'));},60000);
-  child.stdout.on('data',chunk=>{stdout+=chunk;});
+  let stdout='',stderr='',spawned=false,ready=false,timedOut=false,settled=false,runtimeError=null;
+  let deadline=null,readiness=null;
+  const streamsEnded=new Promise(done=>{
+   const seen=new Set();
+   for(const [name,stream] of [['out',child.stdout],['err',child.stderr]]){
+    stream.on('end',()=>{seen.add(name);if(seen.size===2)done(true);});
+   }
+  });
+  const closed=new Promise(done=>{child.on('close',(code,signal)=>done({code,signal}));});
+  const blockedError=(message,code)=>{const error=new Error(message);error.code=code;error.childExited=false;return error;};
+  const finish=(settle,value)=>{
+   if(settled)return;
+   settled=true;
+   if(deadline)clearTimeout(deadline);
+   if(readiness)clearTimeout(readiness);
+   settle(value);
+  };
+  const onTimeout=async()=>{
+   if(settled||timedOut)return;
+   timedOut=true;
+   if(deadline)clearTimeout(deadline);
+   child.kill();
+   const exited=await waitFor(closed,closeGraceMs);
+   const drained=exited?await waitFor(streamsEnded,streamGraceMs):false;
+   if(!exited||!drained){finish(reject,blockedError('CHILD_TIMEOUT_CLEANUP_BLOCKED','CHILD_TIMEOUT_CLEANUP_BLOCKED'));return;}
+   const error=new Error('CHILD_TIMEOUT');
+   error.code='CHILD_TIMEOUT';error.childExited=true;
+   finish(reject,error);
+  };
+  readiness=setTimeout(()=>{
+   if(ready||settled)return;
+   child.kill();
+   finish(reject,blockedError('CHILD_NOT_READY','CHILD_NOT_READY'));
+  },readyTimeoutMs);
+  child.on('spawn',()=>{spawned=true;});
+  child.on('error',error=>{
+   if(settled)return;
+   if(!spawned){
+    finish(reject,Object.assign(new Error('CHILD_SPAWN_FAILED: '+error.message),{code:'CHILD_SPAWN_FAILED',childExited:true,cause:error}));
+    return;
+   }
+   // Post-spawn error: keep draining and settle on close so no pipe is abandoned.
+   runtimeError=runtimeError||error;
+  });
+  child.stdout.on('data',chunk=>{
+   stdout+=chunk;
+   if(!ready&&/(?:^|\r?\n)READY\r?\n/.test(stdout)){
+    ready=true;
+    if(readiness)clearTimeout(readiness);
+    if(!deadline)deadline=setTimeout(onTimeout,timeoutMs);
+   }
+  });
   child.stderr.on('data',chunk=>{stderr+=chunk;});
-  child.on('close',code=>{
-   clearTimeout(timer);
+  child.on('close',async(code,signal)=>{
+   if(settled||timedOut)return;
+   await waitFor(streamsEnded,streamGraceMs);
+   if(runtimeError){
+    finish(reject,Object.assign(new Error('CHILD_ERROR_RUNTIME: '+runtimeError.message),{code:'CHILD_ERROR_RUNTIME',childExited:true,exitCode:code,cause:runtimeError}));
+    return;
+   }
+   if(!ready){
+    finish(reject,Object.assign(new Error('CHILD_FAILED_NO_READY code='+code+' signal='+signal+' stderr='+stderr),{code:'CHILD_FAILED_NO_READY',childExited:true,exitCode:code}));
+    return;
+   }
    const line=stdout.trim().split(/\r?\n/).filter(Boolean).pop();
-   if(code!==0||!line)return reject(new Error('CHILD_FAILED code='+code+' stderr='+stderr));
-   try{resolve(JSON.parse(line));}catch(error){reject(new Error('CHILD_OUTPUT_INVALID '+error.message));}
+   if(code!==0||!line){
+    finish(reject,Object.assign(new Error('CHILD_FAILED code='+code+' stderr='+stderr),{code:'CHILD_FAILED',childExited:true,exitCode:code}));
+    return;
+   }
+   try{finish(resolve,JSON.parse(line));}
+   catch(error){finish(reject,Object.assign(new Error('CHILD_OUTPUT_INVALID '+error.message),{code:'CHILD_OUTPUT_INVALID',childExited:true,exitCode:code}));}
   });
  });
 }
@@ -204,4 +289,28 @@ test('pre-existing foreign lock rejects before guard and leaves owner bytes unch
  assert.equal(seen.foreignOwner,foreignOwner);
  assert.equal(seen.reacquired,false);
  assert.equal(await readFile(join(home,'.p2-manager-lock','owner.json'),'utf8'),foreignOwner);
+});
+
+test('timeout after readiness terminates the owned child and fails only after exit',async t=>{
+ const {root,home}=await fixture(t);
+ let failure=null;
+ try{await runChild({root,home,scenario:'hang'},{timeoutMs:2000});}
+ catch(error){failure=error;}
+ assert.ok(failure,'a hung child must not be reported as success');
+ assert.equal(failure.code,'CHILD_TIMEOUT');
+ assert.equal(failure.childExited,true);
+ // The fixture is intact at the failure point: deletion waits for confirmed exit.
+ assert.equal(await exists(root),true);
+});
+
+test('spawn failure settles as spawn failure without waiting for a deadline',async t=>{
+ const {root,home}=await fixture(t);
+ const missing=join(root,'missing-node-binary-'+process.pid+'.exe');
+ let failure=null;
+ try{await runChild({root,home,scenario:'spawn-failure'},{execPath:missing,readyTimeoutMs:30000,timeoutMs:30000});}
+ catch(error){failure=error;}
+ assert.ok(failure,'a spawn failure must reject instead of hanging');
+ assert.equal(failure.code,'CHILD_SPAWN_FAILED');
+ assert.equal(failure.childExited,true);
+ assert.equal(await exists(root),true);
 });
