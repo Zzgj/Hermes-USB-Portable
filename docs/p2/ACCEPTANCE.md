@@ -305,3 +305,27 @@ $target = 'E:\Hermes-P2-Test'
 - [ ] 浏览器点击、CLI 交互输入与模型调用
 - [ ] 增量包安装后的整棵进程树退出与锁释放实机证据
 
+## P2-09-GUARD-ORDER-03 持锁 guard 时序补证（`workbench/tests/portable-guard-order.test.mjs`）
+
+此前"guard 持锁时序"只有静态结论。本批用受控屏障补动态证据：在隔离 Node 子进程中，动态 import 生产模块**之前**替换 `fs.promises.readFile` / `fs.promises.lstat`，按完整规范路径（`realpath` 后的绝对路径字符串）限定命中范围；未命中即测试失败，因此证据不能靠"钩子静默不触发"通过。不使用固定 sleep。
+
+生产调用链（源码 `2ffcb087`）：`createPortableNativeEntries`（`portable-native-entries.mjs:7-11`）→ `createNativeEntryManager`（`native-entry-manager.mjs:20-32`）→ `createNativeEntrySession.start`（`native-entry-session.mjs:9-23`，先 `acquire()` 再 `prepare()`）→ `manager.prepare` 内 `checkRecovery()` → `beforePrepare` = `assertPortableEntryGuard` → `adapter.prepare`。因此 guard 必然读文件于实例锁与 `owner.json` 写入之后。
+
+### 场景矩阵（`node --test tests/portable-guard-order.test.mjs tests/portable-native-entries.test.mjs tests/native-entry-manager.test.mjs`，本机隔离临时目录与隔离 Node 子进程：10 通过 / 0 失败 / 0 跳过，退出码 0）
+
+| 案例 | 生产调用点 | 屏障/注入点 | 可观测断言 | 证据层级 |
+|---|---|---|---|---|
+| 匹配组合正常启动 | `session.start` → `manager.prepare` → `assertPortableEntryGuard` → 合成 `adapter.prepare` → `adapter.start` | `fs.promises.readFile` 命中 `<root>/launch.bat` 全规范路径（guard 逐文件哈希校验处） | 命中恰 1 次；命中时 `.p2-manager-lock/` 与 `owner.json`（`schema:1`）均已存在；此时 adapter `prepare`/`start` 计数均为 0；随后 `prepare`/`start` 各 1 次；运行中锁仍在；显式 `stop()` 后状态 `idle`、锁目录消失、`acquireInstanceLock` 可重获并释放 | 自动合成（真实 manager/session/guard/锁，合成 adapter，无业务进程） |
+| 屏障内新增安装恢复标记 | `manager.acquire`→`manager.prepare` 的 `checkRecovery()`；guard 首行 `lstat(<home>)` 为屏障 | `fs.promises.lstat` 命中 `realpath(home)`（持锁后、guard 标记校验前）时写入 `logs/diagnostics/p2-install-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；adapter `prepare`/`start` 均为 0；标记原文逐字节保留；本批锁已释放、可重获 | 自动合成 |
+| 屏障内篡改协调启动器 | 同上，随后进入 guard 的逐文件 SHA-256 比对 | 同一 `lstat` 屏障内改写 `<root>/launch.bat` 字节 | `ENTRY_COORDINATION_UNCONFIRMED`；guard 读取协调文件发生 1 次且当时锁在；adapter `prepare`/`start` 均为 0；篡改字节保留；锁释放后可重获 | 自动合成 |
+| 预置他人实例锁 | `session.start` 的 `acquireInstanceLock`（guard 之前） | 不注入，启动前写入 `.p2-manager-lock/owner.json` 外部字节 | `INSTANCE_LOCKED`；guard 未读协调文件（0 次）；adapter `prepare`/`start` 均为 0；`owner.json` 原文不变；测试不调用生产 `release()` 清除他人锁，由夹具删除 | 自动合成 |
+
+"匹配组合"与"标记/篡改"两类拒绝的失败处理都来自生产 caller（`manager.acquire`/`manager.prepare` 与 `session` 的 catch 释放锁），不是测试自带判断；断言不修改 `portable-entry-guard.json`、不改生产代码、不预置标记来伪造持锁窗口。
+
+### 本批范围与未覆盖（不得外推）
+
+- 仅覆盖 `createPortableNativeEntries` 这一组装路径的 guard 时序。`legacy-hermes-entry.mjs` 与 `launch-managed.mjs`/`managed-instance.mjs`（`beforeStart` 的 `checkEntryGuard`）属同一 guard 函数的其他 caller，本批未做动态覆盖，不得据本批写成"三处入口时序全覆盖"。
+- 合成 adapter 不产生业务进程：不覆盖 Windows 原生 Job/进程树、CLI 键盘交互、真实 Dashboard、真实 P0 启动器调用链、同 home 模式切换与 U 盘验收。
+- 仍未勾选：Windows 原生入口实机、真实实例锁路径上的并发行为、断线/异常回收与数据保留。
+
+
