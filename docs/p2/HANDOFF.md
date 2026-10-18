@@ -1,5 +1,17 @@
 # P2 单分支交接与剩余审查
 
+## 当前员工工作包：P2-09-GUARD-ORDER-03
+
+用户要求继续推进。本批是与 WIN-NATIVE-VERIFY-02 证据补交独立的测试覆盖开发，不据此关闭该批或进入正式集成。@usb-project-employee 仅对本任务解除暂停，作为 dev/company 唯一写入者；@code-reviewer 组织复验与证据整理，不接管写入；核心实现归 lead。
+
+- 固定 base：`2ffcb087027a060e14fa746ee28d5fd2f28cc1df`。lead 已回读远端 dev/company 为该 SHA，并核对该树 workbench/scripts 与 `aa4c6360b800e247fb95f971a23cea237fce1b6b` 无差异。不要合并 dev/lead 或替换主工作区；本机基线不符或出现重叠写入时先停。
+- 允许文件仅新增 `workbench/tests/portable-guard-order.test.mjs` 和修改 `docs/p2/ACCEPTANCE.md`；禁止改所有生产脚本、guard JSON/哈希、启动器、依赖、既有测试、进度文件。只补实际生产 `createPortableNativeEntries` 的持锁 guard 时序，不宣称顺带覆盖 legacy/managed 其他入口。
+- T1：复制固定基线的四个协调文件至本批合成便携根（不执行启动器），调用真实 createPortableNativeEntries、manager/session、guard 与 acquireInstanceLock，仅注入无业务进程的 adapter。在隔离 Node 子进程中、动态导入前设置受控内置文件 API 钩子，命中真实锁 owner 写入完成之后、guard 校验之前的明确屏障；按完整规范路径限定，必须断言钩子命中恰一次，不能用固定 sleep。记录 guard 读取受控协调文件时实例锁及 owner 已存在，不用只在 adapter.prepare 内争锁的断言冒充 guard 本身的时序证明。
+- T2：同一受控屏障下分别新增恢复标记、篡改协调启动器；断言对应拒绝、adapter.prepare/start 均为 0、标记或篡改字节保留、本批锁释放后可重获。另验证匹配组合接受、prepare/start 各一次且持锁、显式停止后可重获，以及预置他人锁时拒绝且 owner 字节不变。不能预先放标记冒充持锁窗口注入，不能改 manifest 让测试变绿。检查失败处理仍来自生产 caller；仅有独立 guard 单测不足。已有实现正确则报告补覆盖，不制造假红灯。
+- T3：在 ACCEPTANCE 增补逐案例的生产调用点、注入点、可观测断言与证据层级；明确仅 portable native 组装路径，不将通过扩展成 legacy/managed 时序全覆盖或 Windows/真实实例验收。
+- 验证只用已有 Node 标准库：`node --test tests/portable-guard-order.test.mjs tests/portable-native-entries.test.mjs tests/native-entry-manager.test.mjs`。允许本批自有临时文件锁与隔离 Node 子进程，不监听、不启动 Python/Hermes/模型、不读 E 盘或个人配置、不安装、不构建。源码内存钩子只在自有子进程生效；退出/清理必须有界、先确认自有子进程结束再删临时根，不全局 kill、不写生产文件。缺环境、清理异常或需改生产立即报告；同根因最多三轮，reviewer 不自行扩权重跑。
+- employee 交固定结果后暂停，reviewer 在独立固定结果 worktree 实际运行同一定向命令，回交 base/result、两文件清单、完整日志及完整哈希、用例与清理证据、失败/跳过/未测范围。允许正常提交推送 dev/company 并远端回读；不改 dev/lead 或正式集成。完整脱敏证据通过附件传递，短摘要只列结果，避免群长消息截断。
+
 ## 当前派单：P2-09-WIN-NATIVE-VERIFY-02（隔离验证，不部署 E 盘）
 
 用户要求继续推进。执行主体为 @code-reviewer，负责固定版本的隔离 Windows 验证和证据汇总；@usb-project-employee 保持暂停，不同时写入或构建；核心缺陷仍由 lead 处理。本批不修改源码、不整合分支、不运行真实 Hermes/模型、不更新或降级 E 盘，不安装依赖。此前浏览器复验接收状态见 PROGRESS-GUIDE 顶部；不重复浏览器批次。

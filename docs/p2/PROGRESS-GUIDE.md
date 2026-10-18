@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## WIN 证据补交与独立 guard 时序覆盖并行推进
+
+WIN-NATIVE-VERIFY-02 目前仅接收到 reviewer 的通过摘要及局部补交，长消息两次从中间截断，完整命令/退出码/日志尚未齐备，继续记“报告通过、证据接收未齐”。缺失的 windows-job-host.py 执行前磁盘哈希不能由事后 Git 内容哈希补作执行证据；employee 对 CRLF/blob 的只读旁证只证明源码可追溯。停止重复长报告和重跑，reviewer 只整理现有脱敏附件及短摘要；不因此要求用户测试或修改 E 盘。
+
+已读实际 portable-native-entries 测试：现有成功路径在 adapter.prepare 内争锁，拒绝路径在启动前篡改 launcher；两者尚不是 guard 读取时持锁及持锁窗口新增异常的直接动态证据。因此将独立测试工作包 `P2-09-GUARD-ORDER-03` 下发 employee，限定两文件和真实 portable native 组装路径，接口/生产代码不改；reviewer 组织固定版本复验，细节见 HANDOFF 顶部。lead 实际回读公司固定 base `2ffcb087027a060e14fa746ee28d5fd2f28cc1df`，核对生产 scripts 与已审 aa4c636 无差异；本轮没有测试执行、分支合并或部署。
+
+该覆盖工作不依赖 WIN 批次通过，可以隔离推进；不关闭 legacy/managed 另两条 guard 时序门禁、原生 CLI/Dashboard 与真实 U 盘验收。employee 暂停仅对本工作包解除，reviewer 仍不得并发写其工作区。
+
 ## 浏览器修复接收；转入隔离 Windows 原生监督验证
 
 reviewer 重新按授权在固定 `aa4c6360b800e247fb95f971a23cea237fce1b6b` 的独立 detached worktree 回交：Windows 定向 17/17、validate 18 组件、build、浏览器 7/12/19 项，六条命令各一次、各退出 0，浏览器均 cleaned=true、无模型。lead 只读计算 Git blob 的 SHA-256，并将 LF 转为 CRLF 后核对，三个结果与 reviewer 报告的完整 Windows 文件哈希全部一致；这是换行格式差异，不是代码漂移。接收三文件静态批准和本轮 reviewer 固定版本动态结论，明确为公司执行证据，非 lead Windows 自测。Linux socket 子断言在 Windows 未运行，lead 前次 Linux 证据另列；先前错对象/混合快照结果不恢复为有效验收。
