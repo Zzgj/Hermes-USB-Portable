@@ -1,5 +1,46 @@
 # P2 当前进度与任务
 
+## 浏览器修复固定交付与独立复验派单
+
+用户要求继续推进，lead 按既有 dev/lead 源码发布授权保存三文件修复为 `aa4c6360b800e247fb95f971a23cea237fce1b6b`（base `6cfa496c5bc924574054d4f7e66a24bd9647b81a`），提交 blob 与下节实测快照一致。此前“未提交”描述保留为验证时状态，当前已提交；远端发布是否成功以本轮回读为准。原有进度 WIP 保留并随本次任务文档保存，没有新增 lead 测试、公司分支合并、正式集成或实例更新。
+
+下发 `P2-09-BROWSER-FIX-REVIEW-01`：reviewer 审查固定三文件、按已有批准范围在独立环境有界复验，并只读准备 Windows 集中验收方案；详细命令和暂停边界见 HANDOFF 顶部。employee 保持暂停。本次修复未获独立批准，不能继承旧核心静态结论；Windows 原生门禁和 guard 持锁时序动态待验仍未关闭。
+
+## NATIVE-01 浏览器有界批次：准备阻塞已解除，合成页面回归通过
+
+总监在群内明确批准本批。lead 在 `6cfa496c5bc924574054d4f7e66a24bd9647b81a` 的独立源码副本执行一次 Chrome/CDP 诊断：沿用 native 浏览器夹具的嵌套临时目录可复现 `CDP_CLOSED`、Chrome `SIGABRT`，受控 stderr 明确报告 `Socket path too long`（SingletonSocket）。诊断退出 1，清理成功；这是已复现的夹具路径问题，不是页面或 Hermes 生产故障，也不据此追认此前另两个脚本失败的全部原因。
+
+修复仅涉及三个测试文件：`workbench/tests/native-entry-browser-check.mjs`、`s1-browser-driver.mjs`、`s1-browser-driver.test.mjs`（后两者同在 workbench/tests）。新增短临时根 helper，将 native 浏览器 TMPDIR 放在配置 scratch 根直属的独立目录并纳入清理；不改生产实现、不改 sandbox、不回退到系统 /tmp。定向回归新增真实 Linux Unix socket 绑定断言及 native 调用点/清理接线检查。其他两个浏览器脚本本来使用短临时根，没有修改；本批进程 TMPDIR 固定为本 Profile scratch 根，避免再套多层证据目录。
+
+测试代码身份为上述 HEAD 加三文件修改，测试源码清单 SHA-256：`0bf00153e474c8b662896fbedac5fc21f220f02f91dd110477ed9cb6aef0226d`。本地证据位于 Profile scratch 下 `browser-batch-wuk8gna9`，含 diagnostic.json、tested-manifest.json、逐命令日志及 results.json；不是跨机交付地址。实际 cwd 为该批 `source/workbench`，仅复用已有依赖。以下每条执行一次，没有失败重跑：
+
+| 命令 | 实际结果 | 退出码 |
+|---|---|---|
+| `node --test tests/s1-browser-driver.test.mjs` | 17 通过，0 失败/跳过 | 0 |
+| `npm run validate` | 18 组件通过 | 0 |
+| `npm run build` | TypeScript/Vite 新构建通过 | 0 |
+| `node tests/native-entry-browser-check.mjs` | 7 项通过；合成 starts/stops/opens 各 1，managedStarts=0 | 0 |
+| `node tests/entry-control-browser-check.mjs` | 12 项通过 | 0 |
+| `node tests/s1-browser-check.mjs` | 19 项通过 | 0 |
+
+三个浏览器报告均 cleaned=true、hermesModelExecuted=false；scratch 前后目录差异仅新增 node-compile-cache，保留缓存，不称整个 scratch 清空。测试期间隔离源码哈希不变，三文件修复与主工作区逐字节一致，原有进度 WIP 在追加本记录前完整保留。没有全量 npm test、Windows/Python 原生测试、真实模型、安装、实例更新、正式集成或发布；HEAD 本身尚不包含修复，本轮未提交推送。该修复仍需独立审查，不继承 reviewer 对旧源码的静态批准。
+
+公司证据另行接收：reviewer 回报 `2ffcb087027a060e14fa746ee28d5fd2f28cc1df` 的 PACKAGE-03-R1 原三文件 Node 命令 19/19、退出 0，并回报 `41387cdbbea4250482db97d094cd4b2602c8ebef` 全 44 差异文件静态审查完成；均非 lead 重跑。原“待组长回交”状态由此更新，guard 持锁时序动态确认仍待。正式集成仍要求 CLI 与原生 Dashboard 实际可打开且正常使用；本批真实浏览器加合成适配器不替代 Windows 交互、进程树与 U 盘验收。
+
+## PACKAGE-03-R1 接收：静态补证已落实，待组长固定版本复验
+
+lead 本轮远端回读并实际 fetch 公司 result `2ffcb087027a060e14fa746ee28d5fd2f28cc1df`，读取相对 `d27fc80345c374711873c4e70b616b487cad47fa` 的完整返工差异、最终测试全文及生产 guard；相对工作包 base `9e5c0df9b920f40b79691bd2173a78c43e39d98a` 的文件范围仍仅原测试与 ACCEPTANCE。独立 LF/CRLF 落盘、安装/恢复标记分别及同时存在、无锁/已有锁保留断言和恢复指引均已补齐；本轮没有运行测试，不把交付文档中的 19 通过视为 lead 或 reviewer 实测。
+
+结论：原静态返工要求已落实，等待 reviewer 对上述固定 result 按原三文件 Node 命令回交独立结论、退出码及清理证据；不再重复派员工实现同一补丁。dev/lead 仍为 `6cfa496c5bc924574054d4f7e66a24bd9647b81a`，未合并公司分支，原有进度 WIP 保留。浏览器准备失败另行申请有界诊断/重跑，Windows 原生与正式集成门禁不变。
+
+## PACKAGE-03 固定交付只读审阅：需补证
+
+lead 已实际获取公司 result `d27fc80345c374711873c4e70b616b487cad47fa`，读取相对 base `9e5c0df9b920f40b79691bd2173a78c43e39d98a` 的完整两文件差异，并核对生产 portable-entry-guard 与实例锁目录定义。本轮未执行测试、构建或浏览器；公司文档记载的 15 通过不作为 lead 自测，也尚缺本轮 reviewer 固定版本回交。
+
+静态结论为覆盖/指引需返工，不是已证实生产 guard 缺陷：匹配组合用例未实际改写 LF/CRLF，却在矩阵声称等价已验证；安装与恢复标记同时存在，仅触发第一个拒绝，不能证明恢复标记单独生效；除 gateway 已有锁场景外，缺少成功及各拒绝路径不创建/不改写锁的断言。另，拒绝后的处理指引不能把“确认无运行实例”直接等价为可以删除恢复标记；需保留标记、先核查中断事务与恢复证据，具体真实恢复操作另获用户批准。
+
+有界补证 `P2-09-NATIVE-PACKAGE-03-R1`：employee 仍为 dev/company 唯一写入者，仅修改原测试及 ACCEPTANCE 两文件；reviewer 组织返工并在 employee 暂停后独立运行原三文件 Node 命令，回交固定 base/result、命令退出码、失败/跳过、清理证据与结论。补独立 LF/CRLF、两个标记分别存在及同时存在、无锁保持无锁与既有锁原样保留断言；更正操作指引，不改生产、依赖或 guard 哈希。此为该交付第一轮返工；正式集成及浏览器、Windows 门禁不变。
+
 ## 当前版本门槛：CLI 与原生 Dashboard 可实际打开
 
 ### 源码提交与恢复公司协作

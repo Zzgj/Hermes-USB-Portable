@@ -1,5 +1,16 @@
 # P2 单分支交接与剩余审查
 
+## 当前派单：P2-09-BROWSER-FIX-REVIEW-01
+
+本节取代下方历史当前派单。开发/修复主体为 lead，独立审查主体为 @code-reviewer；@usb-project-employee 保持暂停，无需重复实现。遵循既有三分支授权发布到 dev/lead，不合并 dev/company，不推进正式集成。
+
+- 固定 base：`6cfa496c5bc924574054d4f7e66a24bd9647b81a`；源码 result：`aa4c6360b800e247fb95f971a23cea237fce1b6b`。源码提交只有三个测试文件：`workbench/tests/native-entry-browser-check.mjs`、`workbench/tests/s1-browser-driver.mjs`、`workbench/tests/s1-browser-driver.test.mjs`。三个 Git blob 已与批准批次的实测快照逐字节核对一致；后续任务单提交仅文档，实际发布身份由推送后远端回读给出。
+- 先核对本机仓库/remote/脏文件，再 fetch origin dev/lead；在独立 detached worktree 读取固定 result，不切换、覆盖或合并 employee 的 dev/company 工作区。先读 AI_GUIDE 顶部、PROGRESS-GUIDE 顶部及本节。没有取得精确源码不得回报已开始审查。
+- **T1 三文件静态审查**：核查临时根确在目标实例允许的 scratch 下，不继承个人浏览器配置、不退回系统 /tmp、不禁用 sandbox；核查临时根在所有分配/启动失败路径的清理及证据保留、Unix socket 测试清理、native 生产页面断言没有放宽。不要把非 Linux 提前 return 当 Linux socket 绑定已运行；该子断言在非 Linux 未覆盖，须明确报告。同样不要把源码正则断言当实际调用证据，实际调用证据来自浏览器执行。
+- **T2 有界独立复验**：沿用已批准的隔离验证范围，使用已有 Node/依赖，在独立 workbench 执行 `node --test tests/s1-browser-driver.test.mjs`、`npm run validate`、`npm run build`，新构建成功且已有可用 Chrome 时再执行 `node tests/native-entry-browser-check.mjs`、`node tests/entry-control-browser-check.mjs`、`node tests/s1-browser-check.mjs`，每条最多一次。浏览器通过 CHROME_BIN 指定目标机已核实的可执行文件，不套用 lead Linux 路径；TMPDIR/TMP/TEMP 绑定对应实例允许的短 scratch 根，不嵌套在长证据目录。先检查依赖/脚本副作用，缺环境则报告待环境验证，不安装、不循环重跑、不运行全量测试或真实 Windows 入口。只启动自有浏览器、合成回环服务及测试临时锁，不读真实 data/Runtime/配置、无模型调用。失败或清理异常即暂停受影响路径并回交；reviewer 不改源码或推送。
+- **T3 Windows 门禁准备（只读）**：基于固定源码列后续集中验收方案：真实启动器→CLI/Dashboard、键盘交互、同 home 互斥、正常退出/异常断线/整树回收、显式停止、P0/P2 匹配与数据保留。列已有测试可覆盖项、缺失项、所需环境和命令/副作用，交 lead 汇总；本任务不授权执行启动器、安装、模型、真实 U 盘或用户实例操作，也不要求用户现在分散实测。
+- 回交：完整 base/result、逐文件审查结论、实际命令/cwd/退出码、平台及通过/失败/跳过/未覆盖子断言、清理结果、残余风险和 Windows 集中方案。lead 历史实测为定向 17/17、validate 18 组件、build、浏览器 7/12/19 项全部退出 0，不冒充 reviewer 本轮执行。最终结论区分静态通过、隔离复验通过与待环境验证；该测试夹具修复不等于原生 Windows 或正式发布通过。
+
 ## 最新员工任务：P2-09-NATIVE-PACKAGE-03
 
 ### 执行主体与额度安排
