@@ -1,5 +1,15 @@
 # P2 当前进度与任务
 
+## 浏览器修复接收；转入隔离 Windows 原生监督验证
+
+reviewer 重新按授权在固定 `aa4c6360b800e247fb95f971a23cea237fce1b6b` 的独立 detached worktree 回交：Windows 定向 17/17、validate 18 组件、build、浏览器 7/12/19 项，六条命令各一次、各退出 0，浏览器均 cleaned=true、无模型。lead 只读计算 Git blob 的 SHA-256，并将 LF 转为 CRLF 后核对，三个结果与 reviewer 报告的完整 Windows 文件哈希全部一致；这是换行格式差异，不是代码漂移。接收三文件静态批准和本轮 reviewer 固定版本动态结论，明确为公司执行证据，非 lead Windows 自测。Linux socket 子断言在 Windows 未运行，lead 前次 Linux 证据另列；先前错对象/混合快照结果不恢复为有效验收。
+
+本轮报告的命令日志仍使用缩略哈希，要求 reviewer 保留并补交现有完整日志及完整哈希，不因此再跑一轮。其报告的远端实际执行、清理及 dist 清单未由 lead 在公司机器独立读取，不能将源码哈希核对写成对远端运行的直接验证。
+
+下一批 `P2-09-WIN-NATIVE-VERIFY-02` 由 reviewer 执行：同一固定源码独立 worktree，新 native host Python 的 3 个契约和 2 个 Windows 原生用例，以及 6 文件 Node 锁/协议定向命令；每条一次，具体命令、清理和暂停范围见 HANDOFF 顶部。lead 本轮仅源码读取、哈希核对与派单，不运行新增测试；employee 保持暂停。该批无需 E 盘、安装或真实 Hermes，仅自有合成进程/临时锁；不扩展为旧 host 全量测试或真实 CLI 交互。
+
+正式集成仍不推进，公司分支尚未合入。E 盘版本/资产缺口仅为 reviewer 报告，未获 lead 实机核验；不得据此直接安装 P2 或切换内核。真实部署必须同时核对匹配 P0 启动器、版本/依赖、数据保留与恢复方案。原生 CLI/Dashboard 实际使用及 U 盘门禁继续保留。
+
 ## 浏览器修复固定交付与独立复验派单
 
 用户要求继续推进，lead 按既有 dev/lead 源码发布授权保存三文件修复为 `aa4c6360b800e247fb95f971a23cea237fce1b6b`（base `6cfa496c5bc924574054d4f7e66a24bd9647b81a`），提交 blob 与下节实测快照一致。此前“未提交”描述保留为验证时状态，当前已提交；远端发布是否成功以本轮回读为准。原有进度 WIP 保留并随本次任务文档保存，没有新增 lead 测试、公司分支合并、正式集成或实例更新。

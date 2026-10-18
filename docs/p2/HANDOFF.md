@@ -1,5 +1,16 @@
 # P2 单分支交接与剩余审查
 
+## 当前派单：P2-09-WIN-NATIVE-VERIFY-02（隔离验证，不部署 E 盘）
+
+用户要求继续推进。执行主体为 @code-reviewer，负责固定版本的隔离 Windows 验证和证据汇总；@usb-project-employee 保持暂停，不同时写入或构建；核心缺陷仍由 lead 处理。本批不修改源码、不整合分支、不运行真实 Hermes/模型、不更新或降级 E 盘，不安装依赖。此前浏览器复验接收状态见 PROGRESS-GUIDE 顶部；不重复浏览器批次。
+
+- 固定源码：`aa4c6360b800e247fb95f971a23cea237fce1b6b`，只用新建的独立 detached worktree，不用 dev/company 主工作区替换文件。保护既有 patch；执行前记录完整 HEAD、tracked/untracked 清单、测试及其直接导入生产模块的完整 SHA-256。先核对已安装 Node/Python 可执行文件及版本、Windows 版本和本实例允许的临时根；不得从另一台机器继承路径。
+- **T1 新 native host 原生 Windows 证据**：在独立 workbench 以核实过的现有 Python 可执行文件执行 `-m unittest discover -s tests -p test_native_entry_host.py -v` 一次。该文件现有 3 个 mock/管道契约测试与 2 个原生 Windows 测试分别报告。原生项为 `test_normal_direct_exit_confirms_descendant_exit_before_closed`、`test_parent_pipe_eof_confirms_entire_tree_exit`：断言 started/closed 帧、直接子与后代句柄均退出、父 EOF、退出码及 reader 清理。不得把导入失败、超时或原生用例跳过算通过；此处执行真实 Windows Job/自有合成 sleeper，不运行 Hermes 或真实控制台交互。
+- **T2 锁与退出证据的 Node 契约**：执行 `node --test tests/native-entry-session.test.mjs tests/native-entry-manager.test.mjs tests/native-process-protocol.test.mjs tests/native-owned-process.test.mjs tests/managed-native.test.mjs tests/legacy-entry.test.mjs` 一次。先读测试与直接调用者，区分临时真实文件锁、mock 传输/进程、真实子进程；不添加生产路径探针。此命令通过不自动关闭三处 guard 持锁调用时序的全部动态缺口，须按实际测试断言逐项映射，有缺口只列缺口。
+- **T3 合并证据与后续缺口**：对照 T1/T2 列已覆盖、不适用及未覆盖；列 CLI 键盘输入、真实 Dashboard 健康/打开、真实 P0 启动器和同 home 模式切换、便携数据保留仍需什么证据。原 `test_windows_job_host.py` 不纳入本轮，旧 host 历史结果不能替代新 host；无需 npm 全量、validate/build、浏览器、安装器或真实 E 盘操作。
+- 使用本批自有临时目录和合成数据，TMPDIR/TMP/TEMP 绑定目标实例许可的 scratch；只终止本批持有句柄的进程，禁止全局 taskkill、清真实锁、读个人配置或扫描进程命令行。每条命令一次，失败即暂停受影响路径；清理异常则暂停整个执行批次并保留证据，不以删除目录或强制移除 worktree冒充进程已回收。缺环境报告待环境验证，不安装、不换基线、不擅自修改测试或重跑。
+- 回交完整固定 SHA、实际命令（含 Python 路径）、退出码、完整日志及其完整 SHA-256、逐用例通过/失败/跳过、测试前后源码清单、owned 进程/reader/临时根清理证据。日志仅保留合成测试输出，脱敏后通过可访问附件交付，不以公司本地路径或缩略哈希代替；不上传配置、Runtime、node_modules。保留证据后按正常流程移除自有 worktree，不默认强制删除未知文件。结论必须区分原生 Job 行为、合成接口契约和未做的真实实例验收。
+
 ## 当前派单：P2-09-BROWSER-FIX-REVIEW-01
 
 本节取代下方历史当前派单。开发/修复主体为 lead，独立审查主体为 @code-reviewer；@usb-project-employee 保持暂停，无需重复实现。遵循既有三分支授权发布到 dev/lead，不合并 dev/company，不推进正式集成。
