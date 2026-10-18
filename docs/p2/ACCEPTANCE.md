@@ -273,24 +273,30 @@ $target = 'E:\Hermes-P2-Test'
 | 无进行中的安装/恢复 | 不存在 `logs/diagnostics/p2-install-active.json`、`updates/hermes-restore-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY` |
 | 无外部旧入口占用 | 不存在 `<home>/gateway.pid`（不做 PID 存活推断、不自动回收） | `EXTERNAL_ENTRY_REQUIRES_REVIEW` |
 
-### 场景矩阵（`node --test tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs`，本机 15 通过 / 0 失败）
+### 场景矩阵（`node --test tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs`，本机以隔离临时目录复跑：19 通过 / 0 失败 / 0 跳过，退出码 0；该结果只对应本批提交的测试文件，不是负责人复验）
 
 | 场景 | 期望 | 证据层级 | 对应测试 |
 |---|---|---|---|
 | 白名单真实源码 staging | 逐文件字节/大小/SHA-256 与源一致，manifest 无重复，`release_ready=false` | 自动合成 | `staging copies real whitelisted sources byte for byte and stays non-releasable` |
 | 原生模块完整性 | host/协议/adapter/manager/guard/JSON 等 12 个文件在包内且非空 | 自动合成 | 同上 |
 | P0 文件不在增量包内 | `launch.bat` 等不出现在 manifest | 自动合成 | 同上、`native payload includes complete composition without taking over P0 launchers` |
-| 匹配的 P0 启动器组合 | 真实 guard 正常返回，LF/CRLF 等价 | 自动合成 | `the staged guard accepts a matching P0 launcher set` |
-| 只有 P2 输出、缺 P0 启动器 | 拒绝 | 自动合成 | `the guard rejects a P2-only root without the P0 launchers` |
-| 旧版或被篡改启动器 | `ENTRY_COORDINATION_UNCONFIRMED` | 自动合成 | `the guard rejects a stale or tampered launcher` |
-| 缺 legacy 协调模块 | 拒绝 | 自动合成 | `the guard rejects a missing legacy coordination module` |
-| 安装/恢复标记存在 | 拒绝且两个标记原文保留 | 自动合成 | `the guard refuses interrupted-install markers and leaves both markers untouched` |
-| 外部 gateway 收据 | 拒绝，收据与既有实例锁都不被清除 | 自动合成 | `an external gateway receipt is refused without clearing the receipt or an existing lock` |
-| home 不是 `<root>/data` | `PORTABLE_ENTRY_HOME_MISMATCH` | 自动合成 | `a home that is not the portable data directory is refused` |
+| 匹配的 P0 启动器组合 | 真实 guard 正常返回；无锁时不新建锁，预置锁时原文不变 | 自动合成 | `the staged guard accepts a matching P0 launcher set and never takes the instance lock` |
+| 协调文件 LF / CRLF 等价 | 分别按 LF、CRLF 实际写入目标并读回确认换行后再调用包内 guard，两种均通过 | 自动合成 | `the staged guard accepts LF and CRLF copies of the coordination files` |
+| 非 LF/CRLF 换行 | 仅归一化 CRLF；裸 CR 是不同字节，`ENTRY_COORDINATION_UNCONFIRMED` | 自动合成 | `the guard rejects coordination files whose line endings are neither LF nor CRLF` |
+| 只有 P2 输出、缺 P0 启动器 | 拒绝；无锁仍无锁、已有锁原文不变 | 自动合成 | `the guard rejects a P2-only root without the P0 launchers and leaves the lock untouched` |
+| 旧版或被篡改启动器 | `ENTRY_COORDINATION_UNCONFIRMED`；锁状态不变 | 自动合成 | `the guard rejects a stale or tampered launcher and leaves the lock untouched` |
+| 缺 legacy 协调模块 | 拒绝；锁状态不变 | 自动合成 | `the guard rejects a missing legacy coordination module and leaves the lock untouched` |
+| 仅安装标记存在 | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`，标记原文保留，不创建恢复标记，锁状态不变 | 自动合成 | `an install marker alone refuses entry, preserves the marker and leaves the lock untouched` |
+| 仅恢复标记存在 | 同上；证明第二个检查可独立触发，不被安装标记短路 | 自动合成 | `a restore marker alone refuses entry, preserves the marker and leaves the lock untouched` |
+| 安装与恢复标记同时存在 | 拒绝，两个标记原文保留，锁状态不变 | 自动合成 | `both markers together refuse entry and both are preserved verbatim` |
+| 外部 gateway 收据 | 拒绝，收据与既有实例锁都不被清除；无锁时不新建锁 | 自动合成 | `an external gateway receipt is refused without clearing the receipt or an existing lock` |
+| home 不是 `<root>/data` | `PORTABLE_ENTRY_HOME_MISMATCH`，不改动该 home 的锁 | 自动合成 | `a home that is not the portable data directory is refused and never takes its lock` |
+
+锁不变断言的判定范围是 `<home>/.p2-manager-lock/` 整个目录：先记录目录是否存在、`owner.json` 原文（base64）与目录项列表，调用后再逐项比对。每条路径都在无锁 home 与预置锁 home 各执行一次，因此“无锁仍无锁”和“已有锁内容不变”分别有独立证据；guard 是准入检查而非锁管理器，成功路径同样断言不创建锁。全部证据仍是合成目录与进程内调用，不构成 Windows 实机或 U 盘验收。
 
 ### 被拒绝后的处理
 
-拒绝只说明安装一致性未确认，**不清理实例锁、不删除或改写恢复标记、不自动停止外部进程、不自动安装/构建**。处置顺序：确认没有运行中的旧实例 → 用户明确处理后，重装匹配的 P0 外壳或删除残留标记 → 重新校验。`accepted` 只代表操作被接收，CLI 进程被创建也不等于交互可用。
+拒绝只说明安装一致性未确认，**不清理实例锁、不删除或改写安装/恢复标记、不自动停止外部进程、不自动安装/构建**。处置顺序：保留标记原文，先只读核查中断事务与恢复证据；“确认没有运行中的旧实例”本身不构成删除标记的依据，真实恢复动作须另获用户批准后执行，再重新校验。`accepted` 只代表操作被接收，CLI 进程被创建也不等于交互可用。
 
 ### 本批仍未验证（不得勾选）
 
