@@ -215,3 +215,121 @@ $target = 'E:\Hermes-P2-Test'
 - 未做真实 Hermes CLI 进程启动（仅合成测试进程）
 - 未做 E 盘实机验收
 - POSIX 进程组测试在 Windows 上跳过（9 项），不作为通过
+
+## P2-09-NATIVE-01 原生入口验收矩阵（NATIVE-COVERAGE-02，源码 `41387cdb`）
+
+本批只补回归测试与验收指引，不改生产实现。以下“自动合成证据”均为 Node 测试证据，**不是浏览器点击、Windows 实机或模型验证**。历史记录上方保留，不复用旧结论。
+
+### 操作步骤（设置页，仅认证后可用）
+
+1. 在 AI 对话页完成管理服务认证；未认证时面板只显示“需认证”，所有动作禁用。
+2. 点“读取原生入口状态”。状态为 `unknown` 时必须先读取，不自动启动、不清锁。
+3. 勾选风险确认（启动可能读取本实例配置；停止可能中断任务）。
+4. 点“启动 CLI”或“启动原生 Dashboard”；确认随即被消耗，重复点击无效。
+5. 管理器回报 `accepted` 后**自动重读状态**；读取失败则回到 `unknown`，不自动重试。
+6. 仅当 `kind=dashboard` 且 `state=running` 时“打开已运行的 Dashboard”可用；CLI 入口永远不可打开 Dashboard。
+7. 停止需再次确认；停止后须确认整棵进程树退出才释放锁，本页不断言进程已退出。
+
+### 场景矩阵
+
+| 场景 | 期望行为 | 证据层级 | 对应测试 |
+|---|---|---|---|
+| 未认证 / 请求进行中 | 隐藏旧成功结果，全部动作禁用 | 自动合成 | `unauthenticated and pending panels cannot invoke any action`、`pending and unauthenticated states hide stale success and block every action` |
+| 未勾选确认 | 启动/停止按钮禁用，直接触发事件也不产生动作 | 自动合成 | `unconfirmed gate blocks every mutating action even for stray events` |
+| 确认后启动 | 仅一次动作，确认被消耗 | 自动合成 | `confirming enables the idle start action and the click consumes the confirmation` |
+| 刷新 | 清除确认，只读状态，不触发动作 | 自动合成 | `refresh clears the confirmation and only refreshes` |
+| 状态 `unknown` | 禁止启动，需显式读取；动作失败后仍 `unknown` | 自动合成 | `unknown cannot start…`、`status read failure after acknowledgement stays unknown without retry` |
+| 动作已应答但状态读取失败 | 保持 `unknown` 且标记失败，无自动重试 | 自动合成 | 同上 |
+| 响应正文异常 | 正文挂起取消、累计超 4096 字节、非法 UTF-8、截断 JSON 一律拒绝 | 自动合成 | `cancelling a pending body…`、`chunked bodies over the byte limit…`、`invalid utf-8 and truncated json are rejected` |
+| 403/409/500 | 只暴露固定错误码，不泄露正文，正文被取消 | 自动合成 | `error responses expose no body text and are cancelled` |
+| 身份切换 / 往返 / 卸载 | 旧请求被中止，迟到响应不覆盖新状态，旧回调不发起动作 | 自动合成 | `identity round trip fences the previous generation and its actions`、`late rejection after unmount cannot mark a failed state` |
+| CLI 入口打开 Dashboard | 始终禁用/无效 | 自动合成 | `a CLI entry can never open a Dashboard view` |
+| 停止 | 需确认；`idle` 时按钮禁用（只断言渲染态） | 自动合成 | `stop requires an explicit confirmation; only the disabled state is asserted while idle` |
+| 失败后显式停止 | failed 时启动/打开被抑制，刷新可用，确认后仍可显式停止 | 自动合成 | `failed state blocks start and open but keeps refresh and an explicit confirmed stop` |
+| 未知后显式停止 | `unknown`+failed 仍可经确认显式停止，不自动启动 | 自动合成 | `unknown after a failed request still permits an explicit confirmed stop` |
+
+### 仍未验证（不得勾选为通过）
+
+- [ ] 浏览器真实点击与页面渲染：本批为合成调度器事件回调，三个浏览器脚本仍在 setup 阶段失败，未进入业务断言。
+- [ ] Windows 实机：CLI 独立控制台交互输入、整棵进程树退出确认、Job 归属与父管道关闭。
+- [ ] 同 home 互斥：P2 托管实例与 CLI/Gateway 的模式切换。
+- [ ] 旧入口（`launch.bat`、Gateway）与配置写入路径的绕行拒绝。
+- [ ] 未知状态不清锁、不自动重启在真实锁文件上的行为。
+- [ ] 固定 Hermes 版本与 P0 启动器匹配前提（版本/资产不一致时应拒绝而非安装或构建）。
+- [ ] 模型调用与实际任务执行：本批不调用模型，CLI 进程创建不等于交互可用。
+
+自动合成测试通过只说明上述客户端/组件契约成立，不替代 Windows／U 盘验收，也不构成发布授权。
+
+## P2-09-NATIVE-PACKAGE-03 P2 增量包完整性与启动器匹配
+
+**P2 增量包不是完整启动外壳。** 它只把白名单内的源码与构建产物放进 `Hermes-Portable-P2`，`release_ready` 固定为 `false`；`launch.bat`、`scripts/open-hermes.ps1`、`scripts/start-web-workbench.ps1` 属于 P0 外壳，**不在增量包内**，必须由已安装的 P0 交付提供，且与包内 `portable-entry-guard.json` 记录的哈希一致。有包内文件名不等于安装后可启动。
+
+### 运行前提（缺一项即拒绝，不自动修复）
+
+| 前提 | 校验方式 | 拒绝表现 |
+|---|---|---|
+| 目标根含 `data/` 且与传入 home 指向同一目录 | `realpath(root/data) === realpath(home)` | `PORTABLE_ENTRY_HOME_MISMATCH` |
+| 四个协调文件存在且哈希匹配（`launch.bat`、`scripts/open-hermes.ps1`、`scripts/start-web-workbench.ps1`、`workbench/scripts/legacy-hermes-entry.mjs`） | 按 LF 归一化后的 SHA-256 与包内 guard JSON 比对 | `ENTRY_COORDINATION_UNCONFIRMED`（缺失时为 ENOENT） |
+| 无进行中的安装/恢复 | 不存在 `logs/diagnostics/p2-install-active.json`、`updates/hermes-restore-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY` |
+| 无外部旧入口占用 | 不存在 `<home>/gateway.pid`（不做 PID 存活推断、不自动回收） | `EXTERNAL_ENTRY_REQUIRES_REVIEW` |
+
+### 场景矩阵（`node --test tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs`，本机以隔离临时目录复跑：19 通过 / 0 失败 / 0 跳过，退出码 0；该结果只对应本批提交的测试文件，不是负责人复验）
+
+| 场景 | 期望 | 证据层级 | 对应测试 |
+|---|---|---|---|
+| 白名单真实源码 staging | 逐文件字节/大小/SHA-256 与源一致，manifest 无重复，`release_ready=false` | 自动合成 | `staging copies real whitelisted sources byte for byte and stays non-releasable` |
+| 原生模块完整性 | host/协议/adapter/manager/guard/JSON 等 12 个文件在包内且非空 | 自动合成 | 同上 |
+| P0 文件不在增量包内 | `launch.bat` 等不出现在 manifest | 自动合成 | 同上、`native payload includes complete composition without taking over P0 launchers` |
+| 匹配的 P0 启动器组合 | 真实 guard 正常返回；无锁时不新建锁，预置锁时原文不变 | 自动合成 | `the staged guard accepts a matching P0 launcher set and never takes the instance lock` |
+| 协调文件 LF / CRLF 等价 | 分别按 LF、CRLF 实际写入目标并读回确认换行后再调用包内 guard，两种均通过 | 自动合成 | `the staged guard accepts LF and CRLF copies of the coordination files` |
+| 非 LF/CRLF 换行 | 仅归一化 CRLF；裸 CR 是不同字节，`ENTRY_COORDINATION_UNCONFIRMED` | 自动合成 | `the guard rejects coordination files whose line endings are neither LF nor CRLF` |
+| 只有 P2 输出、缺 P0 启动器 | 拒绝；无锁仍无锁、已有锁原文不变 | 自动合成 | `the guard rejects a P2-only root without the P0 launchers and leaves the lock untouched` |
+| 旧版或被篡改启动器 | `ENTRY_COORDINATION_UNCONFIRMED`；锁状态不变 | 自动合成 | `the guard rejects a stale or tampered launcher and leaves the lock untouched` |
+| 缺 legacy 协调模块 | 拒绝；锁状态不变 | 自动合成 | `the guard rejects a missing legacy coordination module and leaves the lock untouched` |
+| 仅安装标记存在 | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`，标记原文保留，不创建恢复标记，锁状态不变 | 自动合成 | `an install marker alone refuses entry, preserves the marker and leaves the lock untouched` |
+| 仅恢复标记存在 | 同上；证明第二个检查可独立触发，不被安装标记短路 | 自动合成 | `a restore marker alone refuses entry, preserves the marker and leaves the lock untouched` |
+| 安装与恢复标记同时存在 | 拒绝，两个标记原文保留，锁状态不变 | 自动合成 | `both markers together refuse entry and both are preserved verbatim` |
+| 外部 gateway 收据 | 拒绝，收据与既有实例锁都不被清除；无锁时不新建锁 | 自动合成 | `an external gateway receipt is refused without clearing the receipt or an existing lock` |
+| home 不是 `<root>/data` | `PORTABLE_ENTRY_HOME_MISMATCH`，不改动该 home 的锁 | 自动合成 | `a home that is not the portable data directory is refused and never takes its lock` |
+
+锁不变断言的判定范围是 `<home>/.p2-manager-lock/` 整个目录：先记录目录是否存在、`owner.json` 原文（base64）与目录项列表，调用后再逐项比对。每条路径都在无锁 home 与预置锁 home 各执行一次，因此“无锁仍无锁”和“已有锁内容不变”分别有独立证据；guard 是准入检查而非锁管理器，成功路径同样断言不创建锁。全部证据仍是合成目录与进程内调用，不构成 Windows 实机或 U 盘验收。
+
+### 被拒绝后的处理
+
+拒绝只说明安装一致性未确认，**不清理实例锁、不删除或改写安装/恢复标记、不自动停止外部进程、不自动安装/构建**。处置顺序：保留标记原文，先只读核查中断事务与恢复证据；“确认没有运行中的旧实例”本身不构成删除标记的依据，真实恢复动作须另获用户批准后执行，再重新校验。`accepted` 只代表操作被接收，CLI 进程被创建也不等于交互可用。
+
+### 本批仍未验证（不得勾选）
+
+- [ ] Windows 实机安装/升级、真实 `zip` 归档与 U 盘复制
+- [ ] 真实 P0 外壳与真实 Hermes 配置共同运行的端到端流程
+- [ ] 浏览器点击、CLI 交互输入与模型调用
+- [ ] 增量包安装后的整棵进程树退出与锁释放实机证据
+
+## P2-09-GUARD-ORDER-03 持锁 guard 时序补证（`workbench/tests/portable-guard-order.test.mjs`）
+
+此前"guard 持锁时序"只有静态结论。本批用受控屏障补动态证据：在隔离 Node 子进程中，动态 import 生产模块**之前**替换 `fs.promises.readFile` / `fs.promises.lstat`，按完整规范路径（`realpath` 后的绝对路径字符串）限定命中范围；未命中即测试失败，因此证据不能靠"钩子静默不触发"通过。不使用固定 sleep。
+
+生产调用链（源码 `2ffcb087`）：`createPortableNativeEntries`（`portable-native-entries.mjs:7-11`）→ `createNativeEntryManager`（`native-entry-manager.mjs:20-32`）→ `createNativeEntrySession.start`（`native-entry-session.mjs:9-23`，先 `acquire()` 再 `prepare()`）→ `manager.prepare` 内 `checkRecovery()` → `beforePrepare` = `assertPortableEntryGuard` → `adapter.prepare`。因此 guard 必然读文件于实例锁与 `owner.json` 写入之后。
+
+### 场景矩阵（`node --test tests/portable-guard-order.test.mjs tests/portable-native-entries.test.mjs tests/native-entry-manager.test.mjs`，本机隔离临时目录与隔离 Node 子进程：10 通过 / 0 失败 / 0 跳过，退出码 0）
+
+| 案例 | 生产调用点 | 屏障/注入点 | 可观测断言 | 证据层级 |
+|---|---|---|---|---|
+| 匹配组合正常启动 | `session.start` → `manager.prepare` → `assertPortableEntryGuard` → 合成 `adapter.prepare` → `adapter.start` | `fs.promises.readFile` 命中 `<root>/launch.bat` 全规范路径（guard 逐文件哈希校验处） | 命中恰 1 次；命中时 `.p2-manager-lock/` 与 `owner.json`（`schema:1`）均已存在；此时 adapter `prepare`/`start` 计数均为 0；随后 `prepare`/`start` 各 1 次；运行中锁仍在；显式 `stop()` 后状态 `idle`、锁目录消失、`acquireInstanceLock` 可重获并释放 | 自动合成（真实 manager/session/guard/锁，合成 adapter，无业务进程） |
+| 屏障内新增安装恢复标记 | `manager.acquire`→`manager.prepare` 的 `checkRecovery()`；屏障取 guard 自身的 `lstat(<root>/data)`（`portable-entry-guard.mjs` 首个文件系统调用，位于持锁后、标记校验前） | `fs.promises.lstat` 命中 `realpath(home)` 时写入 `logs/diagnostics/p2-install-active.json` | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；adapter `prepare`/`start` 均为 0；标记原文逐字节保留；本批锁已释放、可重获 | 自动合成 |
+| 屏障内篡改协调启动器 | 同上，随后进入 guard 的逐文件 SHA-256 比对 | 同一 `lstat` 屏障内改写 `<root>/launch.bat` 字节 | `ENTRY_COORDINATION_UNCONFIRMED`；guard 读取协调文件发生 1 次且当时锁在；adapter `prepare`/`start` 均为 0；篡改字节保留；锁释放后可重获 | 自动合成 |
+| 预置他人实例锁 | `session.start` 的 `acquireInstanceLock`（guard 之前） | 不注入，启动前写入 `.p2-manager-lock/owner.json` 外部字节 | `INSTANCE_LOCKED`；guard 未读协调文件（0 次）；adapter `prepare`/`start` 均为 0；`owner.json` 原文不变；测试不调用生产 `release()` 清除他人锁，由夹具删除 | 自动合成 |
+
+"匹配组合"与"标记/篡改"两类拒绝的失败处理都来自生产 caller（`manager.acquire`/`manager.prepare` 与 `session` 的 catch 释放锁），不是测试自带判断；断言不修改 `portable-entry-guard.json`、不改生产代码、不预置标记来伪造持锁窗口。
+
+### 测试驱动可靠性（R2）
+
+驱动层不是被测断言的一部分，但它的失败路径必须可证，而且"保留现场"必须真的落到清理回调上：`fixture()` 把同一个 `cleanup` 既注册给 `t.after` 又返回给用例，用例在失败后**显式调用该回调**再断言根目录与哨兵文件仍在，而不是只断言 `t.after` 执行前目录还在。`driveChild()` 统一接管真实子进程与可控事件替身（`FakeChild`，可分别驱动 `close` 与两条流 `end`）：只有收到子进程 `READY`（钩子与生产模块导入完成）后才武装超时；超时与 READY 前超时走同一套"终止→有界等 `close`→有界等排空"逻辑，未确认时返回 `*_CLEANUP_BLOCKED` 并置 `guard.keep=true` 使 `t.after` 跳过删除。退出与排空分别记录：`childExited`、`streamsDrained`、`cleanupConfirmed` 三个字段各自独立，已确认退出但未排空记为 `childExited:true / streamsDrained:false / cleanupConfirmed:false`（保留目录、拒绝成功），不把已确认的退出改写成未知。普通 `close` 分支同样检查排空结果，未排空按 `CHILD_CLEANUP_UNCONFIRMED` 处理；`spawn` 的 `error` 在未启动时以 `CHILD_SPAWN_FAILED` 完成，启动后的运行期错误记录后待 `close` 收尾。回归用例：`real timeout after readiness exits the owned child before failing`（真实子进程 `hang` + 2s 期限）、`spawn failure settles as spawn failure without waiting for a deadline`、`confirmed exit without drained streams keeps the root through the real cleanup callback`、`unconfirmed child exit keeps the root through the real cleanup callback`、`readiness timeout terminates and waits for exit before failing`（替身 `kill()` 后异步 `exit()`，`childExited:true` 只能来自 `close` 路径）。
+
+### 本批范围与未覆盖（不得外推）
+
+- 仅覆盖 `createPortableNativeEntries` 这一组装路径的 guard 时序。`legacy-hermes-entry.mjs` 与 `launch-managed.mjs`/`managed-instance.mjs`（`beforeStart` 的 `checkEntryGuard`）属同一 guard 函数的其他 caller，本批未做动态覆盖，不得据本批写成"三处入口时序全覆盖"。
+- 合成 adapter 不产生业务进程：不覆盖 Windows 原生 Job/进程树、CLI 键盘交互、真实 Dashboard、真实 P0 启动器调用链、同 home 模式切换与 U 盘验收。
+- 仍未勾选：Windows 原生入口实机、真实实例锁路径上的并发行为、断线/异常回收与数据保留。
+
+
