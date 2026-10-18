@@ -322,9 +322,9 @@ $target = 'E:\Hermes-P2-Test'
 
 "匹配组合"与"标记/篡改"两类拒绝的失败处理都来自生产 caller（`manager.acquire`/`manager.prepare` 与 `session` 的 catch 释放锁），不是测试自带判断；断言不修改 `portable-entry-guard.json`、不改生产代码、不预置标记来伪造持锁窗口。
 
-### 测试驱动可靠性（2026-10 返工）
+### 测试驱动可靠性（R2）
 
-驱动层不是被测断言的一部分，但它的失败路径必须可证：`runChild()` 在子进程输出 `READY`（钩子与生产模块导入完成）之后才启动超时计时；超时后先终止本批自有子进程，等待 `close` 与两条输出流收尾**之后**才判失败；若 `close` 未在有界时间内到达，返回 `CHILD_TIMEOUT_CLEANUP_BLOCKED` 并让夹具跳过临时根删除（保留现场），不以"清理完成"冒充退出确认。`spawn` 的 `error` 事件在进程未启动时直接以 `CHILD_SPAWN_FAILED` 失败；已启动后的运行期错误先记录、待 `close` 收尾再判 `CHILD_ERROR_RUNTIME`。另有两条回归：`timeout after readiness terminates the owned child and fails only after exit`（`hang` 场景 + 2s 期限，断言 `CHILD_TIMEOUT` 且 `childExited=true`、临时根仍在）与 `spawn failure settles as spawn failure without waiting for a deadline`（不存在的可执行文件，断言 `CHILD_SPAWN_FAILED`、不悬挂）。
+驱动层不是被测断言的一部分，但它的失败路径必须可证，而且"保留现场"必须真的落到清理回调上：`fixture()` 把同一个 `cleanup` 既注册给 `t.after` 又返回给用例，用例在失败后**显式调用该回调**再断言根目录与哨兵文件仍在，而不是只断言 `t.after` 执行前目录还在。`driveChild()` 统一接管真实子进程与可控事件替身（`FakeChild`，可分别驱动 `close` 与两条流 `end`）：只有收到子进程 `READY`（钩子与生产模块导入完成）后才武装超时；超时与 READY 前超时走同一套"终止→有界等 `close`→有界等排空"逻辑，未确认时返回 `*_CLEANUP_BLOCKED` 并置 `guard.keep=true` 使 `t.after` 跳过删除。退出与排空分别记录：`childExited`、`streamsDrained`、`cleanupConfirmed` 三个字段各自独立，已确认退出但未排空记为 `childExited:true / streamsDrained:false / cleanupConfirmed:false`（保留目录、拒绝成功），不把已确认的退出改写成未知。普通 `close` 分支同样检查排空结果，未排空按 `CHILD_CLEANUP_UNCONFIRMED` 处理；`spawn` 的 `error` 在未启动时以 `CHILD_SPAWN_FAILED` 完成，启动后的运行期错误记录后待 `close` 收尾。回归用例：`real timeout after readiness exits the owned child before failing`（真实子进程 `hang` + 2s 期限）、`spawn failure settles as spawn failure without waiting for a deadline`、`confirmed exit without drained streams keeps the root through the real cleanup callback`、`unconfirmed child exit keeps the root through the real cleanup callback`、`readiness timeout terminates and waits for exit before failing`（替身 `kill()` 后异步 `exit()`，`childExited:true` 只能来自 `close` 路径）。
 
 ### 本批范围与未覆盖（不得外推）
 
