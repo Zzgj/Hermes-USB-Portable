@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## GUARD-ORDER-03 收口并合入开发组合检查点（待组合复验）
+
+公司最终 result `64d32cc7229800d5f4a37e8de338d452068f862e` 已由 lead 实际获取并静态审阅。R1/R2 修正测试驱动异常清理，guard.keep 已接线、READY 前后超时统一等待、退出与排空分别记录，事件夹具实际调用注册 cleanup 并断言哨兵保留。reviewer 报告独立定向 15/15、退出 0，原始 23 行日志已在群内接收；日志属于公司执行证据，聊天转录不宣称原文件 SHA-256 已核验。GUARD-ORDER-03 按 portable native 组装路径范围收口，legacy/managed 另两路径、真实原生使用仍待。
+
+用户要求继续推进，lead 在干净 dev/lead 上以 `122c6124954e7ca2a3799328cba6e83021e2b5cc` 为第一父、公司上述 result 为第二父完成无冲突开发合并，源码结果 `6a0daaaf0576c594ec58f652be027e5d5a6394e5`。五个 incoming 文件（ACCEPTANCE、客户端/面板测试、package/guard 新测试）均逐字节核对为公司已审文件；lead 的三文件浏览器修复保持原提交字节，生产、启动器、依赖、发布资格没有改变。保留双侧历史，不强推、不改公司分支或正式集成分支。
+
+本轮未运行 lead 测试，组合树尚未验证，不继承各分支通过数。下发 `P2-09-DEV-COMBINE-04` 给 reviewer，独立固定 worktree 做定向组合、validate/build 与已有合成浏览器回归，命令和一次执行上限见 HANDOFF 顶部。employee 保持暂停。WIN-NATIVE-VERIFY-02 仍为报告通过、完整证据待接收，本批不重跑 Python/真实 Windows 原生用例，不替代 CLI/Dashboard/U盘门禁。
+
 ## WIN 证据补交与独立 guard 时序覆盖并行推进
 
 WIN-NATIVE-VERIFY-02 目前仅接收到 reviewer 的通过摘要及局部补交，长消息两次从中间截断，完整命令/退出码/日志尚未齐备，继续记“报告通过、证据接收未齐”。缺失的 windows-job-host.py 执行前磁盘哈希不能由事后 Git 内容哈希补作执行证据；employee 对 CRLF/blob 的只读旁证只证明源码可追溯。停止重复长报告和重跑，reviewer 只整理现有脱敏附件及短摘要；不因此要求用户测试或修改 E 盘。

@@ -1,5 +1,17 @@
 # P2 单分支交接与剩余审查
 
+## 当前派单：P2-09-DEV-COMBINE-04（开发分支组合验收）
+
+lead 已将公司固定 `64d32cc7229800d5f4a37e8de338d452068f862e` 合并到 dev/lead，组合源码为 `6a0daaaf0576c594ec58f652be027e5d5a6394e5`，第一父为 `122c6124954e7ca2a3799328cba6e83021e2b5cc`。这是待组合验证的开发检查点，不是正式集成。合入的五文件逐字节等于公司固定提交，lead 的三文件浏览器修复保持 aa4c636 原字节，生产 scripts/src、启动器、依赖及 release_ready 均未改变。
+
+执行主体 @code-reviewer；employee 保持暂停，无新编码任务。先保护本机已有 patch、核对 remote/工作区，再 fetch origin dev/lead，在独立 detached worktree 固定上述组合源码。读取本任务单与进度顶部；不得在 dev/company 主工作区覆写文件，不能把各分支历史绿灯拼成组合通过。
+
+1. **组合审阅**：核对两父身份、incoming 五文件、保留的三文件浏览器修复；确认没有生产/依赖/发布门变化。已收口功能不重新扩大范围，只检查组合冲突和调用契约。
+2. **定向组合验证**：使用现有 Node/已核对兼容依赖，在独立 workbench 执行 `node --test tests/native-entry-client.test.mjs tests/native-entry-panel.test.mjs tests/merge-handoff.test.mjs tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-native-entries.test.mjs tests/portable-guard-order.test.mjs tests/native-entry-manager.test.mjs tests/s1-browser-driver.test.mjs`；随后 `npm run validate`、`npm run build`，新构建成功后分别运行 `node tests/native-entry-browser-check.mjs`、`node tests/entry-control-browser-check.mjs`、`node tests/s1-browser-check.mjs`。每条一次，失败暂停受影响路径，清理异常停批，不改代码、不自行重跑。无全量 npm test、Python/native host 或真实入口执行。
+3. **证据交付**：保存完整固定 SHA、测试前后源码清单、依赖依据、新 dist 清单与哈希、每条命令/退出码/完整日志及清理结果。短摘要明确 Linux socket 子断言在 Windows 未运行，真实 HTTP/浏览器使用合成 adapter，不是 Hermes/CLI/U盘实机证据。可访问附件或分段原始日志均可，不把公司本地路径称为附件。
+
+临时根使用目标实例允许的 scratch，浏览器使用已核实的 CHROME_BIN，依赖复用期间禁止并发修改；不安装、不读取私人配置、不调用模型、不操作 E 盘、不合并正式集成。另将 WIN-NATIVE-VERIFY-02 已有证据以短摘要加原日志补交，不重跑该旧批；其缺口不由本批 Node/浏览器结果替代。
+
 ## 当前员工工作包：P2-09-GUARD-ORDER-03
 
 用户要求继续推进。本批是与 WIN-NATIVE-VERIFY-02 证据补交独立的测试覆盖开发，不据此关闭该批或进入正式集成。@usb-project-employee 仅对本任务解除暂停，作为 dev/company 唯一写入者；@code-reviewer 组织复验与证据整理，不接管写入；核心实现归 lead。
