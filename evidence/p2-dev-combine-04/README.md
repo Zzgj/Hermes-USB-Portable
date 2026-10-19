@@ -31,10 +31,20 @@ Log 07 was produced by Python's `unittest -v` on Windows (CRLF output). Git comm
 - `dist/assets/index-2AciLI6h.js` 323757B — `6e32d63e656021ff63c30ad6ace787ca2a12e5635f0e6fbebf6024db1b920d6d`
 - `dist/assets/index-LurzMAcB.css` 17945B — `0fabcada339dd49f6438628254be3e76cdcdef6fc4339d2e980ef3ecbd6a479d`
 
+## GUARD-CALLERS-06 R1 (added 2026-10-19)
+
+| # | File | Command | Exit code | SHA-256 (Git blob, LF) |
+|---|------|---------|----------:|------------------------|
+| 09 | 09-guard-callers-06-r1.log | `node --test tests/legacy-managed-guard-order.test.mjs tests/legacy-entry.test.mjs tests/managed-native.test.mjs tests/portable-guard-order.test.mjs` | 0 | `2e61014d432fef8df137c7d5371364c6e93a94e0bc5980f59618a345110157b6` |
+
+- Fixed source: `39a0c38cc95d0660bda7e689739c1a7be628ccc0`
+- tests 24 / pass 24 / fail 0 / cancelled 0 / skipped 0 / todo 0
+- Covers managed (startHermesInstance→beforeStart→guard) and legacy (launchLegacy→guard) caller paths with cleanup guard wiring, error event split, and stream drain confirmation
+
 ## Known gaps (not covered by these logs)
 - `windows-job-host.py` execution-time disk SHA-256 was not recorded before WIN-NATIVE-VERIFY-02; Git blob `2d98b874e241dbadbda00f3769c641ed9e15c509` is the tree-level trace but not a pre-execution disk hash
 - Linux socket sub-assertion in `s1-browser-driver.test.mjs` not executed on Windows (`if(process.platform!=='linux')return`)
 - Browser checks use synthetic adapters, not real Hermes/CLI/U-disk
 - WIN-NATIVE-VERIFY-02 logs (07-08) are historical, not re-run for DEV-COMBINE-04
-- guard持锁时序动态覆盖仅限 `createPortableNativeEntries` 路径; `legacy-hermes-entry.mjs` 与 `launch-managed.mjs`/`managed-instance.mjs` 的 `beforeStart` 调用路径未做动态覆盖
+- guard持锁时序动态覆盖: `createPortableNativeEntries` 路径由 GUARD-ORDER-03 覆盖; `legacy-hermes-entry.mjs` 与 `launch-managed.mjs`/`managed-instance.mjs` 的 `beforeStart` 调用路径由 GUARD-CALLERS-06 覆盖（拒绝路径）; 成功启动、CLI 交互、真实 Dashboard、STOP、进程树回收、真实启动器与 U 盘验收仍未覆盖
 - No sensitive paths, credentials, or personal configuration in any log

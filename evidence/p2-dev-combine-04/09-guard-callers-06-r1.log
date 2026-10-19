@@ -1,0 +1,32 @@
+✔ legacy entry uses fixed foreground modes; rejects profile and daemon escape (2.1884ms)
+✔ legacy and native/managed lock users exclude each other until confirmed tree exit (25.6592ms)
+✔ unknown legacy exit retains lock and cannot report success (7.5911ms)
+✔ managed caller rejects a launcher tampered after the lock owner exists (224.8662ms)
+✔ managed caller rejects a restore marker placed after the lock owner exists (194.5017ms)
+✔ managed caller refuses before the guard when another owner holds the lock (173.9936ms)
+✔ legacy CLI caller rejects a launcher tampered at the guard barrier (180.2605ms)
+✔ legacy dashboard caller rejects a restore marker at the guard barrier (191.4553ms)
+✔ legacy caller refuses before the guard when another owner holds the lock (162.5412ms)
+✔ unconfirmed drain on timeout keeps the root through the registered cleanup (335.6193ms)
+✔ unconfirmed drain on close is reported and keeps the root (241.674ms)
+✔ post-spawn error waits for close and reports a runtime failure (24.7331ms)
+✔ pre-spawn error is reported as a spawn failure and cleanup still runs (22.5013ms)
+✔ managed native exit proof must resolve before shared lock is released (18.9966ms)
+✔ rejected native exit evidence retains the shared lock (5.8157ms)
+✔ guard reads the coordinated launcher after the lock owner exists and exactly once (191.6ms)
+✔ recovery marker created at the guard barrier rejects without adapter effects and keeps bytes (165.8598ms)
+✔ launcher tampered at the guard barrier rejects without adapter effects and keeps bytes (165.6447ms)
+✔ pre-existing foreign lock rejects before guard and leaves owner bytes unchanged (147.8399ms)
+✔ real timeout after readiness exits the owned child before failing (2146.7651ms)
+✔ spawn failure settles as spawn failure without waiting for a deadline (12.0807ms)
+✔ confirmed exit without drained streams keeps the root through the real cleanup callback (325.8529ms)
+✔ unconfirmed child exit keeps the root through the real cleanup callback (322.8792ms)
+✔ readiness timeout terminates and waits for exit before failing (111.9145ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3884.6256
