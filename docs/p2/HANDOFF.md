@@ -1,5 +1,17 @@
 # P2 单分支交接与剩余审查
 
+## 当前 lead 实现：P2-09-NATIVE-EXPERIMENT-08（待批准隔离验证）
+
+基线 `63a9900541bcdbbc65c2162afe7c3dc5fc3c5fd0`。新增 `workbench/scripts/prepare-native-experiment.mjs` 及 `workbench/tests/native-experiment.test.mjs`，由 lead 编写，尚未执行语法检查或测试；不是可运行交付批准，不修改默认 setup、默认 manifest、adapter 或正式集成。employee 保持暂停，reviewer 可只读审阅此固定交付；暂无新测试/安装授权。
+
+实现范围是“已批准本地材料 → 全新实验根”的组装入口，而不是联网获取 runtime 的完整首装器。配置 JSON 要求 project/source/runtime/inventory/target 五个绝对路径、projectCommit 完整 SHA；project 必须为运行脚本所属仓库，source 为固定 28044757 干净 Git 树。runtime 输入只复制 python/node/uv/git/bin 白名单下的 inventory 文件，不复制旧 venv、home 或个人配置。inventory 的 schema=1、kind=approved-local-runtime、componentLockSha256 对应项目默认运行时清单、files 含 path/size/sha256；这个清单只证明操作人批准的本地字节身份，不能替代官方归档来源审查，实际 runtime 材料尚未交付或批准。
+
+CLI 为 `node workbench/scripts/prepare-native-experiment.mjs <CONFIG> --plan|--apply-experimental`。plan 会校验文件哈希并调用所提供 Git 读取身份，但不创建目标；apply 才独占创建新目录、写阻塞标记、独立克隆两个固定源码、在最终路径用 uv locked sync 创建新 venv、分别 npm 构建 workspace web 与工作台、复制 P0/P2 文件、写实验专用 manifest/收据，真实 guard 通过后最后写 ready.flag。不执行默认 setup、不切换既有实例内核、不运行 Hermes/模型/浏览器；安装脚本和依赖构建仍是可执行第三方代码，不是沙箱，未来实际执行需单独授权。失败保留新目录与阻塞标记，不自动清理/回退/重试。
+
+**仍待审查/验证**：真实 Windows uv/npm/依赖 lock 兼容性、受控 runtime 的来源与完整性、子进程超时后整个安装进程树的确认（当前 execFileSync 不证明后代全部退出，失败根必须保留）、异常最终收据与 marker 路径、实际入口交互。未关闭前不得运行真实 apply 或声称实机已准备好；运行环境获取与原生验收仍不属于本批 mock 结果。
+
+拟报总监的 lead 隔离批次（批准后才执行，cwd=workbench，每条一次）：`node --check scripts/prepare-native-experiment.mjs`；`node --check tests/native-experiment.test.mjs`；`node --test tests/native-experiment.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`。沿用本 profile TMPDIR；新测试通过计数替身代替全部 Git/uv/npm/Python 子命令，只创建和删除自有合成临时目录，已有两文件仅合成文件/环境契约；不安装、不联网、不构建真实资产、不执行 Windows 二进制、不读取真实实例。失败暂停，不自动扩大或重跑。reviewer 静态结论不替代该必要 lead 验证。
+
 ## 当前状态覆盖：PREP-07 材料已接收，实验部署核心归 lead
 
 公司材料固定 ddd039db70bcb59f28d619d8336180268ed0b226；下方 PREP-07 派单已结束，employee 保持暂停，不继续猜测安装方案。ACCEPTANCE 中 T4 被顶部 lead 裁决冻结：默认 29112bef setup 不能满足 28044757 原生适配器，尚缺版本一致的实验准备链。选择全新独立测试根，不就地升级、不修改默认 P0 安装、不放宽 SHA/锁/恢复门禁；该开发设计不是安装或真实测试授权。reviewer 仅只读核对裁决及来源，不执行 T4、不新增文档返工提交。
