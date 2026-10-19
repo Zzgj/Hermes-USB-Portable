@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## 组合及 WIN 证据已通过 Git 收取
+
+用户指出日志可直接经 GitHub 交付。lead 已实际 fetch 并读取证据提交 `432bcfe8cf590de3c9d362a16ea376699199b54a` 的 `evidence/p2-dev-combine-04/` 九文件；8 日志完整可读，不再等待聊天长消息。7 份日志 blob 哈希与索引原样一致，Python 日志发布 LF 哈希为 `68192080f24fd7b1365d9425fadd3c0044f8601a18e373aa7e6c151e200e7566`，转 CRLF 后与索引所报原日志哈希一致；此差异已定位，索引待标明两者，不重跑。
+
+接收 reviewer 对组合源码 `6a0daaaf0576c594ec58f652be027e5d5a6394e5` 的 75 项定向、18 组件 validate、build、浏览器 7/12/19 项及退出 0 证据；接收历史 WIN 固定 aa4c636 的 Python 5 项（3 契约、2 Windows 原生场景）和 Node 25 项日志。以上是公司执行证据及 lead 对已发布材料的核对，非 lead 重跑或对公司机器直接取证；已知 windows-job-host.py 执行前磁盘哈希缺失继续保留，不补造。
+
+源码组合验收按上述隔离范围通过，正式集成仍未放行。真实 CLI/Dashboard、启动器与数据保留、legacy/managed 另两条 guard 时序仍待。下一步不再重复收集长聊天日志；reviewer 只补归档 README 元数据，具体见 HANDOFF 顶部，employee 保持暂停。已有证据归档不作为新增源码开发分支，三分支源码协作规则不变，本轮不部署 E 盘。
+
 ## GUARD-ORDER-03 收口并合入开发组合检查点（待组合复验）
 
 公司最终 result `64d32cc7229800d5f4a37e8de338d452068f862e` 已由 lead 实际获取并静态审阅。R1/R2 修正测试驱动异常清理，guard.keep 已接线、READY 前后超时统一等待、退出与排空分别记录，事件夹具实际调用注册 cleanup 并断言哨兵保留。reviewer 报告独立定向 15/15、退出 0，原始 23 行日志已在群内接收；日志属于公司执行证据，聊天转录不宣称原文件 SHA-256 已核验。GUARD-ORDER-03 按 portable native 组装路径范围收口，legacy/managed 另两路径、真实原生使用仍待。

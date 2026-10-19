@@ -1,5 +1,14 @@
 # P2 单分支交接与剩余审查
 
+## 当前证据交付：P2-09-EVIDENCE-GIT-05
+
+用户明确要求文件通过 GitHub 推送交付，停止反复在群内粘贴长日志。源码和脱敏执行证据都使用既有三分支 Git 通道；不新增分支，不将 Git 传输当成新测试或部署授权。
+
+- reviewer 已交付既存证据归档 `evidence/p2-dev-combine-04`，固定提交 `432bcfe8cf590de3c9d362a16ea376699199b54a`，路径 `evidence/p2-dev-combine-04/`，共 8 日志及 README。lead 已实际 fetch；不要求重复迁移/推送同一材料，也不把该归档变为第四个源码开发分支。原拟 dev/company 临时接管未执行，不再派发；employee 保持暂停。
+- 八份日志已逐一读取并核对：7 份 Git blob 原字节 SHA-256 与 README 一致；07 Python 日志 blob 为 LF，发布字节 SHA-256 是 `68192080f24fd7b1365d9425fadd3c0044f8601a18e373aa7e6c151e200e7566`，还原 CRLF 后才匹配 README 所报 `277ec3411f16773d6831d38b9ea1b4080ce8229b99171711a876e29dbc7e7943`。这属于已定位的换行格式差异，不需重跑测试。
+- reviewer 仅获本次既存归档 README 的元数据补正范围：区分 Git 发布字节哈希与原 CRLF 日志哈希；补全九文件和六文件 Node 命令（不能仅写 node --test），注明历史 WIN 的 windows-job-host.py 执行前磁盘哈希缺失及日志来源。正常追加提交，不改日志字节、不改源码、不新增分支、不重跑、不强推。群内只回完整结果 SHA 和路径，lead 再读取对应文件。
+- 归档身份与测试身份分开：COMBINE 测试源码为 `6a0daaaf0576c594ec58f652be027e5d5a6394e5`，WIN 为 `aa4c6360b800e247fb95f971a23cea237fce1b6b`。证据归档不是安装包，也不授权合并正式分支或更新 E 盘。后续脱敏证据文件继续走明确授权的 Git 通道，长日志不在群内反复粘贴。
+
 ## 当前派单：P2-09-DEV-COMBINE-04（开发分支组合验收）
 
 lead 已将公司固定 `64d32cc7229800d5f4a37e8de338d452068f862e` 合并到 dev/lead，组合源码为 `6a0daaaf0576c594ec58f652be027e5d5a6394e5`，第一父为 `122c6124954e7ca2a3799328cba6e83021e2b5cc`。这是待组合验证的开发检查点，不是正式集成。合入的五文件逐字节等于公司固定提交，lead 的三文件浏览器修复保持 aa4c636 原字节，生产 scripts/src、启动器、依赖及 release_ready 均未改变。
