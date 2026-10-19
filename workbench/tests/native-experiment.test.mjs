@@ -122,3 +122,23 @@ test('failed dependency command preserves root and marker without ready.flag or 
  const failure=await readFile(join(options.target,'logs','diagnostics','native-experiment-failure.json'),'utf8');
  assert.equal(failure.includes('synthetic dependency failure'),false);
 });
+
+test('CLI-only preparation builds workbench without installing or building the upstream web workspace',async t=>{
+ const {options,calls,deps}=await fixture(t);
+ const result=await prepareExperiment({...options,entryScope:'cli'},{...deps,apply:true});
+ assert.equal(result.entryScope,'cli');assert.equal(result.status,'prepared-not-accepted');
+ assert.ok(calls.every(c=>!c.args.includes('--workspace')));
+ assert.equal(calls.filter(c=>c.args[1]==='run'&&c.args[2]==='build').length,1);
+ assert.equal(await exists(join(options.target,'workbench','dist','index.html')),true);
+ assert.equal(await exists(join(options.target,'src','hermes-agent','hermes_cli','web_dist')),false);
+ const receipt=JSON.parse(await readFile(join(options.target,'logs','diagnostics','native-experiment-preparation.json'),'utf8'));
+ assert.equal(receipt.entryScope,'cli');assert.deepEqual(receipt.dashboard,[]);
+ const lock=JSON.parse(await readFile(join(options.target,'manifests','runtime-components.windows-x64.json'),'utf8'));
+ assert.equal(lock.experimental_native.entryScope,'cli');assert.equal(lock.experimental_native.release_ready,false);
+});
+
+test('unknown entry scope rejects before any filesystem staging or child command',async t=>{
+ const {options,calls,deps}=await fixture(t);
+ await assert.rejects(prepareExperiment({...options,entryScope:'anything'},{...deps,apply:true}),/EXPERIMENT_ENTRY_SCOPE_INVALID/);
+ assert.equal(calls.length,0);assert.equal(await exists(options.target),false);
+});

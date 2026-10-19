@@ -92,9 +92,11 @@ export async function inspectExperiment(options,{run=execute,host=process.env}={
 
 export async function prepareExperiment(options,{apply=false,platform=process.platform,run=execute,host=process.env}={}){
  if(platform!=='win32')fail('WINDOWS_REQUIRED');
+ const entryScope=options.entryScope??'cli-and-dashboard';
+ if(!['cli','cli-and-dashboard'].includes(entryScope))fail('EXPERIMENT_ENTRY_SCOPE_INVALID');
  const input=await inspectExperiment(options,{run,host});
- const summary={schema:1,status:'plan-only',baseline:NATIVE_BASELINE,projectCommit:input.projectCommit,inventorySha256:input.inventorySha256,release_ready:false,
-  effects:['new-root-only','local-git-clones','npm-registry-and-lifecycle-scripts','uv-python-dependencies-and-builds','workbench-and-dashboard-builds'],startsHermes:false};
+ const summary={schema:1,status:'plan-only',entryScope,baseline:NATIVE_BASELINE,projectCommit:input.projectCommit,inventorySha256:input.inventorySha256,release_ready:false,
+  effects:['new-root-only','local-git-clones','npm-registry-and-lifecycle-scripts','uv-python-dependencies-and-builds',entryScope==='cli'?'workbench-build':'workbench-and-dashboard-builds'],startsHermes:false};
  if(!apply)return summary;
  // mkdir without recursive is the exclusive claim: even an empty existing root
  // is rejected. Never clean up or retry an interrupted root automatically.
@@ -140,9 +142,11 @@ export async function prepareExperiment(options,{apply=false,platform=process.pl
   const venvPython=join(runtime,'venv','Scripts','python.exe');
   if(!(await plain(venvPython)).isFile())fail('EXPERIMENT_VENV_MISSING');
   command(join(runtime,'uv','uv.exe'),['pip','check','--python',venvPython],source);
-  stage='dashboard-build';
-  command(node,[npm,'ci','--workspace','web','--include-workspace-root'],source);
-  command(node,[npm,'run','build','--workspace','web'],source);
+  if(entryScope==='cli-and-dashboard'){
+   stage='dashboard-build';
+   command(node,[npm,'ci','--workspace','web','--include-workspace-root'],source);
+   command(node,[npm,'run','build','--workspace','web'],source);
+  }
   stage='workbench-build';
   command(node,[npm,'ci'],join(project,'workbench'));
   command(node,[npm,'run','build'],join(project,'workbench'));
@@ -162,8 +166,8 @@ export async function prepareExperiment(options,{apply=false,platform=process.pl
    payloadIdentity.push({path:p,...await copied(join(project,p),join(root,p))});
   }
   for(const p of shellFiles)if(!payload.includes(p))fail('EXPERIMENT_SHELL_INCOMPLETE');
-  const dashboard=await walk(join(source,'hermes_cli','web_dist'));
-  if(!dashboard.includes('index.html'))fail('EXPERIMENT_DASHBOARD_ASSETS_MISSING');
+  const dashboard=entryScope==='cli-and-dashboard'?await walk(join(source,'hermes_cli','web_dist')):[];
+  if(entryScope==='cli-and-dashboard'&&!dashboard.includes('index.html'))fail('EXPERIMENT_DASHBOARD_ASSETS_MISSING');
   const dashboardIdentity=[];
   for(const p of dashboard){const b=await readFile(join(source,'hermes_cli','web_dist',p));dashboardIdentity.push({path:p,size:b.length,sha256:digest(b)});}
   // Deliberately incompatible with default setup's bootstrap policy. It may not
@@ -173,7 +177,7 @@ export async function prepareExperiment(options,{apply=false,platform=process.pl
   hermes.version=NATIVE_BASELINE;hermes.version_role='native-experiment';
   hermes.source={type:'git',url:'https://github.com/NousResearch/hermes-agent.git',ref:NATIVE_BASELINE,commit:NATIVE_BASELINE};
   hermes.update_policy={mode:'disabled-for-experiment'};lock.supplemental_python_packages=[];
-  lock.experimental_native={schema:1,release_ready:false,projectCommit:input.projectCommit,inventorySha256:input.inventorySha256};
+  lock.experimental_native={schema:1,entryScope,release_ready:false,projectCommit:input.projectCommit,inventorySha256:input.inventorySha256};
   const lockBytes=Buffer.from(JSON.stringify(lock,null,2)+'\n');
   await put(join(root,'manifests','runtime-components.windows-x64.json'),lockBytes);
   stage='receipt';
