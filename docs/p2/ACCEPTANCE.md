@@ -370,38 +370,59 @@ $target = 'E:\Hermes-P2-Test'
 | 运行时清单 | `manifests/runtime-components.windows-x64.json` 存在；`venv/../ready.flag` 内容 == sha256(manifest)；`portable-location.txt` == `realpath(root)`（大小写不敏感），否则 `RUN_SETUP_RELOCATION_REPAIR` | `portable-layout.mjs:25-28` | 只读重算哈希与路径比较 |
 | venv/git 运行时 | `.cache/runtimes/windows-x64/venv/Scripts/python.exe`、`git/bin/bash.exe` 必须是文件 | `portable-layout.mjs:29-31` | 只读 `stat` |
 | Node | `workbench/package.json` `engines.node = ">=22.12.0"`；开发机实测 v26.7.0 属本机记录而非目标机结论 | `workbench/package.json:6` | 目标机 `node -v` |
-| Python | **仓库未声明最低版本**（无 engines/requirements 依据）；host 脚本与 `prepare-learn.py` 需要 Python 可用 | 无依据 | **待核实**，由 lead 决定目标机 python 路径与版本口径 |
+| Python | 运行时清单**锁定** `python 3.11.15+20260602`（python-build-standalone，带 sha256），由 `scripts/setup-windows.ps1` 安装；Hermes 内核自身的**最低版本要求不在本仓库声明**（`hermes-agent` 的 `pyproject.toml` 不在本仓）。两者必须分开写：锁定版本=已实现，最低要求=待核实 | `manifests/runtime-components.windows-x64.json`（`components[id=python]`）、`setup-windows.ps1:637` | 读清单核对 sha256；最低版本需在固定源码 `28044757` 的 `pyproject.toml` 核实 |
 | P2 增量包 | 包内不含 P0 外壳；manifest `release_ready:false`、`status:"development-snapshot"` | `package-policy.mjs:1-15`、`build-p2-package.mjs:24,34` | 读 `p2-package.json` |
 
 历史信息（未复核）：曾报告 E 盘为 P0 v0.21.0（`29112bef…`）且无 P2 原生脚本。`hermes-compatibility.json` 把 `29112bef` 标为 `bootstrap`、`not_verified:["p2-integration"]`，`f58fcc81` 标为 `historical-usb-observation`。三者都不能推断 E 盘当前可用性。
 
-### T2 两种部署前提
+### T2 两种部署前提（按固定提交的实际脚本重写）
 
-**A. 独立空测试目录（隔离验证）**
+**更正**：此前写"仓库没有 P0 外壳生成及 runtime 安装脚本"是事实错误。固定提交里已有下列实现，必须与"尚未与 P2 组合验证"和"确实缺失"分开记录。
 
-- 前提：目标根**必须已有 P0 外壳**——`install-p2-package.mjs:25` 要求 `<target>/launch.bat` 是文件，P2 包白名单不含三个启动器，故纯空目录必然 `PORTABLE_TARGET_REQUIRED`。
-- 可用脚本：`node workbench/scripts/build-p2-package.mjs <OUT>`（输出必须是新目录，不覆盖旧包或用户实例；同时需要 `zip` 可执行文件生成归档）、`node workbench/scripts/install-p2-package.mjs <PACKAGE> <TARGET> --verify`（只读校验 manifest、逐文件哈希、完备性），确认后再 `--apply-experimental`。
-- **缺口（交 lead 裁决）**：仓库内没有生成 P0 外壳、也没有下载/安装 Node/Python/Git runtime 的脚本；空目录方案必须先解决 P0 外壳与 runtime 来源。不得手工降级内核或用"只覆盖 P2 文件"冒充完整迁移。
-- 备份/回退：apply 时把将被覆盖的旧文件写入 `logs/diagnostics/p2-package-<uuid>/` 并生成 `restore-manifest.json`；失败自动回滚（`INSTALL_FAILED_ROLLED_BACK`），回滚不确定则保留标记并报 `INSTALL_FAILED_REVIEW_BACKUP`；标记存在时用 `--recover-verify` / `--recover-apply`。
-- 数据边界：安装只写包内路径，不触碰 `data/`；`data/` 内是个人 `HERMES_HOME`、会话与配置，**不打包、不进 Git、不复制进证据**。空目录方案要求 `data/` 为新建空目录。
+| 已有脚本 | 实际作用 | 依据 | 边界 |
+|---|---|---|---|
+| `scripts/build-p0-package.py` | 从 `git ls-files` 打 **source-only** P0 候选包 `Hermes-Portable-P0-RC2.zip`，生成 `package-manifest.json` 与 `.sha256` | L10-38 | 只含 `launch.bat`/`launch.sh`/`P0-Workbench.bat`/`README.md`/`.gitattributes`/`.gitignore` 及 `scripts`/`tests`/`manifests`/`docs`；**不含 runtime 与用户数据**；`.bat` 强制 CRLF |
+| `scripts/install-p0-package.ps1` | 把 P0 外壳装进**已存在 `launch.bat` 的目标**；逐文件 SHA-256 校验、目标存在运行中可执行时拒绝、备份到 `logs/diagnostics/p0-package-backup-<guid>` 并写入 `restore-manifest.json`，失败回滚 | L9、L13-27、L29-34、L38-71 | 明确"Runtime, data and knowledge are not copied"（L36）——不建 runtime、不动 `data/` |
+| `scripts/initialize-portable.ps1` | 布局初始化（`InitializerVersion 0.2.0`、`LayoutVersion 1`）：读 component lock、路径/链接/磁盘空间检查、写 `portable-ai.manifest.json` | L18-28 及 `Read-ComponentLock`/`Get-LinkLikePath`/`Get-DriveCheck` 等函数 | 只做布局与清单，不下载 runtime、不安装 P0/P2 包；**未见**引用 `setup-windows.ps1`/`install-p0/p2`（grep 无命中） |
+| `scripts/setup-windows.ps1` | 读 `manifests/runtime-components.windows-x64.json`，`Invoke-WebRequest` 下载、`Get-FileHash` 校验（失败重下）、`Expand-Archive`，安装 portable Python 3.11，写 `ready.manifest`（含 `component_lock_sha256`）与分步 receipt | L80、L91、L116、L298、L315、L545、L577、L596-602、L637 | 运行时来源已实现；是否感知 P2 的协调文件与共享锁未核实 |
+
+**组合状态（三层，不可混写）**
+
+- **已有实现**：P0 源包打包、P0 外壳安装（含备份/回滚与运行中进程拒绝）、布局初始化、运行时下载与 sha256 完整性校验。
+- **与固定 P2 尚未验证的组合**：上述四个脚本从未与 `portable-entry-guard.json` 固定的 P2 增量包一起执行；guard 要求 P0 四文件 LF 归一化哈希与 JSON 完全一致（`build-p0-package.py` 把 `.bat` 强制 CRLF，理论上归一化后一致，但未实测）；`initialize-portable.ps1` / `setup-windows.ps1` 产生的 `portable-ai.manifest.json`、`ready.manifest`、receipt 与 P2 guard/安装器没有组合测试覆盖。
+- **确实缺失**：没有任何脚本把"P0 解包 → 布局初始化 → runtime → `npm ci` → P2 打包/安装"编排成一条链；`workbench` 的依赖安装（`npm ci`）不在任何仓库脚本内；"已成功安装但验收失败"的回退脚本不存在。
+
+**A. 独立空测试目录（可行路径=已有脚本手工拼装，组合未验证）**
+
+1. 解包 `Hermes-Portable-P0-RC2.zip` 到 `<ROOT>`（包内含 `launch.bat` 与 `scripts/`、`manifests/`）。
+2. `powershell -File <ROOT>/scripts/initialize-portable.ps1 <ROOT>`（布局与清单）。
+3. `powershell -File <ROOT>/scripts/setup-windows.ps1`（按清单下载并校验 python/node/uv/ripgrep/portablegit）。
+4. 用 runtime 里的 Node 在 `workbench` 执行 `npm ci` 与 `npm run build`（**联网**，仓库无封装）。
+5. `node workbench/scripts/build-p2-package.mjs <OUT>` → `node workbench/scripts/install-p2-package.mjs <PACKAGE> <ROOT> --verify` → `--apply-experimental`。
+
+空目录必须**先**有 `launch.bat`：`install-p2-package.mjs:25` 在缺失时直接 `PORTABLE_TARGET_REQUIRED`，P2 包白名单不含启动器（`package-policy.mjs:1-15`）。`install-p0-package.ps1` 是"更新已有外壳"，不是空目录引导。
 
 **B. 已有便携实例（就地升级）**
 
-- 前提：`<target>/launch.bat` 存在；不存在 `logs/diagnostics/p2-install-active.json`（存在即 `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`）；无活动 `.p2-manager-lock`（apply 会 `acquireInstanceLock(target/data)`，冲突报 `INSTANCE_LOCKED`）；`data/` 不动。
-- 步骤：构建工作台 → 打新包 → `--verify` → 手工备份 `data/`（仓库脚本**不**备份 data）→ `--apply-experimental` → 复跑 T1 矩阵 → 进入 T3。
-- 回退：安装失败自动回滚；**已 apply 成功但验收失败**时没有仓库内脚本可用（`--recover-*` 只在安装标记存在时有效），只能按 `restore-manifest.json` 手工回退或重装旧包 → **缺口，交 lead 明确回退流程**。
+- 前提：`<target>/launch.bat` 存在；P0 安装器要求目标无运行中可执行；P2 安装器要求无 `logs/diagnostics/p2-install-active.json`、无活动 `.p2-manager-lock`；`data/` 不动。
+- 步骤：构建工作台 → 打新包 → `--verify` → 外部手工备份 `data/` → `--apply-experimental` → 复跑 T1 矩阵 → 进入 T3。
+- 回退：安装失败自动回滚；**已 apply 成功但验收失败**时无仓库脚本可用（`--recover-*` 仅在安装标记存在时有效）→ **待解决门禁；未明确前不申请就地升级**。
+
+**备份与数据边界**：P0 → `logs/diagnostics/p0-package-backup-<guid>`；P2 → `logs/diagnostics/p2-package-<uuid>`；两者都只备份被替换的文件。`data/` 内是个人 `HERMES_HOME`、会话与配置，**不打包、不进 Git、不复制进证据**；升级前另行外部备份。
 
 ### T3 真实入口验收矩阵（未执行）
 
 | 场景 | 实际入口 | 观察证据 | 失败即停条件 | 清理对象 | 模型费用 |
 |---|---|---|---|---|---|
-| CLI 交互与退出 | `launch.bat` → `:run_hermes` → `node workbench/scripts/legacy-hermes-entry.mjs --root <ROOT> -- --cli` | 独立控制台可输入、host 帧序列、进程结束后 `treeExited:true`、退出码原样返回（`LEGACY_EXIT_CODE_UNAVAILABLE` 例外） | 无控制台/输入无响应/`treeExited!==true`/锁未释放 | STOP、控制台窗口、`.p2-manager-lock` | 0（不发消息时） |
-| 原生 Dashboard 就绪/打开 | `scripts/start-web-workbench.ps1 -Root <ROOT>` → `legacy-hermes-entry.mjs -- dashboard` | 端口探测成功、`open()` 打开 `http://127.0.0.1:<port>/`、会话令牌仅在内存 | 探测失败/`DASHBOARD_NOT_READY`/打开后 4xx | 浏览器窗口、实例进程、锁 | 0 |
-| 同 home 互斥 | 同时启动 P2 托管入口与 CLI/Gateway | 第二方 `INSTANCE_LOCKED`、`owner.json` 不变、无 PID 存活推断回收 | 双方同时持锁 / 出现自动回收 | 先启动方显式停止 | 0 |
-| 显式停止与进程树退出 | STOP / 显式 stop 接口 | 子进程与后代全部退出、`treeExited:true` 后才释放锁；未确认记 `unknown` 并保留锁 | 锁提前释放 / 进程残留 | 残留自有进程（按句柄，不全局 taskkill） | 0 |
-| 失败后禁止自动重试 | 制造启动失败（如临时撤销 web_dist 或占用端口） | 状态停在 `unknown`/`failed`，无自动重启、无重复 spawn 计数 | 出现自动重试 | 失败实例、锁 | 0 |
-| 重启与数据保留 | 停止后重新启动，对比 `data/` 前后 | 会话/配置文件哈希不变、安装标记为 0、无 `gateway.pid` 残留 | 数据被改写/丢失 | 临时对比副本 | 0 |
-| 模型请求（可选） | 经 Dashboard 发送一条消息 | 真实响应与计费记录 | 未获批即不得执行 | 会话数据 | **需单独批准** |
+| CLI 交互与退出 | `launch.bat` → `:run_hermes` → `node workbench/scripts/legacy-hermes-entry.mjs --root <ROOT> -- --cli` | 独立控制台可输入、host 帧序列、进程结束后 `treeExited:true`、退出码原样返回（`LEGACY_EXIT_CODE_UNAVAILABLE` 例外） | 无控制台/输入无响应/`treeExited!==true`/锁未释放 | 输入 STOP 停止本批进程树；控制台窗口；**锁只能由持有者在确认整树退出后由生产代码释放，禁止手工删除 `.p2-manager-lock` 或 `owner.json`** | 0（不发消息时） |
+| 原生 Dashboard 就绪/打开 | `scripts/start-web-workbench.ps1 -Root <ROOT>` → `legacy-hermes-entry.mjs -- dashboard` | 端口探测成功、`open()` 打开 `http://127.0.0.1:<port>/`、会话令牌仅在内存 | 探测失败/`DASHBOARD_NOT_READY`/打开后 4xx | 浏览器窗口、实例进程（显式 stop）；锁同上，不得手工清 | 0 |
+| 同 home 互斥 | 同时启动 P2 托管入口与 CLI/Gateway | 第二方 `INSTANCE_LOCKED`、`owner.json` 原字节不变、无 PID 存活推断回收 | 双方同时持锁 / 出现自动回收 | 先启动方显式停止；不删除他人锁 | 0 |
+| 显式停止与进程树退出 | STOP / 显式 stop 接口 | 子进程与后代全部退出、`treeExited:true` 后才释放锁；未确认记 `unknown` 并保留锁 | 锁提前释放 / 进程残留 | 仅终止本批持有句柄的自有进程（不全局 `taskkill`）；锁仍禁止手工删除 | 0 |
+| 失败后禁止自动重试 | 制造启动失败（如临时撤销 `web_dist` 或占用端口） | 状态停在 `unknown`/`failed`，无自动重启、无重复 spawn 计数 | 出现自动重试 | 失败实例、保留的锁；由持有者显式 stop 后才释放 | 0 |
+| 重启与数据保留 | 停止后重新启动，对比 `data/` 关键项 | 升级前已存在的配置/会话文件仍存在且逐文件 SHA-256 一致；新增会话、日志、receipt 属**预期变化**并逐项列出；安装标记为 0、无 `gateway.pid` 残留。**不要求整个 `data/` 哈希不变** | 既有文件缺失或被改写 / 出现未列出的预期外变化 | 对比副本（放实例外，不留在便携根） | 0 |
+| 模型请求（可选） | 经 Dashboard 发送一条消息 | 真实响应与计费记录（如提供） | 未获批即不得执行 | 会话数据 | **需单独批准** |
+
+**启动后的副作用（T3/T4 必须并列，不能只写"控制台/浏览器窗口"）**：① 本机回环监听 `127.0.0.1:<随机端口>`（Dashboard 分支）；② 写入 `data/`（会话、配置、日志）；③ 写入 `logs/` 与 `logs/diagnostics/` 的 receipt/证据；④ 创建并最终释放 `.p2-manager-lock/owner.json`；⑤ 启动浏览器进程与其临时目录；⑥ 若执行 `npm ci` 或 runtime 下载则有外网请求（仅 T4 步骤，不在启动路径）；⑦ 无模型调用时无外网模型请求。
 
 **待核实（不得编造）**：`workbench/scripts/native-entry-host.py` 的 console 模式参数与 `windows-job-host.py` 子进程 `stdin=DEVNULL` 的差异未在本批核实，故 CLI 交互能力仍为"待验证"，不能据合成测试写"交互可用"。
 
@@ -410,25 +431,30 @@ $target = 'E:\Hermes-P2-Test'
 | # | 步骤 | 命令/手动 | 目标占位符 | 资源/时长 | 联网 | 文件副作用 | 备份/回退点 | 执行人 |
 |---|---|---|---|---|---|---|---|---|
 | 0 | 只读前置核对 | 重算四文件哈希、读 `p2-package.json`、`node -v` | `<ROOT>` `<SOURCE>` | <5 min | 否 | 无 | 无 | 授权执行人 |
-| 1 | 构建工作台 | `npm run build`（workbench，使用现有 node_modules） | `<WORKBENCH>` | 1–3 min | 否 | 覆盖 `workbench/dist/` | 先记录现 dist 清单与哈希 | 授权执行人 |
-| 2 | 打包 P2 | `node workbench/scripts/build-p2-package.mjs <OUT>` | `<OUT>` 新目录 | <1 min | 否 | 新建目录 + zip | 输出必须为新目录，不覆盖 | 授权执行人 |
-| 3 | 校验安装 | `node workbench/scripts/install-p2-package.mjs <PACKAGE> <ROOT> --verify` | `<PACKAGE>` `<ROOT>` | <1 min | 否 | 无（只读） | 无 | 授权执行人 |
-| 4 | 备份数据 | 手动复制 `data/` 到实例外备份位 | `<BACKUP>` | 取决体积 | 否 | 新建备份 | 备份后再 apply | 用户/授权执行人 |
-| 5 | 应用增量包 | `... <ROOT> --apply-experimental` | `<ROOT>` | 1–2 min | 否 | 覆盖包内文件 + `logs/diagnostics/p2-package-<uuid>/` | 自动回滚；失败保留标记 | 授权执行人 |
-| 6 | 复核矩阵 | 重跑 T1 检查 | `<ROOT>` | <5 min | 否 | 无 | 失败即停 | 授权执行人 |
-| 7 | CLI 验收 | T3 第 1 行 | `<ROOT>` | 5–10 min | 否 | 控制台窗口 | STOP | 用户（需键盘交互） |
-| 8 | Dashboard 验收 | T3 第 2 行 | `<ROOT>` | 5–10 min | 否 | 浏览器窗口 | 显式停止 | 用户 |
-| 9 | 互斥/停止/回收 | T3 第 3–5 行 | `<ROOT>` | 10–15 min | 否 | 进程与锁 | 逐项停止 | 用户 + 授权执行人 |
-| 10 | 数据保留复核 | T3 第 6 行 | `<ROOT>` | 5 min | 否 | 对比副本 | 用第 4 步备份恢复 | 授权执行人 |
+| 1 | 解包 P0 源包 | 解压 `Hermes-Portable-P0-RC2.zip`（由 `build-p0-package.py` 产出） | `<ROOT>`（**必须为新目录**） | <1 min | 否 | 新建目录树 + `launch.bat` | 不覆盖现有实例 | 授权执行人 |
+| 2 | 布局初始化 | `powershell -File <ROOT>/scripts/initialize-portable.ps1 <ROOT>` | `<ROOT>` | 1–2 min | 否 | 写 `portable-ai.manifest.json` 与布局目录 | 新目录失败可整个删除 | 授权执行人 |
+| 3 | 运行时安装 | `powershell -File <ROOT>/scripts/setup-windows.ps1` | `<ROOT>` | 5–15 min | **是**（下载 python/node/uv/ripgrep/portablegit，按清单 sha256 校验） | 写 `.cache/runtimes/windows-x64/`、`ready.manifest`、receipt | 失败重下；新目录可删除重建 | 授权执行人 |
+| 4 | 工作台依赖 | `<RUNTIME_NODE>/npm ci`（workbench） | `<WORKBENCH>` | 2–5 min | **是**（npm registry） | `node_modules/` | 失败不影响其他目录 | 授权执行人 |
+| 5 | 构建工作台 | `npm run build` | `<WORKBENCH>` | 1–3 min | 否 | 覆盖 `workbench/dist/` | 先记录现 dist 清单与哈希 | 授权执行人 |
+| 6 | 打 P2 包 | `node workbench/scripts/build-p2-package.mjs <OUT>` | `<OUT>` 新目录 | <1 min | 否 | 新建目录 + `zip` 归档 | 输出必须为新目录，不覆盖 | 授权执行人 |
+| 7 | 校验安装 | `node workbench/scripts/install-p2-package.mjs <PACKAGE> <ROOT> --verify` | `<PACKAGE>` `<ROOT>` | <1 min | 否 | 无（只读） | 无 | 授权执行人 |
+| 8 | 备份数据 | 手动复制 `data/` 到实例外备份位 | `<BACKUP>` | 取决体积 | 否 | 新建备份 | 备份后再 apply | 用户/授权执行人 |
+| 9 | 应用增量包 | `node workbench/scripts/install-p2-package.mjs <PACKAGE> <ROOT> --apply-experimental` | `<ROOT>` | 1–2 min | 否 | 覆盖包内文件 + `logs/diagnostics/p2-package-<uuid>/` | 失败自动回滚；不确定则保留标记 | 授权执行人 |
+| 10 | 复核矩阵 | 重跑 T1 检查 | `<ROOT>` | <5 min | 否 | 无 | 失败即停 | 授权执行人 |
+| 11 | CLI 验收 | T3 第 1 行 | `<ROOT>` | 5–10 min | 否 | 控制台窗口、`data/` 会话与日志、锁 | 输入 STOP | 用户（需键盘交互） |
+| 12 | Dashboard 验收 | T3 第 2 行 | `<ROOT>` | 5–10 min | 否 | 回环监听、浏览器窗口、`data/` 写入、锁 | 显式停止 | 用户 |
+| 13 | 互斥/停止/回收 | T3 第 3–5 行 | `<ROOT>` | 10–15 min | 否 | 进程与锁 | 逐项显式停止，不手工清锁 | 用户 + 授权执行人 |
+| 14 | 数据保留复核 | T3 第 6 行 | `<ROOT>` | 5 min | 否 | 实例外对比副本 | 用第 8 步备份恢复 | 授权执行人 |
 
-预计总时长 30–60 分钟；除"模型请求"一项外无模型费用；除第 2 步需要 `zip` 外无额外安装。执行前需用户批准；employee 不执行实机步骤，lead 负责部署架构与缺口裁决。
+预计总时长 45–90 分钟；联网仅第 3、4 步（runtime 下载与 npm registry）；除"模型请求"一项外无模型费用。**就地升级（B 方案）在回退门禁明确前不申请**；执行前需用户批准，employee 不执行实机步骤。
 
 ### 本批未知项与缺口（不得当作已解决）
 
-1. Python 最低版本与目标机 python 路径（仓库无声明）。
-2. P0 外壳与 Node/Python/Git runtime 的来源（仓库无安装脚本）。
-3. "已 apply 成功但验收失败"的回退流程（`--recover-*` 仅覆盖有安装标记的场景）。
-4. CLI 控制台输入可用性（`native-entry-host.py` console 模式未核实）。
-5. 历史 E 盘状态与内核版本（未重新核验）。
+1. **Hermes 内核最低 Python 版本**：本仓库只锁定运行时 `3.11.15+20260602`，最低要求须读固定源码 `28044757` 的 `pyproject.toml`（不在本仓），未核实。
+2. **P0 四脚本与固定 P2 的组合未验证**：`build-p0-package.py` 强制 `.bat` CRLF、guard 归一化 LF 后比对，理论一致但未实测；`portable-ai.manifest.json`、`ready.manifest`、setup receipt 与 P2 guard/安装器无组合覆盖。
+3. **`npm ci` 无仓库封装**：依赖来源与 registry 可达性未验证；本批未执行。
+4. **"已 apply 成功但验收失败"的回退流程未解决**（`--recover-*` 仅覆盖有安装标记场景）→ 不申请就地升级。
+5. **CLI 控制台输入可用性**：`native-entry-host.py` console 模式未核实。
+6. **历史 E 盘状态与内核版本**（`29112bef`/v0.21.0）未重新核验，不得当作现存或兼容依据。
 
 
