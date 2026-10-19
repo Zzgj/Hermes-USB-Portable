@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## 下一集中批次：legacy / managed guard caller 补证
+
+lead 已获取证据归档 `1a455d2d3a56e17065dd4dc51994e8e0799774c7`，核对相对上一归档仅 README 改变，八份日志保持原字节；日志接收任务结束，不再派元数据返工。本轮实际读取 startHermesInstance、portableWindowsOptions、legacy 及现有 lifecycle 测试：managed 已有安装标记注入回归，但不等于实际 checkEntryGuard 的 restore/协调文件时序；legacy 现有 runLockedLegacyEntry 合成 prepare 不等于 launchLegacy 的真实 guard 接线。
+
+据此下发一个包含两 caller 和验收映射的 `P2-09-GUARD-CALLERS-06`，employee 从已组合且验证过的源码后继文档基线 ad0f8df 受控快进，只补新测试及 ACCEPTANCE，reviewer 独立验证。managed 测实际 startHermesInstance 加真实 guard，legacy 在 Windows 临时合成根测实际 launchLegacy；不修改生产、不启动 Python/Hermes、不接触 E 盘。详细注入位置、可观察断言、单条命令和暂停范围见 HANDOFF 顶部。
+
+这批只补两类 caller 的拒绝路径，不把合成 fixture 当真实便携部署，也不把 helper 接线替代 CLI/Dashboard 成功使用。正式集成及 E 盘部署保持未放行；下一真实环境批次仍需完整匹配 P0/P2、固定内核、依赖/资产、备份恢复和数据保留方案。本轮 lead 只有源码审阅、文档与派单，没有执行测试。
+
 ## 组合及 WIN 证据已通过 Git 收取
 
 用户指出日志可直接经 GitHub 交付。lead 已实际 fetch 并读取证据提交 `432bcfe8cf590de3c9d362a16ea376699199b54a` 的 `evidence/p2-dev-combine-04/` 九文件；8 日志完整可读，不再等待聊天长消息。7 份日志 blob 哈希与索引原样一致，Python 日志发布 LF 哈希为 `68192080f24fd7b1365d9425fadd3c0044f8601a18e373aa7e6c151e200e7566`，转 CRLF 后与索引所报原日志哈希一致；此差异已定位，索引待标明两者，不重跑。

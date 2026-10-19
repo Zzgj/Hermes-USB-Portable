@@ -1,5 +1,16 @@
 # P2 单分支交接与剩余审查
 
+## 当前开发：P2-09-GUARD-CALLERS-06（剩余两类 caller，集中补证）
+
+日志传输批次已结束，不再为 README 开新测试。用户要求继续推进：employee 仅对本任务解除暂停，作为 dev/company 唯一开发者；reviewer 组织独立复验，lead 保留生产修复责任。固定开发 base 为 `ad0f8dffdaa2a0e134e3d766c124258a5635865a`（组合已验源码后的文档提交）。公司当前 `64d32cc7229800d5f4a37e8de338d452068f862e` 是其祖先；先核对远端、工作区和祖先关系，在独立开发目录对 dev/company 执行受控 `git merge --ff-only ad0f8dffdaa2a0e134e3d766c124258a5635865a`，不 reset/rebase，不动旧 patch，不覆盖他人现场；不符合条件就停。
+
+- 允许仅新增 `workbench/tests/legacy-managed-guard-order.test.mjs`、修改 `docs/p2/ACCEPTANCE.md`；所有生产源码、已有测试、guard manifest/哈希、依赖、进度只读。复用 R2 的有界驱动设计和 cleanup 保留语义，不退回 kill 后立即 reject、固定 sleep 或未经确认删目录。内置 API 注入仅在自有 Node 子进程，动态导入前安装，作用域限定本批完整规范路径，钩子命中次数必须断言。
+- **T1 managed 调用链**：实际调用 `startHermesInstance`，传入真实 `assertPortableEntryGuard` 回调及本批合成 source/home；python 参数可用现有 Node 可执行文件满足文件类型检查，但禁止实际执行该参数。设置受控 cp.spawn/spawnSync 计数拦截，任何业务启动立即记录并抛固定错误，绝不创建 Python/Hermes。以锁 owner 写入完成后的屏障分别篡改协调文件、放置 `updates/hermes-restore-active.json`（区别于已有安装标记前置检查）；断言 guard 所在 callback 进入时锁及 owner 已存在、错误类型对应、业务 spawn 为 0、异常字节保留、仅本批锁释放并可重获。预置外部锁时拒绝且 owner 不变。不得将传入回调本身当成真实 launch-managed 调用已执行：这项动态证据只覆盖 startHermesInstance→startManagedInstance→真实 guard；launch-managed 的组装静态核对与真实启动器验收分开。
+- **T2 legacy 调用链**：在原生 Windows 上实际调用导出的 `launchLegacy(['--root',fixtureRoot,'--',...])`，至少覆盖 CLI 与 dashboard 两个分支进入 guard 后的拒绝，不只测 runLockedLegacyEntry 的测试自带 prepare。在临时根按 portableWindowsOptions 的真实格式创建明确标记为 synthetic 的最小文件/收据，四个协调文件从固定源码复制，不执行、不借用 E 盘，不安装 runtime。持锁后注入 restore marker 或启动器篡改，验证 guard 先于 adapter 检查/业务 spawn，拒绝后本批锁释放、证据保留；预置外部锁保持不变。所有子进程 API 的非测试启动须计数并拦截，防止固定版本校验意外调用真实 Git/Python。非 Windows 明确 skip 该组，不改生产平台判断，不用 process.platform 伪装成原生证据。缺少可在不改生产前提下实现的隔离点则交回具体阻塞，不放宽门禁。
+- **T3 覆盖说明**：逐案例列实际导入函数、屏障命中、锁/owner 观察、spawn 计数、拒绝/释放/保留断言及平台。成功 CLI/真实 Dashboard/控制台输入/真实启动器不在本批；即使全部通过也不能写“原生入口可用”。记录最初实现已满足还是发现真实缺陷，禁止制造假红；生产缺陷由 lead 处理。
+- 唯一执行命令（独立 workbench）：`node --test tests/legacy-managed-guard-order.test.mjs tests/legacy-entry.test.mjs tests/managed-native.test.mjs tests/portable-guard-order.test.mjs`。使用已有 Node 标准库，允许自有 Node 夹具子进程/临时文件锁，不监听、不跑 Python/Hermes/模型，不安装、不构建、不碰真实 E 盘；非测试进程请求必须被拦截。同根因最多三轮，清理异常停批、保留现场。employee 完成后固定提交并暂停，reviewer 在独立固定结果 worktree 先审钩子和清理，再运行相同命令；不自行追加探针或重跑。
+- 回交完整 base/result、两文件清单、平台/实际命令/退出码、逐用例与清理证据、未测范围。脱敏测试日志与完整哈希通过已有证据归档通道在明确交接后追加，禁止群长文传输，不并发写同一分支；源码按三分支授权推送 dev/company 并回读。生产核心、正式集成、依赖和 E 盘部署不在本批权限内。
+
 ## 当前证据交付：P2-09-EVIDENCE-GIT-05
 
 用户明确要求文件通过 GitHub 推送交付，停止反复在群内粘贴长日志。源码和脱敏执行证据都使用既有三分支 Git 通道；不新增分支，不将 Git 传输当成新测试或部署授权。
