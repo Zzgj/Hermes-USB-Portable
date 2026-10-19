@@ -1,0 +1,33 @@
+✔ legacy entry uses fixed foreground modes; rejects profile and daemon escape (2.9461ms)
+✔ legacy and native/managed lock users exclude each other until confirmed tree exit (25.9241ms)
+✔ unknown legacy exit retains lock and cannot report success (8.1882ms)
+✔ managed caller rejects a launcher tampered after the lock owner exists (232.3701ms)
+✔ managed caller rejects a restore marker placed after the lock owner exists (199.0655ms)
+✔ managed caller refuses before the guard when another owner holds the lock (227.0601ms)
+✔ legacy CLI caller rejects a launcher tampered at the guard barrier (202.9846ms)
+✔ legacy dashboard caller rejects a restore marker at the guard barrier (202.5044ms)
+✔ legacy caller refuses before the guard when another owner holds the lock (165.5883ms)
+✔ unconfirmed drain on timeout keeps the root through the registered cleanup (331.147ms)
+✔ child that never closes after kill keeps the root through the registered cleanup (331.6561ms)
+✔ unconfirmed drain on close is reported and keeps the root (236.1271ms)
+✔ post-spawn error waits for close and reports a runtime failure (29.6607ms)
+✔ pre-spawn error is reported as a spawn failure and cleanup still runs (24.4769ms)
+✔ managed native exit proof must resolve before shared lock is released (21.3177ms)
+✔ rejected native exit evidence retains the shared lock (5.5611ms)
+✔ guard reads the coordinated launcher after the lock owner exists and exactly once (200.1652ms)
+✔ recovery marker created at the guard barrier rejects without adapter effects and keeps bytes (197.2865ms)
+✔ launcher tampered at the guard barrier rejects without adapter effects and keeps bytes (205.8658ms)
+✔ pre-existing foreign lock rejects before guard and leaves owner bytes unchanged (173.4171ms)
+✔ real timeout after readiness exits the owned child before failing (2163.4874ms)
+✔ spawn failure settles as spawn failure without waiting for a deadline (12.5652ms)
+✔ confirmed exit without drained streams keeps the root through the real cleanup callback (311.2001ms)
+✔ unconfirmed child exit keeps the root through the real cleanup callback (320.663ms)
+✔ readiness timeout terminates and waits for exit before failing (114.2616ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4022.7868

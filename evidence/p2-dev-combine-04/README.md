@@ -41,6 +41,16 @@ Log 07 was produced by Python's `unittest -v` on Windows (CRLF output). Git comm
 - tests 24 / pass 24 / fail 0 / cancelled 0 / skipped 0 / todo 0
 - Covers managed (startHermesInstance→beforeStart→guard) and legacy (launchLegacy→guard) caller paths with cleanup guard wiring, error event split, and stream drain confirmation
 
+## GUARD-CALLERS-06 R2 (added 2026-10-19)
+
+| # | File | Command | Exit code | SHA-256 (Git blob, LF) |
+|---|------|---------|----------:|------------------------|
+| 10 | 10-guard-callers-06-r2.log | `node --test tests/legacy-managed-guard-order.test.mjs tests/legacy-entry.test.mjs tests/managed-native.test.mjs tests/portable-guard-order.test.mjs` | 0 | `502841d8b38b4c5fa5b9915d8b6c0119889122180ea44996c1f1f115f3ce9ce6` |
+
+- Fixed source: `04ac238472c9697c8229b0f977b80c9e76b2f6a6`
+- tests 25 / pass 25 / fail 0 / cancelled 0 / skipped 0 / todo 0
+- Adds "child that never closes after kill" test: kill() never emits close, asserts childExited:false / streamsDrained:false / cleanupConfirmed:false / guard.keep=true, cleanup() preserves root+sentinel
+
 ## Known gaps (not covered by these logs)
 - `windows-job-host.py` execution-time disk SHA-256 was not recorded before WIN-NATIVE-VERIFY-02; Git blob `2d98b874e241dbadbda00f3769c641ed9e15c509` is the tree-level trace but not a pre-execution disk hash
 - Linux socket sub-assertion in `s1-browser-driver.test.mjs` not executed on Windows (`if(process.platform!=='linux')return`)
