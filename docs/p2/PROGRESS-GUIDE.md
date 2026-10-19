@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## 实机准备材料接收，部署链仍阻塞（lead 接管）
+
+已审公司准备材料 `ddd039db70bcb59f28d619d8336180268ed0b226` 并接收到开发工作区，T4 明确冻结，不视为可执行审批单。默认 setup 的 29112bef 与 P2 原生入口 28044757 确定不匹配；无版本偷换或放宽 adapter 门禁。
+
+lead 本轮只读核对固定上游完整 Git tree 和构建清单，确认 Python 要求 >=3.11,<3.14、Dashboard 使用根 npm workspace/lock 并依赖 apps/shared，产物为 hermes_cli/web_dist；另核对 setup 必填 -Root、P2 打包需 REPO/OUT 两参数。详细裁决已写入 ACCEPTANCE 的准备章节顶部。未安装、构建、测试或运行 Hermes。
+
+设计选择：首个候选面向全新独立 Windows 实验根，保留已审 28044757；不更新现存 E 盘、不改默认 P0 清单。尚缺配套独立 venv/runtime/两类资产的实验准备入口及验证关系，归 lead 亲自负责；在实现与隔离验证前不提交实机执行申请。employee 暂停，reviewer 可只读审阅本裁决，不运行旧 T4。准备方案不等于完整部署功能已实现。
+
 ## GUARD-CALLERS-06 收口并开发整合；转实机验收准备
 
 公司固定结果 `04ac238472c9697c8229b0f977b80c9e76b2f6a6` 已独立复验四文件命令 25/25、退出 0；lead 已静态核对未退出/未排空及 error 收尾用例，并核验归档 `9b52036a3878be354c83b57e4f342d58e2e87350` 中 R2 日志 SHA-256 `502841d8b38b4c5fa5b9915d8b6c0119889122180ea44996c1f1f115f3ce9ce6`。这是 reviewer 执行证据，非 lead 自测。
