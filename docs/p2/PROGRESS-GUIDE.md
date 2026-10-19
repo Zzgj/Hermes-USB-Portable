@@ -1,10 +1,12 @@
 # P2 当前进度与任务
 
-## NATIVE-EXPERIMENT-08：lead 已写组装入口，尚未验证
+## NATIVE-EXPERIMENT-08：lead 批准范围内隔离验证通过，实机仍冻结
 
 从 63a9900 开始新增实验准备 CLI 与配套合成测试，不再仅停留在部署文档。实现本地明确批准材料的身份核对、新目标独占创建、固定 28044757 源码/新 venv、工作台与 Dashboard 两套构建、实验 manifest/收据和末尾 readiness 接线；不触及默认 P0 或真实 E 盘。完整输入契约及命令范围见 HANDOFF 顶部。
 
-当前状态：源码已写；语法检查、隔离测试、独立审查与 Windows 实机均未完成。必要 lead 隔离批次待总监批准；执行过程中所有子命令将在新测试中被替换，不代表真实安装成功。真实 apply 仍禁止，尤其安装进程树超时确认、材料来源和依赖兼容性尚未关闭。该入口需要本地已审 runtime 材料，不是从空介质自动下载一切的完整发行包；release_ready 不变。
+总监批准后，lead 在干净固定源码 `3bf5b8e0be302316ac545b27b3c08091415f69fc`、cwd=workbench 执行三条命令各一次：`node --check scripts/prepare-native-experiment.mjs`（退出 0）、`node --check tests/native-experiment.test.mjs`（退出 0）、`node --test tests/native-experiment.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`（退出 0，13 tests/pass，0 fail/cancelled/skipped/todo）。使用本 profile scratch；新测试的 Git/uv/npm/Python 全为计数替身，没有安装、联网或真实构建/启动。测试日志原字节 SHA-256 为 `0f084d61181f0e6a3ee8e279bc5199cb1c39ac91817a5b8fc585e9aa70687890`；两份语法检查日志为空，退出码单独记录。原日志与 results.json 保存于 lead scratch 的 `native-experiment-08-evidence-ea_q5dry/`，这只是本机证据位置，不是跨机附件。
+
+reviewer 已报告固定 3bf5b8e 的只读审阅无阻塞发现；未声称 reviewer 独立执行该测试。当前仅语法与合成隔离验证通过，真实 apply 仍禁止，安装进程树超时确认、材料来源、Windows 依赖兼容性和入口实机验收尚未关闭。该入口需要本地已审 runtime 材料，不是从空介质自动下载一切的完整发行包；release_ready 不变。本次无源码修复、无重跑、无扩大执行范围。
 
 ## 实机准备材料接收，部署链仍阻塞（lead 接管）
 
