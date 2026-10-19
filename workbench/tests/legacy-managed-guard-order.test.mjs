@@ -6,6 +6,8 @@ import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
+import {EventEmitter} from 'node:events';
+import {PassThrough} from 'node:stream';
 
 // Guard ordering for the two remaining production callers:
 //   managed: launch-managed -> startHermesInstance -> startManagedInstance -> beforeStart(guard)
@@ -40,6 +42,12 @@ const spawnNames=['spawn','spawnSync','exec','execSync','execFile','execFileSync
 for(const name of spawnNames){if(typeof cp[name]==='function')cp[name]=function(){spawnCalls+=1;throw new Error('PROCESS_SPAWN_BLOCKED:'+name);};}
 const cpAfter=await import('node:child_process');
 const patched=cpAfter.spawn===cp.spawn&&cpAfter.spawnSync===cp.spawnSync;
+// Readiness barrier: the parent arms its deadline only after the harness is loaded.
+console.log('READY');
+if(cfg.scenario==='hang'){
+ setInterval(()=>{},1000);
+ await new Promise(()=>{});
+}
 const canonicalRoot=await fsp.realpath(cfg.root);
 const canonicalHome=await fsp.realpath(cfg.home);
 const lockDir=join(canonicalHome,'.p2-manager-lock');
@@ -69,14 +77,13 @@ fsp.lstat=async function(path,...rest){
  }
  return origLstat(path,...rest);
 };
-const entries=urlMod.pathToFileURL(join(cfg.workbench,'scripts','portable-native-entries.mjs')).href;
 const legacyUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','legacy-hermes-entry.mjs')).href;
 const hermesUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','hermes-instance.mjs')).href;
 const guardUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','portable-entry-guard.mjs')).href;
 const lockUrl=urlMod.pathToFileURL(join(cfg.workbench,'scripts','instance-lock.mjs')).href;
 const {assertPortableEntryGuard}=await import(guardUrl);
 const {acquireInstanceLock}=await import(lockUrl);
-if(cfg.scenario==='managed-tamper'||cfg.scenario==='managed-restore'||cfg.scenario==='managed-foreign'){
+if(cfg.scenario.startsWith('managed-')){
  const {startHermesInstance}=await import(hermesUrl);
  if(cfg.scenario==='managed-foreign'){
   await origMkdir(lockDir,{mode:0o700});
@@ -112,35 +119,10 @@ if(cfg.scenario.endsWith('foreign')){
 console.log(JSON.stringify(out));
 `;
 
-function drive(child,{timeoutMs=90000,closeGraceMs=10000}={}){
- return new Promise((resolve,reject)=>{
-  let stdout='',stderr='',settled=false,terminated=false;
-  const closed=new Promise(done=>child.on('close',(code,signal)=>done({code,signal})));
-  const finish=(fn,value)=>{if(settled)return;settled=true;fn(value);};
-  const timer=setTimeout(async()=>{
-   if(settled)return;
-   terminated=true;
-   child.kill();
-   const exited=await Promise.race([closed.then(()=>true),new Promise(done=>setTimeout(()=>done(false),closeGraceMs))]);
-   const error=new Error(exited?'CHILD_TIMEOUT':'CHILD_TIMEOUT_CLEANUP_BLOCKED');
-   error.code=exited?'CHILD_TIMEOUT':'CHILD_TIMEOUT_CLEANUP_BLOCKED';
-   finish(reject,error);
-  },timeoutMs);
-  child.on('error',error=>{clearTimeout(timer);finish(reject,Object.assign(new Error('CHILD_SPAWN_FAILED: '+error.message),{code:'CHILD_SPAWN_FAILED',cause:error}));});
-  child.stdout.on('data',chunk=>{stdout+=chunk;});
-  child.stderr.on('data',chunk=>{stderr+=chunk;});
-  child.on('close',code=>{
-   clearTimeout(timer);
-   if(terminated)return;
-   const line=stdout.trim().split(/\r?\n/).filter(Boolean).pop();
-   if(code!==0||!line)return finish(reject,Object.assign(new Error('CHILD_FAILED code='+code+' stderr='+stderr),{code:'CHILD_FAILED',exitCode:code}));
-   try{finish(resolve,JSON.parse(line));}catch(error){finish(reject,Object.assign(new Error('CHILD_OUTPUT_INVALID '+error.message),{code:'CHILD_OUTPUT_INVALID'}));}
-  });
- });
-}
-
 async function fixture(t){
  const root=await mkdtemp(join(tmpdir(),'callers-guard-order-'));
+ // Cleanup is opt-out: an unconfirmed child exit or undrained output keeps the
+ // fixture. The same callback is returned so a test can prove it skips deletion.
  const guard={keep:false};
  const cleanup=()=>guard.keep?undefined:rm(root,{recursive:true,force:true});
  t.after(cleanup);
@@ -172,16 +154,112 @@ async function fixture(t){
  return {root:canonical,home:await realpath(home),source:await realpath(source),python:process.execPath,guard,cleanup};
 }
 
-function runScenario(config){
+function waitFor(promise,ms){
+ return new Promise(resolve=>{
+  const timer=setTimeout(()=>resolve(false),ms);
+  promise.then(()=>{clearTimeout(timer);resolve(true);},()=>{clearTimeout(timer);resolve(false);});
+ });
+}
+
+const exists=async path=>{try{await realpath(path);return true;}catch{return false;}};
+
+// Controllable child double: `close` and stream `end` are driven separately.
+class FakeChild extends EventEmitter{
+ constructor(){
+  super();
+  this.pid=1234;
+  this.stdout=new PassThrough();
+  this.stderr=new PassThrough();
+  this.killed=false;
+ }
+ kill(){this.killed=true;return true;}
+ exit(code=0){this.stdout.end();this.stderr.end();this.emit('close',code,null);}
+ closeWithoutDrain(code=0){this.emit('close',code,null);}
+}
+
+// Single-settlement driver shared by the real child and the double. The deadline
+// is armed only after readiness; every termination waits a bounded time for
+// `close` and for both output streams. Exit and drain are recorded separately and
+// an unconfirmed cleanup keeps the fixture.
+function drive(child,{guard=null,timeoutMs=90000,readyTimeoutMs=90000,closeGraceMs=10000,streamGraceMs=5000}={}){
+ return new Promise((resolve,reject)=>{
+  let stdout='',stderr='',ready=false,settled=false,terminating=false,runtimeError=null;
+  let spawned=child.pid!==undefined;
+  let deadline=null,readiness=null;
+  const ended=new Set();
+  const streamsEnded=new Promise(done=>{
+   for(const [name,stream] of [['out',child.stdout],['err',child.stderr]])stream.on('end',()=>{ended.add(name);if(ended.size===2)done(true);});
+  });
+  const closed=new Promise(done=>{child.on('close',(code,signal)=>done({code,signal}));});
+  const completion=(childExited,streamsDrained)=>({childExited,streamsDrained,cleanupConfirmed:childExited===true&&streamsDrained===true});
+  const complete=(fn,value,status)=>{
+   if(settled)return;
+   settled=true;
+   if(deadline)clearTimeout(deadline);
+   if(readiness)clearTimeout(readiness);
+   if(guard&&!status.cleanupConfirmed)guard.keep=true;
+   fn(value);
+  };
+  const fail=(code,status,extra={})=>complete(reject,Object.assign(new Error(code),{code,...status},extra),status);
+  const terminate=async code=>{
+   if(settled||terminating)return;
+   terminating=true;
+   if(deadline)clearTimeout(deadline);
+   child.kill();
+   const exited=await waitFor(closed,closeGraceMs);
+   const drained=exited?await waitFor(streamsEnded,streamGraceMs):false;
+   if(!exited||!drained){fail(code+'_CLEANUP_BLOCKED',completion(exited,drained));return;}
+   fail(code,completion(true,true));
+  };
+  deadline=setTimeout(()=>{if(ready||settled)return;void terminate('CHILD_NOT_READY');},readyTimeoutMs);
+  child.on('spawn',()=>{spawned=true;});
+  child.on('error',error=>{
+   if(settled)return;
+   if(!spawned){
+    const status=completion(true,true);
+    complete(reject,Object.assign(new Error('CHILD_SPAWN_FAILED: '+error.message),{code:'CHILD_SPAWN_FAILED',...status,cause:error}),status);
+    return;
+   }
+   // Post-spawn error: keep draining and settle on close so no pipe is abandoned.
+   runtimeError=runtimeError||error;
+  });
+  child.stdout.on('data',chunk=>{
+   stdout+=chunk;
+   if(!ready&&/(?:^|\r?\n)READY\r?\n/.test(stdout)){
+    ready=true;
+    if(readiness)clearTimeout(readiness);
+    readiness=null;
+    if(deadline)clearTimeout(deadline);
+    deadline=setTimeout(()=>{void terminate('CHILD_TIMEOUT');},timeoutMs);
+   }
+  });
+  child.stderr.on('data',chunk=>{stderr+=chunk;});
+  child.on('close',async(code,signal)=>{
+   if(settled||terminating)return;
+   const drained=await waitFor(streamsEnded,streamGraceMs);
+   if(!drained){fail('CHILD_CLEANUP_UNCONFIRMED',completion(true,false),{exitCode:code});return;}
+   if(runtimeError){fail('CHILD_ERROR_RUNTIME',completion(true,true),{exitCode:code,cause:runtimeError});return;}
+   if(!ready){fail('CHILD_FAILED_NO_READY',completion(true,true),{exitCode:code,stderr});return;}
+   const line=stdout.trim().split(/\r?\n/).filter(Boolean).pop();
+   if(code!==0||!line){fail('CHILD_FAILED',completion(true,true),{exitCode:code,stderr});return;}
+   let parsed;
+   try{parsed=JSON.parse(line);}
+   catch(error){fail('CHILD_OUTPUT_INVALID',completion(true,true),{exitCode:code});return;}
+   complete(resolve,parsed,completion(true,true));
+  });
+ });
+}
+
+function runScenario(config,{guard=null,...rest}={}){
  const child=spawn(process.execPath,['--input-type=module','-e',CHILD],{
   env:{...process.env,CALLER_GUARD_CONFIG:JSON.stringify({...config,workbench,tamperBytes,restoreBytes,foreignOwner})},
   stdio:['ignore','pipe','pipe'],windowsHide:true});
- return drive(child);
+ return drive(child,{guard,...rest});
 }
 
 test('managed caller rejects a launcher tampered after the lock owner exists',async t=>{
- const {root,home,source,python}=await fixture(t);
- const seen=await runScenario({root,home,source,python,scenario:'managed-tamper',inject:'tamper',viaHook:false});
+ const {root,home,source,python,guard}=await fixture(t);
+ const seen=await runScenario({root,home,source,python,scenario:'managed-tamper',inject:'tamper',viaHook:false},{guard});
  assert.equal(seen.patched,true);
  assert.equal(seen.guardEntered,true);
  assert.equal(seen.guardObs.lockDir,true);
@@ -190,12 +268,13 @@ test('managed caller rejects a launcher tampered after the lock owner exists',as
  assert.equal(seen.spawnCalls,0);
  assert.equal(seen.lockDirAfter,false);
  assert.equal(seen.reacquired,true);
+ assert.equal(guard.keep,false);
  assert.equal(await readFile(join(root,'launch.bat'),'utf8'),tamperBytes);
 });
 
 test('managed caller rejects a restore marker placed after the lock owner exists',async t=>{
- const {root,home,source,python}=await fixture(t);
- const seen=await runScenario({root,home,source,python,scenario:'managed-restore',inject:'restore',viaHook:false});
+ const {root,home,source,python,guard}=await fixture(t);
+ const seen=await runScenario({root,home,source,python,scenario:'managed-restore',inject:'restore',viaHook:false},{guard});
  assert.equal(seen.guardEntered,true);
  assert.equal(seen.guardObs.lockDir,true);
  assert.equal(seen.guardObs.owner,true);
@@ -207,8 +286,8 @@ test('managed caller rejects a restore marker placed after the lock owner exists
 });
 
 test('managed caller refuses before the guard when another owner holds the lock',async t=>{
- const {root,home,source,python}=await fixture(t);
- const seen=await runScenario({root,home,source,python,scenario:'managed-foreign',inject:null,viaHook:false});
+ const {root,home,source,python,guard}=await fixture(t);
+ const seen=await runScenario({root,home,source,python,scenario:'managed-foreign',inject:null,viaHook:false},{guard});
  assert.match(String(seen.startError),/INSTANCE_LOCKED/);
  assert.equal(seen.guardEntered,false);
  assert.equal(seen.spawnCalls,0);
@@ -217,8 +296,8 @@ test('managed caller refuses before the guard when another owner holds the lock'
 });
 
 test('legacy CLI caller rejects a launcher tampered at the guard barrier',{skip:process.platform!=='win32'},async t=>{
- const {root,home}=await fixture(t);
- const seen=await runScenario({root,home,scenario:'legacy-cli-tamper',inject:'tamper',viaHook:true,injectAt:2,legacyCommand:'--cli'});
+ const {root,home,guard}=await fixture(t);
+ const seen=await runScenario({root,home,scenario:'legacy-cli-tamper',inject:'tamper',viaHook:true,injectAt:2,legacyCommand:'--cli'},{guard});
  assert.equal(seen.patched,true);
  assert.equal(seen.hits.length,2);
  assert.equal(seen.hits[1].lockDir,true);
@@ -231,8 +310,8 @@ test('legacy CLI caller rejects a launcher tampered at the guard barrier',{skip:
 });
 
 test('legacy dashboard caller rejects a restore marker at the guard barrier',{skip:process.platform!=='win32'},async t=>{
- const {root,home}=await fixture(t);
- const seen=await runScenario({root,home,scenario:'legacy-dashboard-restore',inject:'restore',viaHook:true,injectAt:2,legacyCommand:'dashboard'});
+ const {root,home,guard}=await fixture(t);
+ const seen=await runScenario({root,home,scenario:'legacy-dashboard-restore',inject:'restore',viaHook:true,injectAt:2,legacyCommand:'dashboard'},{guard});
  assert.equal(seen.hits.length,2);
  assert.equal(seen.hits[1].lockDir,true);
  assert.equal(seen.hits[1].owner,true);
@@ -244,11 +323,95 @@ test('legacy dashboard caller rejects a restore marker at the guard barrier',{sk
 });
 
 test('legacy caller refuses before the guard when another owner holds the lock',{skip:process.platform!=='win32'},async t=>{
- const {root,home}=await fixture(t);
- const seen=await runScenario({root,home,scenario:'legacy-foreign',inject:null,viaHook:true,injectAt:99,legacyCommand:'--cli'});
+ const {root,home,guard}=await fixture(t);
+ const seen=await runScenario({root,home,scenario:'legacy-foreign',inject:null,viaHook:true,injectAt:99,legacyCommand:'--cli'},{guard});
  assert.match(String(seen.startError),/INSTANCE_LOCKED/);
  assert.equal(seen.hits.length,1);
  assert.equal(seen.spawnCalls,0);
  assert.equal(seen.foreignOwner,foreignOwner);
  assert.equal(seen.reacquired,false);
+});
+
+test('unconfirmed drain on timeout keeps the root through the registered cleanup',async t=>{
+ const {root,home,guard,cleanup}=await fixture(t);
+ const sentinel=join(root,'sentinel.txt');
+ await writeFile(sentinel,'keep-me');
+ const fake=new FakeChild();
+ fake.kill=function(){this.killed=true;this.closeWithoutDrain(0);return true;};
+ const promise=drive(fake,{guard,timeoutMs:100,readyTimeoutMs:30000,closeGraceMs:500,streamGraceMs:200});
+ fake.stdout.write('READY\n');
+ let failure=null;
+ try{await promise;}catch(error){failure=error;}
+ assert.ok(failure,'an undrained timeout must not be a success');
+ assert.equal(failure.code,'CHILD_TIMEOUT_CLEANUP_BLOCKED');
+ assert.equal(failure.childExited,true);
+ assert.equal(failure.streamsDrained,false);
+ assert.equal(failure.cleanupConfirmed,false);
+ assert.equal(guard.keep,true);
+ await cleanup();
+ assert.equal(await exists(root),true);
+ assert.equal(await readFile(sentinel,'utf8'),'keep-me');
+ await rm(root,{recursive:true,force:true});
+});
+
+test('unconfirmed drain on close is reported and keeps the root',async t=>{
+ const {root,guard,cleanup}=await fixture(t);
+ const sentinel=join(root,'sentinel.txt');
+ await writeFile(sentinel,'keep-me');
+ const fake=new FakeChild();
+ const promise=drive(fake,{guard,timeoutMs:30000,readyTimeoutMs:30000,closeGraceMs:500,streamGraceMs:200});
+ fake.stdout.write('READY\n');
+ fake.closeWithoutDrain(0);
+ let failure=null;
+ try{await promise;}catch(error){failure=error;}
+ assert.ok(failure,'an undrained close must not be a success');
+ assert.equal(failure.code,'CHILD_CLEANUP_UNCONFIRMED');
+ assert.equal(failure.childExited,true);
+ assert.equal(failure.streamsDrained,false);
+ assert.equal(failure.cleanupConfirmed,false);
+ assert.equal(guard.keep,true);
+ await cleanup();
+ assert.equal(await exists(root),true);
+ assert.equal(await readFile(sentinel,'utf8'),'keep-me');
+ await rm(root,{recursive:true,force:true});
+});
+
+test('post-spawn error waits for close and reports a runtime failure',async t=>{
+ const {root,guard,cleanup}=await fixture(t);
+ const fake=new FakeChild();
+ const promise=drive(fake,{guard,timeoutMs:30000,readyTimeoutMs:30000,closeGraceMs:500,streamGraceMs:500});
+ fake.stdout.write('READY\n');
+ fake.emit('error',new Error('synthetic-runtime-error'));
+ let settledEarly=false;
+ promise.catch(()=>{settledEarly=true;});
+ await Promise.resolve();
+ await Promise.resolve();
+ assert.equal(settledEarly,false,'the runtime error must not settle before close');
+ fake.exit(0);
+ let failure=null;
+ try{await promise;}catch(error){failure=error;}
+ assert.ok(failure,'a runtime error must fail');
+ assert.equal(failure.code,'CHILD_ERROR_RUNTIME');
+ assert.equal(failure.childExited,true);
+ assert.equal(failure.cleanupConfirmed,true);
+ assert.equal(guard.keep,false);
+ await cleanup();
+ assert.equal(await exists(root),false);
+});
+
+test('pre-spawn error is reported as a spawn failure and cleanup still runs',async t=>{
+ const {root,guard,cleanup}=await fixture(t);
+ const fake=new FakeChild();
+ fake.pid=undefined;
+ const promise=drive(fake,{guard,timeoutMs:30000,readyTimeoutMs:30000});
+ fake.emit('error',Object.assign(new Error('spawn ENOENT'),{code:'ENOENT'}));
+ let failure=null;
+ try{await promise;}catch(error){failure=error;}
+ assert.ok(failure,'a spawn failure must reject');
+ assert.equal(failure.code,'CHILD_SPAWN_FAILED');
+ assert.equal(failure.childExited,true);
+ assert.equal(failure.cleanupConfirmed,true);
+ assert.equal(guard.keep,false);
+ await cleanup();
+ assert.equal(await exists(root),false);
 });

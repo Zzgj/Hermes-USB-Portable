@@ -353,4 +353,6 @@ $target = 'E:\Hermes-P2-Test'
 - 未覆盖：guard 通过后的成功启动、CLI 交互输入、真实 Dashboard 健康与打开、控制台 STOP、断线/进程树回收、真实启动器调用链与 U 盘验收。全部通过也不能写成"原生入口可用"。
 - 本批未发现生产缺陷（两处实现按预期在持锁后调用 guard）；未修改任何生产代码、`portable-entry-guard.json` 或既有测试。
 
+驱动层与 `portable-guard-order.test.mjs` R2 同一模式：`fixture()` 把同一个 `cleanup` 注册给 `t.after` 并返回给用例；各用例解构 `guard` 并传入 `runScenario→drive`，`drive()` 在 `cleanupConfirmed!==true` 时置 `guard.keep=true`，故 `t.after` 会真正跳过删除。子进程先输出 `READY` 才武装超时；超时、`READY` 前超时与运行期 `error` 都走"终止→有界等 `close`→有界等两条流排空"，未确认时返回 `*_CLEANUP_BLOCKED`；启动前 `error` 直接 `CHILD_SPAWN_FAILED`，启动后 `error` 记录后等 `close` 以 `CHILD_ERROR_RUNTIME` 收口。`childExited` / `streamsDrained` / `cleanupConfirmed` 分别记录，已确认退出但未排空记为 `childExited:true / streamsDrained:false / cleanupConfirmed:false`。四条可控事件夹具用例（`FakeChild`）在失败后**显式调用注册的 `cleanup()`**，断言根目录与哨兵文件仍在，随后由测试自行清理自身临时根。
+
 
