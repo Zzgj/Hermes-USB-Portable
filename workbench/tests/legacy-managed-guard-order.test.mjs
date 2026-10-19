@@ -354,6 +354,31 @@ test('unconfirmed drain on timeout keeps the root through the registered cleanup
  await rm(root,{recursive:true,force:true});
 });
 
+test('child that never closes after kill keeps the root through the registered cleanup',async t=>{
+ const {root,guard,cleanup}=await fixture(t);
+ const sentinel=join(root,'sentinel.txt');
+ await writeFile(sentinel,'keep-me');
+ const fake=new FakeChild();
+ // kill() never emits close: exercises the waitFor(closed) timeout branch.
+ fake.kill=function(){this.killed=true;return true;};
+ const promise=drive(fake,{guard,timeoutMs:100,readyTimeoutMs:30000,closeGraceMs:200,streamGraceMs:200});
+ fake.stdout.write('READY\n');
+ let failure=null;
+ try{await promise;}catch(error){failure=error;}
+ assert.ok(failure,'an unconfirmed exit must not be a success');
+ assert.equal(fake.killed,true);
+ assert.equal(failure.code,'CHILD_TIMEOUT_CLEANUP_BLOCKED');
+ assert.equal(failure.childExited,false);
+ assert.equal(failure.streamsDrained,false);
+ assert.equal(failure.cleanupConfirmed,false);
+ assert.equal(guard.keep,true);
+ await cleanup();
+ assert.equal(await exists(root),true);
+ assert.equal(await readFile(sentinel,'utf8'),'keep-me');
+ fake.stdout.end();fake.stderr.end();
+ await rm(root,{recursive:true,force:true});
+});
+
 test('unconfirmed drain on close is reported and keeps the root',async t=>{
  const {root,guard,cleanup}=await fixture(t);
  const sentinel=join(root,'sentinel.txt');
