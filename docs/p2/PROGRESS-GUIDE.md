@@ -1,5 +1,13 @@
 # P2 当前进度与任务
 
+## GUARD-CALLERS-06 收口并开发整合；转实机验收准备
+
+公司固定结果 `04ac238472c9697c8229b0f977b80c9e76b2f6a6` 已独立复验四文件命令 25/25、退出 0；lead 已静态核对未退出/未排空及 error 收尾用例，并核验归档 `9b52036a3878be354c83b57e4f342d58e2e87350` 中 R2 日志 SHA-256 `502841d8b38b4c5fa5b9915d8b6c0119889122180ea44996c1f1f115f3ce9ce6`。这是 reviewer 执行证据，非 lead 自测。
+
+已合入 dev/lead，开发合并提交 `fd2e0ea571d724d8ddc8060e073745220141fe51`，incoming 仅 ACCEPTANCE 与新测试文件，workbench 整树与公司结果无差异；未执行合并后测试，不将历史结果写成新执行。正式集成仍不放行。
+
+下一批 `P2-09-REAL-ACCEPTANCE-PREP-07`：employee 编制固定版本/资产矩阵、两类部署前提、真实入口验收与备份回退清单，reviewer 独立只读核验，lead 裁决核心缺口后报总监。仅改 ACCEPTANCE，不部署、不运行真实入口、不安装、不花模型费用；本批目标为完整可审批方案，不冒充实机验收。详见 HANDOFF 顶部。
+
 ## 下一集中批次：legacy / managed guard caller 补证
 
 lead 已获取证据归档 `1a455d2d3a56e17065dd4dc51994e8e0799774c7`，核对相对上一归档仅 README 改变，八份日志保持原字节；日志接收任务结束，不再派元数据返工。本轮实际读取 startHermesInstance、portableWindowsOptions、legacy 及现有 lifecycle 测试：managed 已有安装标记注入回归，但不等于实际 checkEntryGuard 的 restore/协调文件时序；legacy 现有 runLockedLegacyEntry 合成 prepare 不等于 launchLegacy 的真实 guard 接线。
