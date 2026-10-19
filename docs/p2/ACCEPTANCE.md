@@ -332,4 +332,25 @@ $target = 'E:\Hermes-P2-Test'
 - 合成 adapter 不产生业务进程：不覆盖 Windows 原生 Job/进程树、CLI 键盘交互、真实 Dashboard、真实 P0 启动器调用链、同 home 模式切换与 U 盘验收。
 - 仍未勾选：Windows 原生入口实机、真实实例锁路径上的并发行为、断线/异常回收与数据保留。
 
+## P2-09-GUARD-CALLERS-06 剩余两类 caller 的持锁 guard 拒绝路径（`workbench/tests/legacy-managed-guard-order.test.mjs`）
+
+本批只补 `managed` 与 `legacy` 两条入口在**持锁后进入 guard 的拒绝路径**，不覆盖成功启动。观测点：在隔离 Node 子进程中，动态 import 生产模块**之前**同时替换 `fs.promises.lstat`（按 `realpath` 后的完整路径限定）与 `node:child_process` 的 `spawn/spawnSync/exec/execSync/execFile/execFileSync/fork`（计数并立即抛 `PROCESS_SPAWN_BLOCKED`），并断言补丁对生产模块可见（`patched===true`）。任何业务进程一次都不会被创建；`spawnCalls` 恒为 0 是断言项而非推断。
+
+| 案例 | 实际导入/调用 | 屏障命中 | 锁/owner 观测 | 拒绝与保留断言 | 平台 |
+|---|---|---|---|---|---|
+| managed 篡改启动器 | `startHermesInstance`（真实）→ `startManagedInstance` → `beforeStart` → 传入的真实 `assertPortableEntryGuard` | 生产 `beforeStart` 回调进入时（此时 `acquireInstanceLock` 已完成）改写 `<root>/launch.bat` | 进入回调时 `.p2-manager-lock/` 与 `owner.json` 均已存在 | `ENTRY_COORDINATION_UNCONFIRMED`；`spawnCalls=0`；篡改字节保留；本批锁已释放并可重获 | 跨平台（win32 之外的 `startProcess` 分支不参与，因 guard 先拒绝） |
+| managed 恢复标记 | 同上 | 同一回调进入时写 `updates/hermes-restore-active.json`（与启动前的 `logs/diagnostics/p2-install-active.json` 前置检查区分） | 同上 | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；`spawnCalls=0`；标记原文保留；锁释放可重获 | 跨平台 |
+| managed 外部锁 | 同上，`acquireInstanceLock` 失败于 guard 之前 | 未进入 callback（`guardEntered=false`） | 不观测（未持锁） | `INSTANCE_LOCKED`；`spawnCalls=0`；外部 `owner.json` 原文不变；测试不调用生产 `release()` | 跨平台 |
+| legacy CLI 篡改 | `launchLegacy(['--root',root,'--','--cli'])`（真实）→ `runLockedLegacyEntry` → `createNativeEntryManager` → 真实 `assertPortableEntryGuard` | `lstat(<root>/data)` 第 2 次命中（第 1 次为 manager 构造时的 `lstat(home)`），即持锁后 guard 首个文件系统调用 | 命中时锁与 owner 均在 | `ENTRY_COORDINATION_UNCONFIRMED`；`spawnCalls=0`；篡改字节保留；锁释放可重获 | Windows 原生（`portableWindowsOptions` 要求 win32，非 Windows 明确 skip，不伪装） |
+| legacy dashboard 恢复标记 | `launchLegacy(['--root',root,'--','dashboard'])` | 同上第 2 次命中 | 同上 | `INTERRUPTED_INSTALL_REQUIRES_RECOVERY`；`spawnCalls=0`；标记保留；锁释放可重获 | Windows 原生 |
+| legacy 外部锁 | `launchLegacy` + 预置 `.p2-manager-lock/owner.json` 外部字节 | 仅 manager 构造 1 次命中（guard 未进入） | 不观测 | `INSTANCE_LOCKED`；`spawnCalls=0`；owner 原文不变 | Windows 原生 |
+
+`legacy` 夹具按 `portableWindowsOptions` 的真实格式在临时根合成（`manifests/runtime-components.windows-x64.json` + 对应 `ready.flag` 哈希 + `portable-location.txt` + `venv/Scripts/python.exe`、`git/bin/bash.exe`、`workbench/dist/index.html`、`src/hermes-agent/hermes_cli/main.py`），四份协调文件从固定源码复制，均明确为 synthetic；不执行启动器、不安装 runtime、不读 E 盘。
+
+### 本批范围与未覆盖
+
+- 只证明两条 caller 的**拒绝**路径在执行到 guard 时已持锁且不产生业务进程；`managed` 侧只到 `startHermesInstance→startManagedInstance→beforeStart`，**不**把 `launch-managed.mjs` 的组装（`parseLaunchArgs`/`portableWindowsOptions`/`inspectBaseline`）当作已动态执行；那条链的静态核对与真实启动器验收分开保留。
+- 未覆盖：guard 通过后的成功启动、CLI 交互输入、真实 Dashboard 健康与打开、控制台 STOP、断线/进程树回收、真实启动器调用链与 U 盘验收。全部通过也不能写成"原生入口可用"。
+- 本批未发现生产缺陷（两处实现按预期在持锁后调用 guard）；未修改任何生产代码、`portable-entry-guard.json` 或既有测试。
+
 
