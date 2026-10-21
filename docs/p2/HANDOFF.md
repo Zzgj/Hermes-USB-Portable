@@ -1,5 +1,16 @@
 # P2 单分支交接与剩余审查
 
+## 当前交付：P2-09-EXPERIMENT-EXECUTOR-09（lead 接管，待独立/Windows 验证）
+
+本节覆盖下方实验组装旧执行器描述。总监已要求 lead 接管代码开发；lead 在 dev/lead 基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f` 实现并验证实验组装命令监督。六个源码/测试文件及测试身份见 `evidence/p2-experiment-executor-09/results.json`，最终提交身份以实际 Git 交付为准，不用移动分支替代固定结果。employee 保持暂停，不派发重叠实现；核心由 lead 编写，reviewer 不并发改本机 dev/lead。
+
+- 生产新增 `workbench/scripts/experiment-command.mjs`、`experiment-command-worker.py`，修改 `prepare-native-experiment.mjs`。原 native-entry-host、协议与 Windows Job 结构未改；监督器在 Job 外，worker 与业务后代在 Job 内。worker 收据只提供 stdout/命令退出码，不能提供整树退出证明；Node 必须额外核实私有协议及 host close。超时 EOF、未知保留、无自动重试，stderr 丢弃，stdout 最多 16 MiB，失败只返回固定类别。`--plan` 现在也通过输入 Python/Git 监督查询身份，并写自有 scratch 临时收据；它不创建目标、不安装，但不是纯元数据检查。
+- 新测试 `experiment-command.test.mjs`、`test_experiment_command_worker.py` 及原 `native-experiment.test.mjs` 覆盖串行 await、未知停止后禁止后续阶段、超时/协议/收据失败和 ready.flag 失败收据纠正。Linux 实际证据：Node 定向 39 通过；worker Python 4 通过/3 跳过；既有 host Python 3 通过/2 跳过；validate/build 退出 0。详细命令/日志在证据目录，不继承到 Windows。
+- reviewer 下一步固定结果只读审查上述六文件和直接调用的 native host/protocol，重点查 stdout 与监督协议隔离、EOF/宽限期、晚到 close、未知目录保留、worker overflow 和最终 readiness。不要改核心或伪造 Windows 平台通过；先返回本机固定身份、工作区、Python/Node及测试根可用性，再安排 Windows 原生命令，不能在真实 E 盘或个人实例试安装。
+- Windows 待验证命令（独立 workbench、现有受控 Python）：`python -B -m unittest discover -s tests -p test_experiment_command_worker.py -v`、`python -B -m unittest discover -s tests -p test_native_entry_host.py -v`，以及 results.json 的六文件 Node 命令。Python 命令使用核实过的实际可执行路径，不凭别名推断；无依赖安装、无 Hermes/模型、无真实 runtime 更新。原生用例仅合成命令，需记录进程/reader退出与目录清理，不能将 Linux skip 算 Windows 通过。
+
+真实 apply 仍受材料来源、依赖兼容及 Windows 证据门禁约束。此工作包不是完整首次安装发行包，不修改 main/upstream、不推进正式集成、不部署或改变 release_ready。当前进度只记 PROGRESS-GUIDE，不另建平行进度报告。
+
 ## 当前 lead 实现：P2-09-NATIVE-EXPERIMENT-08（待批准隔离验证）
 
 基线 `63a9900541bcdbbc65c2162afe7c3dc5fc3c5fd0`。新增 `workbench/scripts/prepare-native-experiment.mjs` 及 `workbench/tests/native-experiment.test.mjs`，由 lead 编写，尚未执行语法检查或测试；不是可运行交付批准，不修改默认 setup、默认 manifest、adapter 或正式集成。employee 保持暂停，reviewer 可只读审阅此固定交付；暂无新测试/安装授权。

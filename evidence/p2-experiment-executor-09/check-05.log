@@ -1,0 +1,10 @@
+test_business_stdout_cannot_forge_tree_confirmation (test_native_entry_host.NativeHostContractTests.test_business_stdout_cannot_forge_tree_confirmation) ... ok
+test_job_attribute_precedes_creation_and_failure_never_spawns (test_native_entry_host.NativeHostContractTests.test_job_attribute_precedes_creation_and_failure_never_spawns) ... ok
+test_tree_confirmation_requires_successful_query_and_zero_active (test_native_entry_host.NativeHostContractTests.test_tree_confirmation_requires_successful_query_and_zero_active) ... ok
+test_normal_direct_exit_confirms_descendant_exit_before_closed (test_native_entry_host.NativeHostWindowsTests.test_normal_direct_exit_confirms_descendant_exit_before_closed) ... skipped 'requires native Windows handles'
+test_parent_pipe_eof_confirms_entire_tree_exit (test_native_entry_host.NativeHostWindowsTests.test_parent_pipe_eof_confirms_entire_tree_exit) ... skipped 'requires native Windows handles'
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK (skipped=2)

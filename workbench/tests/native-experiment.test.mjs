@@ -142,3 +142,57 @@ test('unknown entry scope rejects before any filesystem staging or child command
  await assert.rejects(prepareExperiment({...options,entryScope:'anything'},{...deps,apply:true}),/EXPERIMENT_ENTRY_SCOPE_INVALID/);
  assert.equal(calls.length,0);assert.equal(await exists(options.target),false);
 });
+
+test('assembly awaits supervised commands instead of treating pending output as a source identity',async t=>{
+ const {options,run,deps}=await fixture(t);
+ let active=0,maximum=0;
+ const supervised=async(...args)=>{
+  active++;maximum=Math.max(maximum,active);
+  await Promise.resolve();
+  try{return run(...args);}finally{active--;}
+ };
+ const result=await prepareExperiment({...options,entryScope:'cli'},{...deps,run:supervised,apply:true});
+ assert.equal(result.status,'prepared-not-accepted');assert.equal(maximum,1);assert.equal(active,0);
+});
+
+test('unconfirmed supervised teardown stops assembly and preserves its blocked root',async t=>{
+ const {options,run,calls,deps}=await fixture(t);
+ const supervised=async(file,args,settings)=>{
+  await Promise.resolve();
+  if(args[0]==='sync')throw Object.assign(new Error('EXPERIMENT_COMMAND_TREE_UNCONFIRMED'),{treeExited:false});
+  return run(file,args,settings);
+ };
+ await assert.rejects(prepareExperiment(options,{...deps,run:supervised,apply:true}),/EXPERIMENT_PREPARATION_FAILED_PYTHON_DEPENDENCIES/);
+ assert.equal(await exists(join(options.target,'logs','diagnostics','p2-install-active.json')),true);
+ assert.equal(await exists(join(options.target,'.cache','runtimes','windows-x64','ready.flag')),false);
+ assert.equal(calls.some(c=>c.args[1]==='ci'||c.args[1]==='run'),false);
+ const failure=JSON.parse(await readFile(join(options.target,'logs','diagnostics','native-experiment-failure.json'),'utf8'));
+ assert.equal(failure.commandTreeExited,false);assert.equal(failure.status,'failed-preserved');
+});
+
+test('final guard rejection restores the blocking marker and never publishes readiness',async t=>{
+ const {options,run,deps}=await fixture(t);
+ const tamper=(file,args,settings)=>{
+  const result=run(file,args,settings);
+  if(args[0]==='clone'&&args.at(-1).endsWith('project'))put(join(args.at(-1),'launch.bat'),'synthetic mismatch');
+  return result;
+ };
+ await assert.rejects(prepareExperiment(options,{...deps,run:tamper,apply:true}),/EXPERIMENT_PREPARATION_FAILED_/);
+ assert.equal(await exists(join(options.target,'logs','diagnostics','p2-install-active.json')),true);
+ assert.equal(await exists(join(options.target,'.cache','runtimes','windows-x64','ready.flag')),false);
+ const receipt=JSON.parse(await readFile(join(options.target,'logs','diagnostics','native-experiment-preparation.json'),'utf8'));
+ assert.notEqual(receipt.status,'prepared-not-accepted');
+});
+
+test('readiness publication failure cannot leave a successful preparation receipt',async t=>{
+ const {options,run,deps}=await fixture(t);
+ const collision=(file,args,settings)=>{
+  const result=run(file,args,settings);
+  if(args[0]==='sync')mkdirSync(join(options.target,'.cache','runtimes','windows-x64','ready.flag'));
+  return result;
+ };
+ await assert.rejects(prepareExperiment(options,{...deps,run:collision,apply:true}),/EXPERIMENT_PREPARATION_FAILED_/);
+ assert.equal(await exists(join(options.target,'logs','diagnostics','p2-install-active.json')),true);
+ const receipt=JSON.parse(await readFile(join(options.target,'logs','diagnostics','native-experiment-preparation.json'),'utf8'));
+ assert.notEqual(receipt.status,'prepared-not-accepted');
+});

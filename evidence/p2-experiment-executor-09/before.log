@@ -1,0 +1,47 @@
+✖ assembly awaits supervised commands instead of treating pending output as a source identity (10.370161ms)
+✖ unconfirmed supervised teardown stops assembly and preserves its blocked root (7.645003ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.348662
+
+✖ failing tests:
+
+test at tests/native-experiment.test.mjs:146:1
+✖ assembly awaits supervised commands instead of treating pending output as a source identity (10.370161ms)
+  Error: EXPERIMENT_SOURCE_MISMATCH
+      at fail (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:16:25)
+      at inspectExperiment (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:83:57)
+      at async prepareExperiment (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:97:14)
+      at async TestContext.<anonymous> (file:///<REPO>/workbench/tests/native-experiment.test.mjs:154:15)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at tests/native-experiment.test.mjs:158:1
+✖ unconfirmed supervised teardown stops assembly and preserves its blocked root (7.645003ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /EXPERIMENT_PREPARATION_FAILED_PYTHON_DEPENDENCIES/. Input:
+  
+  'Error: EXPERIMENT_SOURCE_MISMATCH'
+  
+      at async TestContext.<anonymous> (file:///<REPO>/workbench/tests/native-experiment.test.mjs:165:2)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: EXPERIMENT_SOURCE_MISMATCH
+        at fail (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:16:25)
+        at inspectExperiment (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:83:57)
+        at async prepareExperiment (file:///<REPO>/workbench/scripts/prepare-native-experiment.mjs:97:14)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///<REPO>/workbench/tests/native-experiment.test.mjs:165:2)
+        at async Test.run (node:internal/test_runner/test:1208:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:831:7),
+    expected: /EXPERIMENT_PREPARATION_FAILED_PYTHON_DEPENDENCIES/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

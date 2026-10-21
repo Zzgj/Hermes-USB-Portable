@@ -1,0 +1,3 @@
+npm notice run hermes-portable-workbench@0.1.0 validate
+npm notice run node scripts/validate.mjs
+Validated 18 component files.

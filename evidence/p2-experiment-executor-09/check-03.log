@@ -1,0 +1,47 @@
+✔ command output is returned only after private close proof, with a clean command directory (16.965647ms)
+✔ nonzero business exit is rejected without exposing output after confirmed teardown (4.762559ms)
+✔ direct host exit and a forged worker receipt cannot replace tree confirmation (2.804925ms)
+✔ transport failure remains latched even after a valid closed frame (2.69778ms)
+✔ timeout requests EOF and rejects only after confirmed cleanup (21.869004ms)
+✔ never-close after timeout is unknown, preserves evidence and only kills its owned host (22.058454ms)
+✔ malformed protocol requests stop and cannot be repaired by a later valid frame (1.474517ms)
+✔ worker failure is confirmed failure, never successful empty output (1.604504ms)
+✔ missing or inconsistent receipts fail closed without leaking filesystem errors (7.404074ms)
+✔ non-Windows or invalid options reject without launching or staging (1.579529ms)
+✔ plan checks identities and runtime bytes without creating a target or installing (21.952761ms)
+✔ existing target is rejected without commands or modifications (5.02337ms)
+✔ runtime hash mismatch and traversal inventory reject before any command (6.571612ms)
+✔ source SHA mismatch and source env reject without creating target (11.750245ms)
+✔ linked runtime and overlapping destination reject (4.424022ms)
+✔ apply wires fixed source, fresh venv, both builds and final readiness without launching Hermes (50.273243ms)
+✔ failed dependency command preserves root and marker without ready.flag or later builds (10.924928ms)
+✔ CLI-only preparation builds workbench without installing or building the upstream web workspace (35.738317ms)
+✔ unknown entry scope rejects before any filesystem staging or child command (1.752432ms)
+✔ assembly awaits supervised commands instead of treating pending output as a source identity (34.03624ms)
+✔ unconfirmed supervised teardown stops assembly and preserves its blocked root (11.002273ms)
+✔ final guard rejection restores the blocking marker and never publishes readiness (34.001119ms)
+✔ readiness publication failure cannot leave a successful preparation receipt (30.625897ms)
+✔ real transport parser requires closed proof plus host exit and preserves code (6.282157ms)
+✔ host exit zero alone never proves native tree exit (1.602198ms)
+✔ a protocol stream error invalidates a later otherwise valid exit proof (1.836099ms)
+✔ malformed host output invalidates even a later completion frame (1.437342ms)
+✔ stop fences a held Dashboard probe; no late running state (2.984882ms)
+✔ native host protocol accepts split frames, not business output (2.150781ms)
+✔ only a complete host tree confirmation plus clean host exit releases ownership (0.469268ms)
+✔ invalid, truncated, duplicated and oversized protocol fails closed (0.891497ms)
+✔ host failure reports no raw diagnostic and cannot become ready later (1.868868ms)
+✔ native direct exit code is preserved only in a valid completion frame (0.400985ms)
+✔ package is allowlisted, checksummed and explicitly not release-qualified (47.105775ms)
+✔ unexpected build files are rejected instead of silently packaged (7.593747ms)
+✔ linked build assets are rejected (15.286857ms)
+✔ native payload includes complete composition without taking over P0 launchers (0.344373ms)
+✔ portable environment rebases paths and excludes inherited credentials and Python overrides (1.137175ms)
+✔ system root must be explicit and absolute (0.26139ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 335.52353

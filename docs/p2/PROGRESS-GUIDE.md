@@ -1,5 +1,23 @@
 # P2 当前进度与任务
 
+## P2-09-EXPERIMENT-EXECUTOR-09：lead 接管执行器，Linux 隔离验证通过
+
+2026-10-21，总监要求 lead 接管代码开发并授权本轮操作。基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f`；原有 CLI-only 验证文档 WIP 已单独备份保留。lead 亲自新增 `experiment-command.mjs` / `experiment-command-worker.py`，将实验准备的 Git、版本查询、uv/npm 全部改为串行 await 的监督执行；复用未修改的 `native-entry-host.py` 创建时 Job 归属、整树退出和排空证明。worker 只写有界私有 stdout/退出码收据，不转发 stderr；Node 必须同时取得有效 closed 帧及 host close 才能读取结果、清理该命令目录或推进下一步。超时先发送 EOF，宽限期仍无证明则仅终止自有 host、报未知并保留目录，绝不以 kill 返回值证明整树已退。
+
+新增回归先暴露异步接线缺口（两项在源码身份阶段失败，不能称进程树缺陷复现）；另实际复现 ready.flag 发布碰撞后收据仍误写 prepared 的问题，已修正为恢复阻塞标记并更正失败收据。组装失败日志新增 `commandTreeExited` 三态字段（true/false/null），不把普通验证错误伪装成退出证明。默认 P0、原生 host、正式集成、依赖及 release_ready 均未修改。
+
+实测对象为上述 base 加 `evidence/p2-experiment-executor-09/results.json` 中六文件 overlay 哈希，执行目录为自有 scratch 的独立源码副本。两份 Node 语法检查退出 0；六文件 Node 定向 **39/39**，退出 0；Python worker **4 通过、3 Windows 项跳过**，退出 0；既有 native host **3 通过、2 Windows 项跳过**，退出 0；`npm run validate` 18 组件、`npm run build` 均退出 0。仅复用已存在且 manifest/lockfile 一致的依赖，无安装。完整命令、退出码及日志哈希在上述 results.json，原始失败与最终通过日志分开保存；发布日志只替换本机绝对路径，不改断言或退出码。未执行全量 npm test、浏览器或真实 Windows/安装/模型/实例。
+
+本批只关闭 Linux 合成与构建验证，不声称 Windows 安装进程树已实测。独立静态审查已启动、结论待回；公司组长通知通过登记的 company peer 排队，未获送达/执行确认。下一门禁是固定交付的独立审查及 Windows worker+host 原生验证，然后才核实受控材料并形成真实 CLI 实验执行批次；真实 apply 仍冻结，不把宽泛授权当成已满足材料、兼容与恢复前提。
+
+## CLI-only 固定版本：lead 获批隔离验证通过，真实执行仍冻结
+
+总监批准三条命令后，lead 从干净 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f` 导出独立源码副本，在本 Profile scratch 中实际执行各一次：`node --check scripts/prepare-native-experiment.mjs`、`node --check tests/native-experiment.test.mjs`、`node --test tests/native-experiment.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`，三条退出码均为 0；定向测试 15 通过，0 失败/取消/跳过/todo。CLI-only 跳过上游 web workspace、保留工作台准备及非法 scope 拒绝的合成断言通过；被记录的四份源码文件执行前后哈希一致。
+
+证据目录：`/home/zgj/.hermes/profiles/usb-project-lead/cache/scratch/cli-only-verification-b_ibfi_5/`，含固定源码归档、三份原日志及 `results.json`；测试日志 `03.log` SHA-256 为 `633691782700bbc1f9c4b50681eb079b1355be1ba2de25090395d3a3c73357c9`。这是本机证据路径，不是公司侧已收到的附件。未重跑、未执行真实 Git/uv/npm/Python 安装命令，未联网、安装、构建真实资产、启动 Hermes 或触碰真实实例；新脚本中的子命令全部使用计数替身。
+
+本条覆盖下方“最新两项测试尚未执行”的历史状态，仅关闭此固定版本的 lead 隔离验证门。尚不代表 reviewer 对本版独立复验或实机验收通过；材料来源、安装进程树异常收尾、Windows 依赖与 CLI 键盘交互仍未关闭。真实 apply、正式集成和发布继续冻结，release_ready 不变。
+
 ## CLI 优先里程碑：不再等待原生 Dashboard 构建
 
 用户追问何时能打开 CLI，当前验收目标收窄为工作台点击原生 CLI → 新控制台出现 → 键盘输入可用 → 正常退出并确认锁释放；不是浏览器内嵌终端，也不以 synthetic started 代替交互通过。尚无足够依据承诺完成日期，不能将上一批 13/13 当实机完成。

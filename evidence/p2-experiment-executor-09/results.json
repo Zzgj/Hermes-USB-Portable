@@ -1,0 +1,162 @@
+{
+  "baseCommit": "846d34a226fbbd6fcd7e031a1b0924f7733ace5f",
+  "sourceOverlay": {
+    "workbench/scripts/prepare-native-experiment.mjs": "9730ddda2130473b2c81c73652c9dccc9671511029772e46f524b9b72ff7de41",
+    "workbench/scripts/experiment-command.mjs": "a6b0b573f3d22199bffad0681ac810a6c5bb2f14a1f27d0b0f1f7881793e6a19",
+    "workbench/scripts/experiment-command-worker.py": "26c660eb63e0a836898ff314607d96a57154e0632211530aa9ef94ef2dbedf08",
+    "workbench/tests/native-experiment.test.mjs": "14f750d950285227794c402eee4e1dfa42a3c0c723278481acdeebfdce2dab3b",
+    "workbench/tests/experiment-command.test.mjs": "c372183931dcfc181138c10cf62b61a897a331706c14017fa4dead81e51a8a58",
+    "workbench/tests/test_experiment_command_worker.py": "59e63f9b0be1f02ad445720bce16b34bcef68b286e82c7f61406f78cfffd1c57"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "scripts/experiment-command.mjs"
+      ],
+      "exitCode": 0,
+      "log": "check-01.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "scripts/prepare-native-experiment.mjs"
+      ],
+      "exitCode": 0,
+      "log": "check-02.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/experiment-command.test.mjs",
+        "tests/native-experiment.test.mjs",
+        "tests/native-process-protocol.test.mjs",
+        "tests/native-owned-process.test.mjs",
+        "tests/package.test.mjs",
+        "tests/portable-layout.test.mjs"
+      ],
+      "exitCode": 0,
+      "log": "check-03.log",
+      "sha256": "86b80d9d9a2aa5894e0b48191b7886286cad7c0252021f5553b81506626c1b22"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_experiment_command_worker.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "log": "check-04.log",
+      "sha256": "933c2768dc36977645a7faef7b8acf0fd58e4832220fc8c606505567f072b514"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_native_entry_host.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "log": "check-05.log",
+      "sha256": "73e4d7b2efa316baabd6c45842dc5199b2c0fadd1775261b7f0895f62ca740f9"
+    }
+  ],
+  "builds": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "exitCode": 0,
+      "log": "build-01.log",
+      "sha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "build-02.log",
+      "sha256": "80fe052d18f407924bc6de6e5cb87d984d1ad8d640b88d566d45fd788ae1327d"
+    }
+  ],
+  "logs": [
+    {
+      "file": "before.log",
+      "originalSha256": "85cf6ef47552dca738c19c33de44ea720ac130ae3ce061922b70b09e678b437b",
+      "publishedSha256": "150f4ad72d79ba001da1245a2a3ef0b8a6a7bdc17145470cb14c7971d1062fe1"
+    },
+    {
+      "file": "readiness-before.log",
+      "originalSha256": "63267f40de520092ea68fa6d23848129b95104686669aad31c63287bbd169949",
+      "publishedSha256": "cf468d1d212d7ac0b62456a46f7fd0f096a61bb5c47ffc2179a0a3d91f364ca7"
+    },
+    {
+      "file": "check-01.log",
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "check-02.log",
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "check-03.log",
+      "originalSha256": "86b80d9d9a2aa5894e0b48191b7886286cad7c0252021f5553b81506626c1b22",
+      "publishedSha256": "86b80d9d9a2aa5894e0b48191b7886286cad7c0252021f5553b81506626c1b22"
+    },
+    {
+      "file": "check-04.log",
+      "originalSha256": "933c2768dc36977645a7faef7b8acf0fd58e4832220fc8c606505567f072b514",
+      "publishedSha256": "933c2768dc36977645a7faef7b8acf0fd58e4832220fc8c606505567f072b514"
+    },
+    {
+      "file": "check-05.log",
+      "originalSha256": "73e4d7b2efa316baabd6c45842dc5199b2c0fadd1775261b7f0895f62ca740f9",
+      "publishedSha256": "73e4d7b2efa316baabd6c45842dc5199b2c0fadd1775261b7f0895f62ca740f9"
+    },
+    {
+      "file": "build-01.log",
+      "originalSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a",
+      "publishedSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "file": "build-02.log",
+      "originalSha256": "80fe052d18f407924bc6de6e5cb87d984d1ad8d640b88d566d45fd788ae1327d",
+      "publishedSha256": "80fe052d18f407924bc6de6e5cb87d984d1ad8d640b88d566d45fd788ae1327d"
+    }
+  ],
+  "redTests": {
+    "before.log": {
+      "exitCode": 1,
+      "meaning": "Two new asynchronous command contract cases fail at source identity; not a native process-tree reproduction."
+    },
+    "readiness-before.log": {
+      "exitCode": 1,
+      "meaning": "Ready publication collision leaves a misleading prepared receipt before repair."
+    }
+  },
+  "scope": "Linux isolated source overlay; command transports and Windows platform are synthetic; native Windows cases skipped. No install, model, real Hermes, or deployment. Shared existing node_modules; manifests and lockfile matched."
+}

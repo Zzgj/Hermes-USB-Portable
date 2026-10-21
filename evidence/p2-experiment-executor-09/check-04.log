@@ -1,0 +1,12 @@
+test_existing_output_is_never_overwritten (test_experiment_command_worker.WorkerContractTests.test_existing_output_is_never_overwritten) ... ok
+test_invalid_arguments_do_not_spawn (test_experiment_command_worker.WorkerContractTests.test_invalid_arguments_do_not_spawn) ... ok
+test_overflow_exits_worker_without_waiting_or_publishing_success (test_experiment_command_worker.WorkerContractTests.test_overflow_exits_worker_without_waiting_or_publishing_success) ... ok
+test_stdout_bytes_and_nonzero_exit_are_recorded_without_shell_or_stdin (test_experiment_command_worker.WorkerContractTests.test_stdout_bytes_and_nonzero_exit_are_recorded_without_shell_or_stdin) ... ok
+test_native_worker_business_failure (test_experiment_command_worker.WorkerWindowsTests.test_native_worker_business_failure) ... skipped 'requires native Windows Job supervision'
+test_native_worker_output_overflow (test_experiment_command_worker.WorkerWindowsTests.test_native_worker_output_overflow) ... skipped 'requires native Windows Job supervision'
+test_native_worker_success (test_experiment_command_worker.WorkerWindowsTests.test_native_worker_success) ... skipped 'requires native Windows Job supervision'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.003s
+
+OK (skipped=3)

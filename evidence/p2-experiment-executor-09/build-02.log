@@ -1,0 +1,18 @@
+npm notice run hermes-portable-workbench@0.1.0 build
+npm notice run tsc --noEmit && vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 64 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.43 kB │ gzip:   0.30 kB
+dist/assets/index-LurzMAcB.css   17.94 kB │ gzip:   4.10 kB
+dist/assets/index-2AciLI6h.js   323.75 kB │ gzip: 103.14 kB
+
+✓ built in 5.48s
+[33m[PLUGIN_TIMINGS] [0mPlugin hooks ran for 5.4s of this 5.5s build (99%).
+The slowest hooks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - vite:build-html transform (91%, 5.0s, 1 call)
+Additional hook time came from hooks under 1s.
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+

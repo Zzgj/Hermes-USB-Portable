@@ -1,5 +1,12 @@
 # P2 验证记录
 
+## 2026-10-21 EXPERIMENT-EXECUTOR-09 固定源码 overlay 验证
+
+- 总监授权接管开发与本轮验证；lead 在基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f` 的独立导出树覆盖六份受控源码/测试，身份及完整命令见仓库根 `evidence/p2-experiment-executor-09/results.json`。两份 Node 语法检查、六文件 Node 定向 39/39、Python worker 4 通过/3 Windows 跳过、Python native host 3 通过/2 Windows 跳过，命令均退出 0。validate 18 组件及新构建退出 0。
+- `before.log` 是两项新增异步契约在旧执行器身份读取阶段失败，退出 1，不是原生进程树复现；`readiness-before.log` 是发布 ready.flag 碰撞后错误保留成功收据的实际失败断言，退出 1。后续通过日志单列，不覆盖历史红灯。原日志字节与脱敏发布字节的 SHA-256 分开记录，仅替换本机路径。
+- 本机 Node v24.15.0 / npm 12.0.2；隔离构建只链接已有 node_modules，package.json 与 package-lock.json 与主仓库逐字节一致，未安装。此证据不证明 Windows 受控 runtime/uv/npm 组合可用。源码 overlay 执行后哈希未变化；未运行全量 npm test、浏览器、真实 Windows 命令或安装、Hermes、模型、真实实例。
+- 新 Windows worker 三场景及原 host 两场景在 Linux 明确跳过；Windows supervisor/worker 的实际组合、真实 CLI 交互、材料来源与部署仍待。独立审查结论尚未收到，开发检查点不放行正式集成或 release_ready。
+
 ## 2026-10-13 HISTORY 提交推送前复验
 
 - 用户追加授权“提交推送”。本轮接手 HEAD e83f0600f11fc0e8decf471c4604ae61d1f79485，分支 feat/portable-initializer，现场为已核对的 11 修复文件与四份文档，没有额外改动或暂存。`git ls-remote --heads origin refs/heads/feat/portable-initializer` 返回相同 SHA；最终推送成功与否以提交后精确远端回读为准。
