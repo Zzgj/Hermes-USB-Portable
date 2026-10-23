@@ -1,5 +1,12 @@
 # P2 验证记录
 
+## 2026-10-22 DASHBOARD-ENTRY-10 页面就绪检查
+
+- 基线 `66a6ebbb62f36e0cadca0b7001b93a736819e6c3` 加五文件 overlay，实际执行于本 Profile scratch 独立导出树；固定上游契约文件、全部源码哈希、命令/退出码/日志见 `evidence/p2-dashboard-entry-10/results.json`。旧 adapter 在新缺页用例下退出1；开发中 GET-only 资源用例也曾退出1，已修正 HEAD 假设，两个失败日志保留。中间62项结果不是最终源码证据。
+- 最终两份语法检查退出0；九文件 Node 64通过、0失败/跳过，退出0；validate18组件、build退出0。新构建运行现有 native-entry-browser-check：7项通过、starts/stops/opens各1、managedStarts=0、cleaned=true、hermesModelExecuted=false，退出0。源码执行前后哈希一致，仅复用 manifest/lockfile 匹配的现有 node_modules，不安装依赖。
+- HTTP 证据为真实回环服务+合成首页/资源；集成用例调用生产 adapter 和新检查器，但 RPC/进程/打开浏览器为替身。浏览器脚本使用真实工作台页面/HTTP和合成 native adapter，不覆盖原生 Dashboard 页面或新的HTTP检查器全链路。未运行全量npm test、Windows/Python原生批次、真实Hermes/模型、安装或真实实例更新。正式集成与发布门禁保持。
+- 2026-10-23 独立只读纠错复审 `deleg_f832f60a`：五文件与 manifest、Git index 和实测副本一致；撤回 `deleg_3db180d1` 的测试第21行语法阻塞。直接读 bytes 确认所报截断字面量不存在、完整请求头字段表达式存在，该行116 bytes；没有修改源码或重新执行测试。所审五文件与直接调用范围内无可证实剩余阻塞；页面截止覆盖首页/资源正文，不是 RPC+页面合计5秒。复审结论不代替动态验证、实际 JavaScript 执行或 Windows 实机验收。
+
 ## 2026-10-21 EXPERIMENT-EXECUTOR-09 固定源码 overlay 验证
 
 - 总监授权接管开发与本轮验证；lead 在基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f` 的独立导出树覆盖六份受控源码/测试，身份及完整命令见仓库根 `evidence/p2-experiment-executor-09/results.json`。两份 Node 语法检查、六文件 Node 定向 39/39、Python worker 4 通过/3 Windows 跳过、Python native host 3 通过/2 Windows 跳过，命令均退出 0。validate 18 组件及新构建退出 0。

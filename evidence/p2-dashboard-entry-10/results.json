@@ -1,0 +1,149 @@
+{
+  "baseCommit": "66a6ebbb62f36e0cadca0b7001b93a736819e6c3",
+  "sourceOverlay": {
+    "workbench/scripts/native-entry-adapters.mjs": "d1fdf79b19426ded78ed4c7d5e1d1f1fef34ed24d7858b35ece1148b2bf33391",
+    "workbench/scripts/native-dashboard-health.mjs": "d317eeb02a9dcb6e68630eca18df4a6d37daf0999e4e7811a2070dfa733f4957",
+    "workbench/scripts/package-policy.mjs": "a44e9e22c810a3eded9595bf02c36269b091f9d87a8873ab46817e3adbec4a0a",
+    "workbench/tests/native-entry-adapters.test.mjs": "6ca0e68765d3e624c015d03891764185c11bf065a53aeb289e06678d07bfe9c1",
+    "workbench/tests/native-dashboard-health.test.mjs": "f21660a05c2e6c80c16625f9a63d51a27bfb8b868fae38be984550e29a76cdaa"
+  },
+  "commands": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "scripts/native-dashboard-health.mjs"
+      ],
+      "exitCode": 0,
+      "log": "final-01.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "scripts/native-entry-adapters.mjs"
+      ],
+      "exitCode": 0,
+      "log": "final-02.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/native-dashboard-health.test.mjs",
+        "tests/native-entry-adapters.test.mjs",
+        "tests/native-entry-session.test.mjs",
+        "tests/native-entry-manager.test.mjs",
+        "tests/native-entry-control.test.mjs",
+        "tests/native-owned-process.test.mjs",
+        "tests/native-package-contract.test.mjs",
+        "tests/package.test.mjs",
+        "tests/native-experiment.test.mjs"
+      ],
+      "exitCode": 0,
+      "log": "final-03.log",
+      "sha256": "99eef4ec8ab979cc9b9a9956839afcc6594beb4e644457c6379cf72b9b9b1c72"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "exitCode": 0,
+      "log": "final-04.log",
+      "sha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "final-05.log",
+      "sha256": "05d970625623958f1d40868487309768eaef613da002e69f718b0e7091a8a6bf"
+    },
+    {
+      "command": [
+        "node",
+        "tests/native-entry-browser-check.mjs"
+      ],
+      "exitCode": 0,
+      "log": "final-06.log",
+      "sha256": "35fb752c72d6ec7fc687925b9968ac5a41e372b07c72ef1addb8d184f211f7c6"
+    }
+  ],
+  "logs": [
+    {
+      "file": "before.log",
+      "originalSha256": "ec4189fe217c0e744681141b6be081aacb46e1675f20987eee40d2cbb40d3657",
+      "publishedSha256": "08205c745c1593c58f33441671ae09e7858461464ab0e46820d1e6484fda1945"
+    },
+    {
+      "file": "get-contract-before.log",
+      "originalSha256": "c1f333e0815b96c04b024ad6ddff0079977572e508b1dee7eb391aa96d0a3d77",
+      "publishedSha256": "2549b8ff4caf86ea45930378285d83bdc01a5561eae0a1c1623a3143387d291e"
+    },
+    {
+      "file": "check-03.log",
+      "originalSha256": "32ce9c411cfca86b82504334a652107d05e42f191830b03032fc0c4dc46323a8",
+      "publishedSha256": "32ce9c411cfca86b82504334a652107d05e42f191830b03032fc0c4dc46323a8"
+    },
+    {
+      "file": "final-01.log",
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "final-02.log",
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "final-03.log",
+      "originalSha256": "99eef4ec8ab979cc9b9a9956839afcc6594beb4e644457c6379cf72b9b9b1c72",
+      "publishedSha256": "99eef4ec8ab979cc9b9a9956839afcc6594beb4e644457c6379cf72b9b9b1c72"
+    },
+    {
+      "file": "final-04.log",
+      "originalSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a",
+      "publishedSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "file": "final-05.log",
+      "originalSha256": "05d970625623958f1d40868487309768eaef613da002e69f718b0e7091a8a6bf",
+      "publishedSha256": "05d970625623958f1d40868487309768eaef613da002e69f718b0e7091a8a6bf"
+    },
+    {
+      "file": "final-06.log",
+      "originalSha256": "35fb752c72d6ec7fc687925b9968ac5a41e372b07c72ef1addb8d184f211f7c6",
+      "publishedSha256": "35fb752c72d6ec7fc687925b9968ac5a41e372b07c72ef1addb8d184f211f7c6"
+    }
+  ],
+  "fixedUpstream": {
+    "commit": "28044757aabd34010bd9f5f3e3f82b0906b46241",
+    "files": {
+      "hermes_cli/web_server.py": "f85d3ca26d0ff6c9bbe10114a646bedcaa74d62b886608f856badd604c6c4bda",
+      "web/index.html": "77d48392ecc8eb3e82aa6f1fbef80dd734c323055cf0e409ffa2069c54a9c895"
+    },
+    "contract": "web_server.py 17932-17974: loopback bootstrap; 17983 onward: CSS GET route. web/index.html: root/module structure."
+  },
+  "historical": {
+    "before.log": {
+      "exitCode": 1,
+      "meaning": "Actual adapter startup probe accepted authenticated RPC despite unavailable page."
+    },
+    "get-contract-before.log": {
+      "exitCode": 1,
+      "meaning": "GET-only resource fixture rejects initial HEAD implementation; corrected before final verification."
+    },
+    "check-03.log": {
+      "exitCode": 0,
+      "meaning": "Intermediate 62-test snapshot before GET-only contract and extra body-boundary tests; not final-source evidence."
+    }
+  },
+  "scope": "Linux isolated source; real loopback HTTP with synthetic page/assets; RPC/process/browser-open are injected in adapter integration test. Existing built-workbench browser check uses synthetic native adapter. No real Hermes/Windows/model/installation. Existing matching node_modules reused, no dependency installation."
+}

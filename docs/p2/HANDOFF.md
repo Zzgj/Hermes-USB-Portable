@@ -1,5 +1,13 @@
 # P2 单分支交接与剩余审查
 
+## 当前开发交付：P2-09-DASHBOARD-ENTRY-10
+
+用户要求先推进 Dashboard；lead 独占 dev/lead，实现生产启动就绪及 open 前的页面检查。base=`66a6ebbb62f36e0cadca0b7001b93a736819e6c3`，五文件精确 overlay 和实际命令见仓库根 `evidence/p2-dashboard-entry-10/results.json`，固定提交由 Git 交付回报。新增 `native-dashboard-health.mjs` / `native-dashboard-health.test.mjs`，修改 `native-entry-adapters.mjs`、`package-policy.mjs`、`native-entry-adapters.test.mjs`；不修改上游、UI接口、原host、锁、默认安装清单或依赖。
+
+契约：认证 RPC 必须先通过；Dashboard 在启动就绪和每次显式 open 前，还需同 owned 端口的 HTTP 首页身份/结构及入口 JS/CSS GET 完整响应检查。固定 bootstrap 对应上游 28044757，不支持未知版本、不静默放宽认证。页面与入口资源共用同一有界截止，传播外部取消；无自动重启、无外域/redirect、无凭据输出。页面 bootstrap 对应进程 token，但资源传输成功不证明 JavaScript 执行、所有动态依赖或真实业务交互。
+
+本机最终九文件 Node 64/64、两份语法检查、validate18/build、合成适配器的现有浏览器7项通过；原始失败和中间版本日志与最终版本分开。2026-10-23 独立静态纠错复审回交：撤回工具显示截断引起的语法误报，五文件原始身份与已测 overlay 一致；所审范围未发现可证实的剩余阻塞，没有执行新测试。页面探测的截止不包含 RPC 的独立超时。公司验证仍保留最近一次401通信阻塞记录，不推定消息已送达。下一门禁为 Windows 原生进程与真实上游入口验证，以及受控安装材料；不把 Linux 合成 passed 或静态复审当已可实机打开。
+
 ## 当前交付：P2-09-EXPERIMENT-EXECUTOR-09（lead 接管，待独立/Windows 验证）
 
 本节覆盖下方实验组装旧执行器描述。总监已要求 lead 接管代码开发；lead 在 dev/lead 基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f` 实现并验证实验组装命令监督。六个源码/测试文件及测试身份见 `evidence/p2-experiment-executor-09/results.json`，最终提交身份以实际 Git 交付为准，不用移动分支替代固定结果。employee 保持暂停，不派发重叠实现；核心由 lead 编写，reviewer 不并发改本机 dev/lead。

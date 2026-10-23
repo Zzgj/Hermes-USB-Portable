@@ -12,13 +12,14 @@ async function fixture(t){
  await mkdir(join(source,'hermes_cli','web_dist'),{recursive:true});await mkdir(home);
  await writeFile(join(source,'hermes_cli','main.py'),'fixture only');
  await writeFile(join(source,'hermes_cli','web_dist','index.html'),'fixture only');await writeFile(python,'fixture only');
- let current=NATIVE_BASELINE,dirty=false,launches=[],opened=[],finish,ready,probeResult=true;
+ let current=NATIVE_BASELINE,dirty=false,launches=[],opened=[],finish,ready,probeResult=true,pageResult=true;
  const adapters=createNativeEntryAdapters({python,source,environment:{PATH:'synthetic'},git:'synthetic',openBrowser:async url=>{opened.push(url);}}, {
   platform:'win32',inspect:()=>({commit:current,tracked_changes:dirty}),
   start:options=>{launches.push(options);return {ready:new Promise(resolve=>{ready=resolve;}),closed:new Promise(resolve=>{finish=resolve;}),stop:async()=>{finish({treeExited:true});}};},
   probe:async()=>probeResult,
+  probePage:async options=>typeof pageResult==='function'?pageResult(options):pageResult,
  });
- return {adapters,source,home,launches,opened,setBaseline:value=>{current=value;},setDirty:()=>{dirty=true;},setProbe:value=>{probeResult=value;},ready:value=>ready(value),finish:()=>finish({treeExited:true})};
+ return {adapters,source,home,launches,opened,setBaseline:value=>{current=value;},setDirty:()=>{dirty=true;},setProbe:value=>{probeResult=value;},setPage:value=>{pageResult=value;},ready:value=>ready(value),finish:()=>finish({treeExited:true})};
 }
 test('fixed CLI command is prepared under caller home without launching',async t=>{
  const f=await fixture(t);const prepared=await f.adapters.cli.prepare({home:f.home});
@@ -53,4 +54,30 @@ test('missing assets or source env are rejected without spawning',async t=>{
  await writeFile(join(f.source,'.env'),'synthetic fixture, not a credential');
  await assert.rejects(f.adapters.cli.prepare({home:f.home}),/SOURCE_ENV_REQUIRES_REVIEW/);
  assert.equal(f.launches.length,0);
+});
+
+test('healthy RPC alone cannot mark an unavailable Dashboard page ready or open it',async t=>{
+ const f=await fixture(t);f.setPage(false);
+ const prepared=await f.adapters.dashboard.prepare({home:f.home}),child=prepared.start();
+ assert.equal(await f.launches[0].probe(12345,new AbortController().signal),false);
+ f.ready({port:12345});await child.ready;
+ await assert.rejects(child.open(),/DASHBOARD_NOT_READY/);assert.deepEqual(f.opened,[]);
+ f.finish();await child.closed;
+});
+
+test('stopping while the page check is held cannot open a late Dashboard result',async t=>{
+ const f=await fixture(t);const child=(await f.adapters.dashboard.prepare({home:f.home})).start();
+ f.ready({port:12345});await child.ready;
+ let entered,release,signal;const barrier=new Promise(resolve=>{entered=resolve;});
+ f.setPage(options=>{signal=options.signal;entered();return new Promise(resolve=>{release=resolve;});});
+ const opening=child.open();await barrier;await child.stop();assert.equal(signal.aborted,true);
+ release(true);await assert.rejects(opening,/DASHBOARD_NOT_READY/);assert.deepEqual(f.opened,[]);
+});
+
+test('failed authenticated RPC never probes or opens the Dashboard page',async t=>{
+ const f=await fixture(t);f.setProbe(false);f.setPage(()=>assert.fail('page must not be requested'));
+ const child=(await f.adapters.dashboard.prepare({home:f.home})).start();
+ assert.equal(await f.launches[0].probe(12345,new AbortController().signal),false);
+ f.ready({port:12345});await child.ready;await assert.rejects(child.open(),/DASHBOARD_NOT_READY/);
+ assert.deepEqual(f.opened,[]);f.finish();await child.closed;
 });

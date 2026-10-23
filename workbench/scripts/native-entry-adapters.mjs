@@ -4,6 +4,7 @@ import {randomBytes} from 'node:crypto';
 import {inspectBaseline} from './check-hermes-baseline.mjs';
 import {startNativeOwnedProcess} from './native-owned-process.mjs';
 import {probeHermes} from './hermes-health.mjs';
+import {probeNativeDashboardPage} from './native-dashboard-health.mjs';
 
 // Adapted against this exact Git object, not the currently installed Hermes.
 export const NATIVE_BASELINE='28044757aabd34010bd9f5f3e3f82b0906b46241';
@@ -20,7 +21,7 @@ async function plainPath(root,parts,directory=false){
 // Trusted local composition only; neither options nor dependencies come from HTTP.
 // The caller must already hold the canonical home's shared lock during prepare.
 export function createNativeEntryAdapters({python,source,environment,git,openBrowser},{
- platform=process.platform,inspect=inspectBaseline,start=startNativeOwnedProcess,probe=probeHermes,
+ platform=process.platform,inspect=inspectBaseline,start=startNativeOwnedProcess,probe=probeHermes,probePage=probeNativeDashboardPage,
 }={}){
  if(![python,source].every(p=>typeof p==='string'&&isAbsolute(p))||!environment||typeof openBrowser!=='function')throw new Error('INVALID_NATIVE_ADAPTER_OPTIONS');
  const prepare=kind=>async({home})=>{
@@ -43,7 +44,11 @@ export function createNativeEntryAdapters({python,source,environment,git,openBro
    // Do not inherit another surface/profile, loader override, auth bypass or port.
    for(const key of ['HERMES_PROFILE','HERMES_DESKTOP','HERMES_SERVE_HEADLESS','HERMES_WEB_DIST','HERMES_DASHBOARD_SESSION_TOKEN','PYTHONPATH','PYTHONHOME'])delete env[key];
    if(dist)Object.assign(env,{HERMES_WEB_DIST:dist,HERMES_DASHBOARD_SESSION_TOKEN:token});
-   const owned=start({kind,python,args,cwd,environment:env,probe:(port,signal)=>probe({port,token,signal})});
+   const healthy=async(port,signal)=>{
+    if(signal?.aborted||await probe({port,token,signal})!==true||signal?.aborted)return false;
+    return kind!=='dashboard'||await probePage({port,token,signal})===true;
+   };
+   const owned=start({kind,python,args,cwd,environment:env,probe:healthy});
    let active=true,port=null;
    const abort=new AbortController();
    void owned.closed.then(()=>{active=false;port=null;abort.abort();},()=>{active=false;port=null;abort.abort();});
@@ -59,7 +64,7 @@ export function createNativeEntryAdapters({python,source,environment,git,openBro
     ...(kind==='dashboard'?{open:async()=>{
      const target=port;
      if(!active||!target)throw new Error('DASHBOARD_NOT_READY');
-     const ok=await probe({port:target,token,signal:abort.signal});
+     const ok=await healthy(target,abort.signal);
      if(!ok||!active||port!==target)throw new Error('DASHBOARD_NOT_READY');
      // URL is minted here, contains no credential, and is never supplied by HTTP.
      await openBrowser(`http://127.0.0.1:${target}/`);

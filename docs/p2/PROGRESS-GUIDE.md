@@ -1,5 +1,17 @@
 # P2 当前进度与任务
 
+## P2-09-DASHBOARD-ENTRY-10：优先推进 Dashboard，页面就绪接线已验证
+
+2026-10-22 用户要求先继续 Dashboard 入口，暂不等待公司网关修复。lead 基于 `66a6ebbb62f36e0cadca0b7001b93a736819e6c3` 亲自补齐生产 adapter 的启动就绪及打开前检查：保留认证 RPC，再检查同进程 token 的 Dashboard 首页/bootstrap/root、预构建 module 与 stylesheet 资源；新 `native-dashboard-health.mjs` 已加入生产打包白名单。固定上游 `28044757aabd34010bd9f5f3e3f82b0906b46241` 的 web_server.py 与 web/index.html 已通过本地 Git 对象只读核对，不修改上游/默认 P0/依赖/共享锁。
+
+检查只向该 owned 端口的 127.0.0.1 发 GET，不发送凭据请求头/URL，不跟随重定向，不访问页面声明的外域、编码或穿越路径。首页最多 2 MiB，最多 16 个入口资源，单资源 16 MiB、资源累计 32 MiB；默认 5 秒截止覆盖首页、资源头与正文。资源 GET 与固定上游 CSS 路由一致，不能假定 HEAD 可用。缺页、headless 页面、身份不匹配、HTML fallback、空 JS、超限、响应停滞和取消均不允许按页面就绪继续。停止后旧检查迟到成功也不能打开浏览器。这只证明入口 HTTP 内容可获取，不执行或证明整套 Dashboard JS、动态 chunk、插件或真实交互可用。
+
+实际先红后绿：旧 adapter 的新增缺页用例退出 1；开发中 GET-only 夹具暴露 HEAD 假设后修正，历史日志单列。最终五文件 overlay 在独立源码副本两份语法检查、九文件 Node **64/64**、validate **18 组件**、build 全部退出 0；构建后 native-entry-browser-check **7 项通过**、cleaned=true、hermesModelExecuted=false。HTTP 用例实际调用生产 adapter+页面检查器，但 RPC/进程/浏览器打开为替身；浏览器脚本使用合成 native adapter，不冒充原生 Dashboard 运行。精确命令、源码/上游身份及脱敏日志在 `evidence/p2-dashboard-entry-10/results.json`。
+
+2026-10-23 本机独立纠错复审已回交：撤回此前测试文件第21行语法阻塞，原始字节不含所报截断表达式，属于工具显示脱敏/截断误判；五文件与暂存区、上述 manifest 及实测副本一致，未为此改写正确源码。在五文件及所读直接调用链范围内未发现可证实的剩余阻塞。该复审仅静态检查和身份核对，没有重跑测试，不是公司 reviewer 的动态审批。页面的5秒截止不包含先行 RPC 的独立超时。
+
+本批可作为已完成本机隔离验证和独立静态审查的开发检查点交付，不能视为实机可用或发布批准。Windows 原生进程与真实 Dashboard 实例、完整资产构建/安装及实机交互仍待，正式集成与 release_ready 不变。既有执行器独立审查和通信失败记录保留于下节，不要求用户重复测试本机合成用例。
+
 ## P2-09-EXPERIMENT-EXECUTOR-09：lead 接管执行器，Linux 隔离验证通过
 
 2026-10-21，总监要求 lead 接管代码开发并授权本轮操作。基线 `846d34a226fbbd6fcd7e031a1b0924f7733ace5f`；原有 CLI-only 验证文档 WIP 已单独备份保留。lead 亲自新增 `experiment-command.mjs` / `experiment-command-worker.py`，将实验准备的 Git、版本查询、uv/npm 全部改为串行 await 的监督执行；复用未修改的 `native-entry-host.py` 创建时 Job 归属、整树退出和排空证明。worker 只写有界私有 stdout/退出码收据，不转发 stderr；Node 必须同时取得有效 closed 帧及 host close 才能读取结果、清理该命令目录或推进下一步。超时先发送 EOF，宽限期仍无证明则仅终止自有 host、报未知并保留目录，绝不以 kill 返回值证明整树已退。
@@ -8,7 +20,9 @@
 
 实测对象为上述 base 加 `evidence/p2-experiment-executor-09/results.json` 中六文件 overlay 哈希，执行目录为自有 scratch 的独立源码副本。两份 Node 语法检查退出 0；六文件 Node 定向 **39/39**，退出 0；Python worker **4 通过、3 Windows 项跳过**，退出 0；既有 native host **3 通过、2 Windows 项跳过**，退出 0；`npm run validate` 18 组件、`npm run build` 均退出 0。仅复用已存在且 manifest/lockfile 一致的依赖，无安装。完整命令、退出码及日志哈希在上述 results.json，原始失败与最终通过日志分开保存；发布日志只替换本机绝对路径，不改断言或退出码。未执行全量 npm test、浏览器或真实 Windows/安装/模型/实例。
 
-本批只关闭 Linux 合成与构建验证，不声称 Windows 安装进程树已实测。独立静态审查已启动、结论待回；公司组长通知通过登记的 company peer 排队，未获送达/执行确认。下一门禁是固定交付的独立审查及 Windows worker+host 原生验证，然后才核实受控材料并形成真实 CLI 实验执行批次；真实 apply 仍冻结，不把宽泛授权当成已满足材料、兼容与恢复前提。
+本批只关闭 Linux 合成与构建验证，不声称 Windows 安装进程树已实测。本机独立只读子 Agent 已返回六文件及 native host/protocol/Job 直接调用的静态审查：未发现可由源码证实的阻塞缺陷；没有执行测试，此结论不是公司 reviewer 的 Windows 审批。lead 已核对六文件与实测 overlay、提交 `66a6ebbb62f36e0cadca0b7001b93a736819e6c3` 的 blob 哈希一致。该提交已推送并远端回读，后续接手工作区干净。
+
+公司投递已确认阻塞：早先接管通知返回 HTTP 502；固定版本复验任务返回 HTTP 401 `Invalid gateway API key (API_SERVER_KEY)`，不能视为任务已送达或 Windows 验证已启动。旧连接消息另报等待回复超时，可能在连接恢复后送达，不盲目重发。下一门禁为恢复公司受认证通信（凭据只在对应机器本地处理，不在聊天传递），或由用户人工转交 HANDOFF 顶部固定版本任务；取得 Windows worker+host 原生证据及受控材料后才形成真实 CLI 实验执行批次。真实 apply 仍冻结，不把宽泛授权当成已满足材料、兼容与恢复前提。
 
 ## CLI-only 固定版本：lead 获批隔离验证通过，真实执行仍冻结
 
