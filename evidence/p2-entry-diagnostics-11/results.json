@@ -1,0 +1,148 @@
+{
+  "baseCommit": "c1b19f5dbf05de4c8ac08690021e6c8c094d86ee",
+  "sourceOverlay": {
+    "workbench/scripts/control-server.mjs": "c579c6e374e803d3f877c32b71fb307854baabea5ee6f2ed2faac21d40e329eb",
+    "workbench/scripts/native-entry-adapters.mjs": "aaaf6e44738374dca57ae041dc19d6cce6f10cb0df927f1c1b883ad666f6c865",
+    "workbench/src/components/NativeEntryPanel.tsx": "bcb2ce5a1ada0b8a608a30dc14dc4101b47be56bb1221b20ed12f5d8b35b7ca9",
+    "workbench/src/data/mockData.ts": "cb88702f2288b7710638e797cb35d70b37f5dc88d24b394b2d5825e9971303c6",
+    "workbench/src/domain/native-entry.ts": "4540543fb09c3be7d3297b56513cd75ff67987df362d09cb61d8f49cdc870e4e",
+    "workbench/src/hooks/useNativeEntry.ts": "b2b03dbadf1aa6f6f94913c91e2f63d83e7cd8cae9a368f494978c52c14fe1a9",
+    "workbench/src/pages/SettingsPage.tsx": "ef8505624150fa8e2143800404606f5f1837616c6cfb3dcc68895efc38ca7a39",
+    "workbench/tests/native-entry-adapters.test.mjs": "0c80e227069478653e00fa832ceb724dbdbcba2b81475a75269972ba93bf2e19",
+    "workbench/tests/native-entry-browser-check.mjs": "f7227d41c3fb43c942b360b6bed73abbbba47676681c050c88c80c446500d7ec",
+    "workbench/tests/native-entry-client.test.mjs": "342f3b6797d127ffc668dd9ae8701a5db19d085cd1585ddf77237d823fdb048b",
+    "workbench/tests/native-entry-control.test.mjs": "a4cf65df8c6891d1712cb47df580e5f6a24f79d9bb0259fefa5a6dd5b2e682b5",
+    "workbench/tests/native-entry-panel.test.mjs": "f670835bf3410be3bda14701751d6d08f4fcd222ff6995d26a8e0a45654c4c07"
+  },
+  "commands": [
+    [
+      "node",
+      "--test",
+      "tests/native-entry-client.test.mjs",
+      "tests/native-entry-panel.test.mjs",
+      "tests/native-entry-control.test.mjs",
+      "tests/native-entry-adapters.test.mjs",
+      "tests/native-dashboard-health.test.mjs",
+      "tests/native-entry-session.test.mjs",
+      "tests/native-entry-manager.test.mjs",
+      "tests/native-owned-process.test.mjs",
+      "tests/control-server.test.mjs",
+      "tests/control-failure.test.mjs",
+      "tests/merge-handoff.test.mjs",
+      "tests/native-package-contract.test.mjs",
+      "tests/package.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build"
+    ],
+    [
+      "node",
+      "tests/native-entry-browser-check.mjs"
+    ]
+  ],
+  "results": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/native-entry-client.test.mjs",
+        "tests/native-entry-panel.test.mjs",
+        "tests/native-entry-control.test.mjs",
+        "tests/native-entry-adapters.test.mjs",
+        "tests/native-dashboard-health.test.mjs",
+        "tests/native-entry-session.test.mjs",
+        "tests/native-entry-manager.test.mjs",
+        "tests/native-owned-process.test.mjs",
+        "tests/control-server.test.mjs",
+        "tests/control-failure.test.mjs",
+        "tests/merge-handoff.test.mjs",
+        "tests/native-package-contract.test.mjs",
+        "tests/package.test.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 1.365,
+      "log": "01.log",
+      "sha256": "d82c9eaf647278bc9dbd8fd9bd25b4399b9d13f44ccbfa4cc2ddd8117311fa5f"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.324,
+      "log": "02.log",
+      "sha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 2.014,
+      "log": "03.log",
+      "sha256": "2819b3506f2cfce511c6f1a17d0621fa6e4a645139f2a29e2eb7b1cc9ee359c4"
+    },
+    {
+      "command": [
+        "node",
+        "tests/native-entry-browser-check.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 1.624,
+      "log": "04.log",
+      "sha256": "d9840e7351b62b8c8cdb756e58d0146e9020fdfd01d75c27ce64743dd94e3a4b"
+    }
+  ],
+  "scope": "Approved Linux isolated fixtures/build/browser batch; no dependencies installed, real Hermes, model or Windows execution.",
+  "sourceIdentityUnchanged": true,
+  "logs": [
+    {
+      "file": "01.log",
+      "originalSha256": "d82c9eaf647278bc9dbd8fd9bd25b4399b9d13f44ccbfa4cc2ddd8117311fa5f",
+      "publishedSha256": "d82c9eaf647278bc9dbd8fd9bd25b4399b9d13f44ccbfa4cc2ddd8117311fa5f"
+    },
+    {
+      "file": "02.log",
+      "originalSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a",
+      "publishedSha256": "062689c58e8ad3ba6f1916a2212077e28cadd474ed815199adfcec240e6b8e9a"
+    },
+    {
+      "file": "03.log",
+      "originalSha256": "2819b3506f2cfce511c6f1a17d0621fa6e4a645139f2a29e2eb7b1cc9ee359c4",
+      "publishedSha256": "2819b3506f2cfce511c6f1a17d0621fa6e4a645139f2a29e2eb7b1cc9ee359c4"
+    },
+    {
+      "file": "04.log",
+      "originalSha256": "d9840e7351b62b8c8cdb756e58d0146e9020fdfd01d75c27ce64743dd94e3a4b",
+      "publishedSha256": "d9840e7351b62b8c8cdb756e58d0146e9020fdfd01d75c27ce64743dd94e3a4b"
+    }
+  ],
+  "summary": {
+    "tests": 105,
+    "failures": 0,
+    "browserMethodVersion": 2,
+    "browserChecks": 10,
+    "browserCleaned": true
+  },
+  "builtAssets": {
+    "assets/index-DfY2_xo2.js": "838c4ed557064deca37a393339eb4bbd3288a2b36ebbfe266c4d7ef6d50d83d3",
+    "assets/index-LurzMAcB.css": "0fabcada339dd49f6438628254be3e76cdcdef6fc4339d2e980ef3ecbd6a479d",
+    "index.html": "bad5249f05ce841fa7fd5042ec362081bbb05b14bbb7cf212cd14cdf45f14918"
+  },
+  "staticReview": {
+    "id": "deleg_8a02bfd6",
+    "finding": "No substantiated production blocker in reviewed scope; three test files subsequently expanded and exercised in this batch."
+  },
+  "unverified": "Full npm test; native Windows/Job/worker; real Hermes/Dashboard/CLI/model/install; ENOTDIR race and other filesystem fault injection; delayed old browser error (hook double only)."
+}

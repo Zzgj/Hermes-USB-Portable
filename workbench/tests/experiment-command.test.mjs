@@ -27,8 +27,9 @@ async function fixture(t,scenario){
 const frame=(host,event)=>host.stdout.write(JSON.stringify(event)+'\n');
 const start=host=>frame(host,{event:'started'});
 const close=(host,exitCode=0)=>{frame(host,{event:'closed',treeExited:true,exitCode});host.emit('close',0);};
+const receiptDirectory=args=>args[args.findIndex(arg=>arg.endsWith('experiment-command-worker.py'))+1];
 async function receipt(args,output='ok\n',exitCode=0){
- const directory=args[6];
+ const directory=receiptDirectory(args);
  await writeFile(join(directory,'stdout.bin'),output);
  await writeFile(join(directory,'result.json'),JSON.stringify({schema:1,exitCode,bytes:Buffer.byteLength(output)}));
 }
@@ -42,8 +43,9 @@ test('command output is returned only after private close proof, with a clean co
  let settled=false;const operation=f.run().finally(()=>{settled=true;});
  await barrier;await Promise.resolve();assert.equal(settled,false);release();
  assert.equal(await operation,'ok\n');assert.deepEqual(await readdir(f.scratch),[]);
- assert.equal(f.launch.args[0],'-I');assert.equal(f.launch.args[2],'dashboard');
- assert.ok(f.launch.args[5].endsWith('experiment-command-worker.py'));
+ assert.deepEqual(f.launch.args.slice(0,2),['-I','-B']);assert.equal(f.launch.args[3],'dashboard');
+ assert.deepEqual(f.launch.args.slice(5,7),['-I','-B']);
+ assert.ok(f.launch.args[7].endsWith('experiment-command-worker.py'));
  assert.equal(f.launch.settings.shell,false);assert.deepEqual(f.launch.settings.env,{ONLY:'fixture'});assert.equal(f.kills,0);
 });
 
@@ -97,7 +99,7 @@ test('worker failure is confirmed failure, never successful empty output',async 
 
 test('missing or inconsistent receipts fail closed without leaking filesystem errors',async t=>{
  for(const scenario of [host=>{start(host);close(host);},async(host,args)=>{
-  start(host);await receipt(args);await writeFile(join(args[6],'stdout.bin'),'changed');close(host);
+  start(host);await receipt(args);await writeFile(join(receiptDirectory(args),'stdout.bin'),'changed');close(host);
  }]){
   const f=await fixture(t,scenario);
   await assert.rejects(f.run(),e=>e.message==='EXPERIMENT_COMMAND_RECEIPT'&&e.treeExited===true);

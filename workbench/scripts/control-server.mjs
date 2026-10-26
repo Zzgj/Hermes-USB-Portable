@@ -6,6 +6,9 @@ import {inspectEntryCapabilities,projectEntryCapabilities} from './entry-capabil
 
 // Only fixed codes cross the HTTP boundary; never expose exception text, paths or output.
 const operationReasons=new Set(['INSTANCE_LOCKED','LOCK_CREATE_FAILED','LOCK_INITIALIZATION_FAILED','LOCK_IDENTITY_CHANGED','LOCK_OWNER_CHANGED','INTERRUPTED_INSTALL_REQUIRES_RECOVERY','SOURCE_ENV_REQUIRES_REVIEW','INVALID_HERMES_PATHS','INVALID_HERMES_LAYOUT','HERMES_ENTRY_MISSING','PROCESS_SPAWN_FAILED','PROCESS_STARTUP_TIMEOUT','PROCESS_HEALTH_FAILED','PROCESS_EXITED_BEFORE_READY','PROCESS_STOPPED_BEFORE_READY','PROCESS_CONTROL_FAILED','PROCESS_OUTPUT_LIMIT','PROCESS_INVALID_PORT']);
+// Additive header: old clients keep the same status/body and discard it. Error
+// bodies remain unread by the native client; arbitrary exception text never leaves.
+const nativeOperationReasons=new Set(['WINDOWS_REQUIRED','NATIVE_BASELINE_UNSUPPORTED','SOURCE_REVIEW_REQUIRED','SOURCE_ENV_REQUIRES_REVIEW','NATIVE_ASSET_INVALID','INVALID_HERMES_LAYOUT','INSTANCE_LOCKED','INTERRUPTED_INSTALL_REQUIRES_RECOVERY','ENTRY_ADAPTER_UNAVAILABLE','DASHBOARD_NOT_READY','ENTRY_NOT_READY','ENTRY_BUSY','ENTRY_NOT_RUNNING','ENTRY_START_UNCONFIRMED','ENTRY_STOP_UNCONFIRMED','ENTRY_RELEASE_UNCONFIRMED']);
 
 export async function startControlServer({assets,startInstance,prepareLearn,readCatalog,prepareCapability,detectEntries,source,home,inspectEntries=inspectEntryCapabilities,nativeEntries}) {
  if(typeof startInstance!=='function'||!isAbsolute(assets))throw new Error('INVALID_CONTROL_OPTIONS');
@@ -163,7 +166,11 @@ export async function startControlServer({assets,startInstance,prepareLearn,read
        else if(nativeAction==='open')await nativeEntries.open();
        else await nativeEntries.start(nativeAction);
        json(response,202,{accepted:true});
-      }catch{json(response,409,{error:'NATIVE_ENTRY_OPERATION_FAILED'});}
+      }catch(error){
+       const reason=error?.message;
+       if(nativeOperationReasons.has(reason))response.setHeader('X-Native-Entry-Reason',reason);
+       json(response,409,{error:'NATIVE_ENTRY_OPERATION_FAILED'});
+      }
       finally{busy=false;}
      })();await pending;return;
     }

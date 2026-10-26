@@ -12,7 +12,11 @@ export const NATIVE_BASELINE='28044757aabd34010bd9f5f3e3f82b0906b46241';
 async function plainPath(root,parts,directory=false){
  let current=root;
  for(const [index,part] of parts.entries()){
-  current=join(current,part);const metadata=await lstat(current);
+  current=join(current,part);let metadata;
+  try{metadata=await lstat(current);}catch(error){
+   if(error.code==='ENOENT'||error.code==='ENOTDIR')throw new Error('NATIVE_ASSET_INVALID');
+   throw error;
+  }
   if(metadata.isSymbolicLink()||((index<parts.length-1||directory)?!metadata.isDirectory():!metadata.isFile()))throw new Error('NATIVE_ASSET_INVALID');
  }
  return current;

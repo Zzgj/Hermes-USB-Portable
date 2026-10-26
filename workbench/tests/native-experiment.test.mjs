@@ -16,7 +16,7 @@ const repo=fileURLToPath(new URL('../../',import.meta.url));
 const projectCommit='a'.repeat(40);
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const componentLockSha256=hash(readFileSync(join(repo,'manifests/runtime-components.windows-x64.json')));
-const shell=['launch.bat','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'];
+const shell=['launch.bat','P2-Workbench.bat','scripts/start-p2-workbench.ps1','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'];
 const runtimeFiles=['python/python.exe','node/node.exe','node/node_modules/npm/bin/npm-cli.js','uv/uv.exe','git/cmd/git.exe','git/bin/bash.exe'];
 const exists=async p=>{try{await lstat(p);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 function put(path,bytes){mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);}
@@ -110,6 +110,8 @@ test('apply wires fixed source, fresh venv, both builds and final readiness with
  assert.ok(calls.every(c=>!c.settings.env.PRIVATE_TOKEN));
  assert.ok(calls.every(c=>!c.args.includes('hermes_cli.main')));
  assert.equal(await exists(join(root,'data','.env')),false);
+ assert.equal(await exists(join(root,'P2-Workbench.bat')),true);
+ assert.equal(await exists(join(root,'scripts','start-p2-workbench.ps1')),true);
 });
 
 test('failed dependency command preserves root and marker without ready.flag or later builds',async t=>{

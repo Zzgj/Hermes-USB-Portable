@@ -21,6 +21,6 @@ export function SettingsPage({managementToken}:SettingsPageProps){
     <button className="button" disabled>{updateCopy.checkButton}</button>
    </Panel>)}
   <EntryCapabilitiesPanel rows={rows} loading={loading} failed={failed} canInspect={Boolean(entryToken.trim())} onInspect={()=>void inspect()}/>
-  <NativeEntryPanel key={entryToken} status={native.status} pending={native.pending} failed={native.failed} canInspect={native.canInspect} onRefresh={()=>void native.refresh()} onAction={action=>void native.act(action)}/>
+  <NativeEntryPanel key={entryToken} status={native.status} pending={native.pending} failed={native.failed} failure={native.failure} canInspect={native.canInspect} onRefresh={()=>void native.refresh()} onAction={action=>void native.act(action)}/>
  </>;
 }

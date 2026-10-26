@@ -7,6 +7,7 @@ import {assertPortableEntryGuard} from './portable-entry-guard.mjs';
 import {NATIVE_BASELINE} from './native-entry-adapters.mjs';
 import {windowsEnvironment} from './portable-layout.mjs';
 import {executeExperimentCommand} from './experiment-command.mjs';
+import {isMaterialPath} from './material-path.mjs';
 
 // Experimental, opt-in assembly from explicitly supplied LOCAL materials.
 // This is not the default P0 bootstrap, an updater, or a runtime downloader.
@@ -16,7 +17,7 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fail=code=>{throw new Error(code);};
 const requiredRuntime=['python/python.exe','node/node.exe','node/node_modules/npm/bin/npm-cli.js','uv/uv.exe','git/cmd/git.exe','git/bin/bash.exe'];
 const runtimeRoots=new Set(['python','node','uv','git','bin']);
-const shellFiles=['launch.bat','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'];
+const shellFiles=['launch.bat','P2-Workbench.bat','scripts/start-p2-workbench.ps1','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'];
 const secretName=/(^|\/)(?:\.env(?:\..*)?|\.npmrc|\.gitconfig|auth\.json|credentials?)(?:\/|$)/i;
 async function exists(path){try{await lstat(path);return true;}catch(error){if(error.code==='ENOENT')return false;throw error;}}
 async function plain(path){
@@ -24,7 +25,7 @@ async function plain(path){
  const info=await lstat(path);if(info.isSymbolicLink())fail('EXPERIMENT_LINK_REJECTED');return info;
 }
 function childPath(path){
- return typeof path==='string'&&/^[A-Za-z0-9_.@+/-]+$/.test(path)&&!path.split('/').some(p=>!p||p==='.'||p==='..'||p.endsWith('.')||p.endsWith(' '))&&!secretName.test(path);
+ return isMaterialPath(path)&&!secretName.test(path);
 }
 function contains(a,b){const r=relative(a,b);return r===''||(!r.startsWith('..')&&!isAbsolute(r));}
 async function put(path,bytes){await mkdir(dirname(path),{recursive:true});await writeFile(path,bytes,{flag:'wx'});}
@@ -154,7 +155,7 @@ export async function prepareExperiment(options,{apply=false,platform=process.pl
   }
   stage='payload';
   const tracked=(await gitCall(['-C',project,'ls-files','-z'])).split('\0').filter(Boolean);
-  const shell=tracked.filter(p=>p==='launch.bat'||p==='P0-Workbench.bat'||p.startsWith('scripts/')||p.startsWith('manifests/'));
+  const shell=tracked.filter(p=>p==='launch.bat'||p==='P0-Workbench.bat'||p==='P2-Workbench.bat'||p.startsWith('scripts/')||p.startsWith('manifests/'));
   const assets=await walk(join(project,'workbench','dist'));
   if(!assets.includes('index.html'))fail('EXPERIMENT_WORKBENCH_ASSETS_MISSING');
   const payload=[...new Set([...shell,...packageFiles,...assets.map(p=>'workbench/dist/'+p)])];

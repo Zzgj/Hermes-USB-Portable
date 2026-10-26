@@ -38,6 +38,16 @@ test('unknown and idle require confirmation, only running Dashboard can open',()
  const running=buttons(render({status:{kind:'dashboard',state:'running'}}));assert.equal(running['打开已运行的 Dashboard'],false);assert.equal(running['停止本管理器的原生入口'],true);
  const failed=buttons(render({status:{kind:'dashboard',state:'running'},failed:true}));assert.equal(failed['打开已运行的 Dashboard'],true);
 });
+test('diagnosis uses local copy and disappears on refresh or lost identity',()=>{
+ const html=render({failed:true,failure:'INSTANCE_LOCKED'});
+ assert.ok(html.includes('role="alert"'));assert.ok(html.includes(copy.failures.INSTANCE_LOCKED));
+ for(const props of [{pending:true},{canInspect:false},{failed:false}]){
+  const next=render({failed:true,failure:'INSTANCE_LOCKED',...props});
+  assert.equal(next.includes('role="alert"'),false);assert.equal(next.includes(copy.failures.INSTANCE_LOCKED),false);
+ }
+ const unknown=render({failed:true,failure:'SYNTHETIC_PRIVATE_DETAIL'});
+ assert.ok(unknown.includes(copy.failures.TRANSPORT));assert.equal(unknown.includes('SYNTHETIC_PRIVATE_DETAIL'),false);
+});
 // ---- T2 coverage: real component event callbacks through a synthetic dispatcher (not a browser click) ----
 function flatten(node,out=[]){
  if(node===null||node===undefined||typeof node==='boolean')return out;
@@ -88,12 +98,12 @@ test('refresh clears the confirmation and only refreshes',(t)=>{
 test('pending and unauthenticated states hide stale success and block every action',(t)=>{
  for(const [overrides,expected] of [[{pending:true},copy.pending],[{canInspect:false},copy.unauthenticated]]){
   const h=createHarness();t.after(()=>h.dispose());
-  const calls=[];const props={...overrides,status:{kind:'dashboard',state:'running'},onAction:action=>calls.push(action)};
+  const calls=[];const props={...overrides,status:{kind:'dashboard',state:'running'},onAction:action=>calls.push(action),onRefresh:()=>calls.push('refresh')};
   const nodes=h.mount(props);
   assert.equal(statusText(nodes),expected);
   assert.equal(nodes.some(node=>node.text===copy.kinds.dashboard),false);
   for(const label of [copy.refresh,copy.cli,copy.dashboard,copy.open,copy.stop])assert.equal(button(nodes,label).props.disabled,true,label);
-  for(const label of [copy.cli,copy.dashboard,copy.open,copy.stop])button(nodes,label).props.onClick({});
+  for(const label of [copy.refresh,copy.cli,copy.dashboard,copy.open,copy.stop])button(nodes,label).props.onClick({});
   assert.deepEqual(calls,[]);
  }
 });
@@ -137,16 +147,16 @@ test('a CLI entry can never open a Dashboard view',(t)=>{
  nodes=h.mount(failedDashboard);button(nodes,copy.open).props.onClick({});
  assert.deepEqual(calls,[]);
 });
-test('stop requires an explicit confirmation; only the disabled state is asserted while idle',(t)=>{
+test('stop requires confirmation and the idle handler remains inert even with confirmation',(t)=>{
  const h=createHarness();t.after(()=>h.dispose());
  const calls=[];const props={status:{kind:'dashboard',state:'running'},onAction:action=>calls.push(action)};
  let nodes=h.mount(props);assert.equal(button(nodes,copy.stop).props.disabled,true);button(nodes,copy.stop).props.onClick({});
  confirm(h.mount(props));nodes=h.mount(props);assert.equal(button(nodes,copy.stop).props.disabled,false);
  button(nodes,copy.stop).props.onClick({});assert.deepEqual(calls,['stop']);
- // Idle case: the assertion is limited to the rendered disabled state. It does not claim that every
- // internal handler path is unreachable; the component keeps defence-in-depth guards for open/start only.
+ // Exercise the actual idle handler, not only its disabled appearance.
  const idleProps={status:{kind:null,state:'idle'},onAction:action=>calls.push(action)};
  confirm(h.mount(idleProps));nodes=h.mount(idleProps);
  assert.equal(button(nodes,copy.stop).props.disabled,true);
+ button(nodes,copy.stop).props.onClick({});
  assert.deepEqual(calls,['stop']);
 });

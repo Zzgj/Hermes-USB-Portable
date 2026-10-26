@@ -1,0 +1,301 @@
+{
+  "base": "c1b19f5dbf05de4c8ac08690021e6c8c094d86ee",
+  "sourceFiles": [
+    {
+      "path": "workbench/scripts/build-online-package.py",
+      "size": 8733,
+      "sha256": "159c0937852d9001c197ad6f771590b5617d342f9e72839fd1d6284a9643a31c"
+    },
+    {
+      "path": "workbench/scripts/control-server.mjs",
+      "size": 18532,
+      "sha256": "c579c6e374e803d3f877c32b71fb307854baabea5ee6f2ed2faac21d40e329eb"
+    },
+    {
+      "path": "workbench/scripts/install-online-experiment.mjs",
+      "size": 11742,
+      "sha256": "512bf926d617cfe73b2b03379b492041fcbef56b72083d050e1da1e70e1422c6"
+    },
+    {
+      "path": "workbench/scripts/material-path.mjs",
+      "size": 436,
+      "sha256": "a34c0c874386e6e237c1658d31c53bea6ee1d6cb7ac477647558a9c950e824f4"
+    },
+    {
+      "path": "workbench/scripts/native-entry-adapters.mjs",
+      "size": 4605,
+      "sha256": "aaaf6e44738374dca57ae041dc19d6cce6f10cb0df927f1c1b883ad666f6c865"
+    },
+    {
+      "path": "workbench/scripts/prepare-native-experiment.mjs",
+      "size": 16474,
+      "sha256": "3b040dabfc1f89b36ac50834b371c3353e2f58871893a87f838e7695e57b7f00"
+    },
+    {
+      "path": "workbench/src/components/NativeEntryPanel.tsx",
+      "size": 2470,
+      "sha256": "bcb2ce5a1ada0b8a608a30dc14dc4101b47be56bb1221b20ed12f5d8b35b7ca9"
+    },
+    {
+      "path": "workbench/src/data/mockData.ts",
+      "size": 30312,
+      "sha256": "cb88702f2288b7710638e797cb35d70b37f5dc88d24b394b2d5825e9971303c6"
+    },
+    {
+      "path": "workbench/src/domain/native-entry.ts",
+      "size": 4601,
+      "sha256": "4540543fb09c3be7d3297b56513cd75ff67987df362d09cb61d8f49cdc870e4e"
+    },
+    {
+      "path": "workbench/src/hooks/useNativeEntry.ts",
+      "size": 2896,
+      "sha256": "b2b03dbadf1aa6f6f94913c91e2f63d83e7cd8cae9a368f494978c52c14fe1a9"
+    },
+    {
+      "path": "workbench/src/pages/SettingsPage.tsx",
+      "size": 1669,
+      "sha256": "ef8505624150fa8e2143800404606f5f1837616c6cfb3dcc68895efc38ca7a39"
+    },
+    {
+      "path": "workbench/tests/native-entry-adapters.test.mjs",
+      "size": 6033,
+      "sha256": "0c80e227069478653e00fa832ceb724dbdbcba2b81475a75269972ba93bf2e19"
+    },
+    {
+      "path": "workbench/tests/native-entry-browser-check.mjs",
+      "size": 9765,
+      "sha256": "f7227d41c3fb43c942b360b6bed73abbbba47676681c050c88c80c446500d7ec"
+    },
+    {
+      "path": "workbench/tests/native-entry-client.test.mjs",
+      "size": 14576,
+      "sha256": "342f3b6797d127ffc668dd9ae8701a5db19d085cd1585ddf77237d823fdb048b"
+    },
+    {
+      "path": "workbench/tests/native-entry-control.test.mjs",
+      "size": 6199,
+      "sha256": "a4cf65df8c6891d1712cb47df580e5f6a24f79d9bb0259fefa5a6dd5b2e682b5"
+    },
+    {
+      "path": "workbench/tests/native-entry-panel.test.mjs",
+      "size": 12067,
+      "sha256": "f670835bf3410be3bda14701751d6d08f4fcd222ff6995d26a8e0a45654c4c07"
+    },
+    {
+      "path": "workbench/tests/native-experiment.test.mjs",
+      "size": 13022,
+      "sha256": "997154ec2d3210315a49e04982e2f38109954d012caf93848bee4e3c87a51aad"
+    },
+    {
+      "path": "workbench/tests/online-install.test.mjs",
+      "size": 9298,
+      "sha256": "7c1fd049d61a67f72f292f86a5bbcea4714a82e658601f5253331fb4c468189b"
+    },
+    {
+      "path": "workbench/tests/test_online_package.py",
+      "size": 5379,
+      "sha256": "46ce822c0f5b1c9070306b13be2856645326b8bd86014289efceec59f8aa929b"
+    }
+  ],
+  "sourceIdentityUnchanged": true,
+  "commands": [
+    {
+      "name": "00-before",
+      "command": [
+        "python3",
+        "-B",
+        "tests/test_online_package.py",
+        "OnlinePackageTests.test_implicit_parent_case_alias_is_rejected"
+      ],
+      "cwd": "<verification-root>/pre-fix",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "seconds": 0.115,
+      "log": "00-before.log",
+      "sha256": "aea9dbc6a47d6c0a930fb1ab837143f473d01492a2d265b564439f6e7d3cd60e",
+      "rawLogSha256": "aea9dbc6a47d6c0a930fb1ab837143f473d01492a2d265b564439f6e7d3cd60e",
+      "publishedLogSha256": "ae902ce35f80e5b44ba7ebcb71ee5527612f68c5fc3e3ead2a8cf8b2ff28c9b8"
+    },
+    {
+      "name": "01-syntax",
+      "command": [
+        "node",
+        "--check",
+        "scripts/install-online-experiment.mjs"
+      ],
+      "cwd": "<verification-root>/source/workbench",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "seconds": 0.037,
+      "log": "01-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "02-syntax",
+      "command": [
+        "node",
+        "--check",
+        "scripts/material-path.mjs"
+      ],
+      "cwd": "<verification-root>/source/workbench",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "seconds": 0.032,
+      "log": "02-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "03-syntax",
+      "command": [
+        "node",
+        "--check",
+        "scripts/prepare-native-experiment.mjs"
+      ],
+      "cwd": "<verification-root>/source/workbench",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "seconds": 0.033,
+      "log": "03-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "04-node",
+      "command": [
+        "node",
+        "--test",
+        "tests/online-install.test.mjs",
+        "tests/native-experiment.test.mjs",
+        "tests/experiment-command.test.mjs",
+        "tests/native-package-contract.test.mjs",
+        "tests/package.test.mjs",
+        "tests/portable-layout.test.mjs"
+      ],
+      "cwd": "<verification-root>/source/workbench",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "seconds": 0.718,
+      "log": "04-node.log",
+      "sha256": "f7a1a8b56b5586198a82ee4717f3169b59561c385cd2871a8c89890f5fcba0a7",
+      "rawLogSha256": "f7a1a8b56b5586198a82ee4717f3169b59561c385cd2871a8c89890f5fcba0a7",
+      "publishedLogSha256": "f7a1a8b56b5586198a82ee4717f3169b59561c385cd2871a8c89890f5fcba0a7"
+    },
+    {
+      "name": "05-python",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_online_package.py",
+        "-v"
+      ],
+      "cwd": "<verification-root>/source/workbench",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "seconds": 0.169,
+      "log": "05-python.log",
+      "sha256": "16acfbd994b5c377b9e8d2bc3eecb412d056c46cca1a08c8009b6f31b89cb055",
+      "rawLogSha256": "16acfbd994b5c377b9e8d2bc3eecb412d056c46cca1a08c8009b6f31b89cb055",
+      "publishedLogSha256": "16acfbd994b5c377b9e8d2bc3eecb412d056c46cca1a08c8009b6f31b89cb055"
+    }
+  ],
+  "scope": "approved Linux isolated tests; no Windows binary, network install, model or existing instance",
+  "windowsAcceptance": "not-executed",
+  "packageStatus": "not-built",
+  "staticReview": {
+    "id": "deleg_adc47f2a",
+    "scope": "eight-file original snapshot",
+    "finding": "implicit parent case alias",
+    "followup": "production correction and regression tested; correction not independently rereviewed"
+  },
+  "node": {
+    "tests": 50,
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0
+  },
+  "python": {
+    "tests": 10,
+    "passed": 10,
+    "failed": 0
+  },
+  "release_ready": false,
+  "runtimeArchives": [
+    {
+      "id": "python",
+      "status": "downloaded-identity-matched",
+      "size": 48477564,
+      "sha256": "985169a3aab1413eddaccf417c0ce36671ada2bcb8fcc0852b29963c3cfa0146",
+      "firstEntries": [
+        "python/DLLs/_asyncio.pdb",
+        "python/DLLs/_asyncio.pyd",
+        "python/DLLs/_bz2.pdb",
+        "python/DLLs/_bz2.pyd",
+        "python/DLLs/_ctypes.pdb",
+        "python/DLLs/_ctypes.pyd",
+        "python/DLLs/_ctypes_test.pdb",
+        "python/DLLs/_ctypes_test.pyd"
+      ]
+    },
+    {
+      "id": "node",
+      "status": "downloaded-identity-matched",
+      "size": 35674109,
+      "sha256": "6c8d54f635feff4df76c2ca80f45332eb2ff57d25226edce36592e51a177ee33",
+      "firstEntries": [
+        "node-v22.22.3-win-x64/",
+        "node-v22.22.3-win-x64/CHANGELOG.md",
+        "node-v22.22.3-win-x64/corepack",
+        "node-v22.22.3-win-x64/corepack.cmd",
+        "node-v22.22.3-win-x64/install_tools.bat",
+        "node-v22.22.3-win-x64/LICENSE",
+        "node-v22.22.3-win-x64/node.exe",
+        "node-v22.22.3-win-x64/nodevars.bat"
+      ]
+    },
+    {
+      "id": "uv",
+      "status": "downloaded-identity-matched",
+      "size": 23313765,
+      "sha256": "1665fc8e37b5d70a134820d6d7891747471a2ac8bc940ee7af0b69fd03b28d61",
+      "firstEntries": [
+        "uv.exe",
+        "uvw.exe",
+        "uvx.exe"
+      ]
+    },
+    {
+      "id": "ripgrep",
+      "status": "downloaded-identity-matched",
+      "size": 1810687,
+      "sha256": "124510b94b6baa3380d051fdf4650eaa80a302c876d611e9dba0b2e18d87493a",
+      "firstEntries": [
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/complete/",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/complete/rg.bash",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/complete/rg.fish",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/complete/_rg",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/complete/_rg.ps1",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/COPYING",
+        "ripgrep-15.1.0-x86_64-pc-windows-msvc/doc/"
+      ]
+    },
+    {
+      "id": "portablegit",
+      "status": "downloaded-identity-matched",
+      "size": 58995352,
+      "sha256": "bea006a6cc69673f27b1647e84ab3a68e912fbc175ab6320c5987e012897f311",
+      "firstEntries": []
+    }
+  ]
+}

@@ -1,5 +1,30 @@
 # P2 验证记录
 
+## ONLINE-INSTALL-12 修正版获批隔离回归
+
+总监批准后，基线c1b19f5加冻结修正版在独立源码树运行，每条一次：`node --check scripts/experiment-command.mjs`退出0；HANDOFF六文件Node命令50通过、0失败/跳过；`python3 -B -m unittest discover -s tests -p test_online_package.py -v`13通过。旧冻结源码仅覆盖更新executor测试，实际10项中9通过/1失败、退出1，失败明确为生产spawn参数未含-B，是预期红灯。源码身份未变。证据与完整命令见 `evidence/p2-online-install-12/final-fix/results.json`，不覆写旧50/10记录。
+
+上述验证不执行真实Python host/worker、供应商程序、安装、网络、模型或实例；静态复审通过单列。完整build caller及最终ZIP清单/哈希由随后已批准制包项核验，本记录时尚未制包。
+
+## 2026-10-25 ONLINE-INSTALL-12 最终静态复审及待验修正
+
+`deleg_fe09b53d` 对 `online-delivery-review-9_4ndbo8/source`（base c1b19f5 加冻结 WIP）只读复审，无测试/构建/安装。父目录别名修正成立、bootstrap本地导入闭包未发现缺件；发现官方Node归档空 `.npmrc` 与 runtime私密文件拒绝规则冲突，以及Python导入缓存可能污染精确包清单。lead只读核实锁定归档该成员0字节，空内容SHA256为 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`；不是Windows执行证据。
+
+lead已修改builder只对精确空供应商配置作包投影省略，记录清单，并给executor的host/worker添加显式 `-B`；对应Python和Node断言已编写，未运行。下方50/10历史结果及其哈希仍保留且仅属于旧源码。新批次命令/副作用见HANDOFF，待批准；本轮无ZIP、无Windows首装通过声明。随后 `deleg_26c38b26` 对冻结修正四文件只读复审，结论为生产增量静态通过、无确定新增阻塞，未运行测试。lead已核对工作区四文件SHA256均与该快照一致；完整build caller/manifest输出和实际Python执行后包目录不变仍非当前动态证据。
+
+## 2026-10-25 ONLINE-INSTALL-12 获批隔离回归
+
+- 对象为 `c1b19f5dbf05de4c8ac08690021e6c8c094d86ee` 加冻结 overlay；源码身份及六次命令结果见 `evidence/p2-online-install-12/results.json`。三条 Node 语法检查均退出0；六文件 Node定向50通过、0失败/跳过；Python归档10通过；旧审查快照仅替换新增父目录别名回归，实际因 `ValueError not raised` 退出1，属于预期红灯而非修正版失败。
+- 此批实际运行均在本profile自有scratch，Node外部命令全部为替身，Python仅合成tar/zip，不执行供应商程序、不联网安装、不调用模型；源码执行前后身份一致。不能由此证明Windows SFX、嵌套Job、git/npm/uv或真实入口成功。
+- 独立静态审查覆盖原八文件及直接调用链；其隐式父目录别名发现已由lead实现修正和回归验证，修正后的builder/测试增量尚未独立复审。已批准制包与最终ZIP独立核验，但当前尚未生成交付包，不把单元通过当制包/首装通过。
+
+## 2026-10-24 ENTRY-11 获批集中验证
+
+- 测试对象：`c1b19f5dbf05de4c8ac08690021e6c8c094d86ee` 加 `evidence/p2-entry-diagnostics-11/results.json` 的12文件源码/测试overlay。主工作区仍未提交；不能用base SHA单独指代本次已验源码。
+- 总监批准后，lead 在本Profile scratch独立树执行四条命令各一次：清单所列Node定向105通过、0失败/取消/跳过，退出0；`npm run validate`18组件，退出0；`npm run build`含tsc及新Vite资产，退出0；`node tests/native-entry-browser-check.mjs` methodVersion2、10项通过、starts/stops/opens各1、managedStarts=0、cleaned=true、hermesModelExecuted=false，退出0。精确命令及原日志/发布日志SHA256、源码和构建资产身份均在上述清单。
+- Node覆盖真实loopback管理HTTP和生产adapter/页面检查器的受控组合；hook定时/身份竞态使用合成调度。浏览器使用真实React/HTTP与合成native adapter，不是Windows原生Dashboard。复用manifest/lockfile逐字节一致的现有node_modules，无安装；源码执行前后哈希一致。
+- 独立静态审查未发现限定范围的生产阻塞，随后只补三个测试文件，本次实际运行其增量；不把静态审查当动态复验。未执行全量npm test、Windows/Python原生批次、真实Hermes/模型、安装或实例更新；ENOTDIR竞态及其他文件系统错误注入、浏览器旧错误迟到未直接覆盖。正式集成与发布门禁保持。
+
 ## 2026-10-22 DASHBOARD-ENTRY-10 页面就绪检查
 
 - 基线 `66a6ebbb62f36e0cadca0b7001b93a736819e6c3` 加五文件 overlay，实际执行于本 Profile scratch 独立导出树；固定上游契约文件、全部源码哈希、命令/退出码/日志见 `evidence/p2-dashboard-entry-10/results.json`。旧 adapter 在新缺页用例下退出1；开发中 GET-only 资源用例也曾退出1，已修正 HEAD 假设，两个失败日志保留。中间62项结果不是最终源码证据。

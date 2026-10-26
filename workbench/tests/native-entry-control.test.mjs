@@ -5,6 +5,31 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {startControlServer} from '../scripts/control-server.mjs';
 
+test('native failures project only fixed diagnostic headers without changing the error body',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'native-reasons-'));let server;
+ t.after(async()=>{await server?.close();await rm(root,{recursive:true,force:true});});
+ await writeFile(join(root,'index.html'),'fixture');
+ let failure='WINDOWS_REQUIRED',calls=0;
+ server=await startControlServer({assets:root,startInstance:async()=>{throw new Error('forbidden');},nativeEntries:{
+  status:()=>({kind:null,state:'idle'}),start:async()=>{calls++;throw new Error(failure);},
+ }});
+ const headers={Authorization:'Bearer '+server.token,Origin:server.origin};
+ const url=server.origin+'/api/native-entry/dashboard/start';
+ const denied=await fetch(url,{method:'POST'});
+ assert.equal(denied.status,403);assert.equal(denied.headers.get('x-native-entry-reason'),null);assert.equal(calls,0);
+ for(const code of ['WINDOWS_REQUIRED','NATIVE_BASELINE_UNSUPPORTED','INSTANCE_LOCKED','DASHBOARD_NOT_READY','ENTRY_STOP_UNCONFIRMED']){
+  failure=code;const response=await fetch(url,{method:'POST',headers});
+  assert.equal(response.status,409);assert.equal(response.headers.get('x-native-entry-reason'),code);
+  assert.deepEqual(await response.json(),{error:'NATIVE_ENTRY_OPERATION_FAILED'});
+ }
+ for(const raw of ['SYNTHETIC_PRIVATE_PATH_AND_TOKEN','INSTANCE_LOCKED: SYNTHETIC_PRIVATE_DETAIL','toString','__proto__']){
+  failure=raw;const response=await fetch(url,{method:'POST',headers});
+  assert.equal(response.headers.get('x-native-entry-reason'),null);
+  assert.deepEqual(await response.json(),{error:'NATIVE_ENTRY_OPERATION_FAILED'});
+ }
+ assert.equal(calls,9);
+});
+
 test('native commands require auth and Origin; refuse payload and shared-instance start',async t=>{
  const root=await mkdtemp(join(tmpdir(),'native-control-'));
  await writeFile(join(root,'index.html'),'test');

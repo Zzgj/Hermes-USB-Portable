@@ -1,5 +1,44 @@
 # P2 单分支交接与剩余审查
 
+## 当前开发：P2-09-ONLINE-INSTALL-12（修正版回归通过，待最终制包）
+
+总监已批准本节集中批次。lead在冻结 `online-delivery-fix-k5dm3pmb` 的完整隔离副本实际完成下列第1、2项，各命令一次：语法退出0，Node50/50，Python13/13；旧executor加新断言为预期退出1（9通过/1失败，明确缺少-B）。生产与测试身份前后未变；四文件独立静态复审为 `deleg_26c38b26`。证据见 `evidence/p2-online-install-12/final-fix/results.json`。本段覆盖下方“待批准/未运行”的历史过程记录，不是新增无限重跑许可。下一步仅执行已批准第3项制包与解包核验，失败停批；Windows真实安装未授权于本批、技术门禁未解除。
+
+最终复审 `deleg_fe09b53d` 发现官方空 npm 配置与私人配置拒绝冲突，以及 bootstrap Python 缓存污染。lead 已修 `build-online-package.py` / `experiment-command.mjs` 并补 `test_online_package.py` / `experiment-command.test.mjs`；具体边界见 PROGRESS-GUIDE 顶部。下方历史50/10及旧制包批准不作为新增四文件回归已通过的证据。拟新增一批验证，须总监决定后执行，每条一次、非预期失败停批：
+
+1. 固定本轮完整 base+overlay 在 profile scratch；工作目录 workbench，执行 `node --check scripts/experiment-command.mjs` 与 `node --test tests/online-install.test.mjs tests/native-experiment.test.mjs tests/experiment-command.test.mjs tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`；外部命令仍为替身，无 Windows 程序、网络或模型。
+2. 同树 `python3 -B -m unittest discover -s tests -p test_online_package.py -v`；只操作自有合成归档/临时目录。另在上一份完整冻结源码上仅覆盖更新的 executor 测试，运行 `node --test tests/experiment-command.test.mjs`，验证旧参数缺少 `-B` 的断言失败；记录预期红灯，不自动重跑。
+3. 静态复审与上述回归通过后，按原第4项冻结干净 dev/lead 提交并制包，独立解包核对全清单/哈希/CRC、bootstrap闭包与入口，新增检查官方空 npm 配置只在包中被省略且原归档不变；实际制包命令仍为下方第4项。仅Linux制包核验，约需专用磁盘数GB，不执行供应商二进制，不修改个人配置或真实实例。
+
+新源码测试/制包均未在本轮执行；Windows原生监督器及真实首装门禁继续单列，修正通过不自动解除。
+
+用户已确认新独立 Windows 目录／空 U 盘、首次联网方案，允许专用隔离材料下载、依赖安装及构建；新增 lead 测试仍单独审批。基线 `c1b19f5dbf05de4c8ac08690021e6c8c094d86ee`，ENTRY-11 WIP 保留。新增实现与状态只记 PROGRESS-GUIDE 顶部，包内首用说明源为 `docs/p2/ONLINE-TEST-START.md`。公司历史401并未被本轮处理，不声称远端 Windows 审查已经恢复。
+
+交付链：构建器消耗五份已下载且与默认 runtime 清单 hash/size 一致的官方归档，输出带独立 bootstrap runtime 和 `Install-Online.bat` 的包；目标机读取精确清单，拒绝未列文件和变化字节，经交互确认才使用自有材料目录。监督器执行 Git SFX、HTTPS 固定源码获取及现有 assembler，环境不继承凭据；最终回读 ready/实验清单/组装收据和两套入口资产，不只信 stdout。失败保留目录、分类收据和未知状态，无自动重试／清锁／覆盖。在线项目提交必须先在 origin 可获取；builder 从干净固定提交导出源码，不把当前 WIP 假装成 HEAD。
+
+冻结八文件的 `deleg_adc47f2a` 只读审查已回交；隐式父目录大小写别名问题已修正并通过批准回归，两文件修正增量尚未独立复审。总监已批准以下集中验证与制包批次；前三项已实际完成：旧快照新增别名用例预期退出1，三条语法检查退出0，Node50/50和Python10/10通过。证据见 `evidence/p2-online-install-12/results.json`，第4项尚未执行。批次失败停批，不自动扩大或重跑：
+
+1. 固定 base 加完整受控 overlay 导出到 profile scratch；cwd=workbench，执行 `node --check scripts/install-online-experiment.mjs`、`node --check scripts/material-path.mjs`、`node --check scripts/prepare-native-experiment.mjs`。
+2. `node --test tests/online-install.test.mjs tests/native-experiment.test.mjs tests/experiment-command.test.mjs tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`：合成材料、计数命令替身及既有监督器替身，不执行 Windows 程序或联网安装。
+3. `python3 -B -m unittest discover -s tests -p test_online_package.py -v`：合成 tar/zip 的解包、链接／别名／穿越／既存目录拒绝；不下载、不执行供应商二进制。
+4. 审查和回归门通过后冻结 clean dev/lead 提交，执行 `python3 workbench/scripts/build-online-package.py --repository <固定源码目录> --archives <已校验材料目录> --output <新的专用输出目录>`；实际输出源码SHA、ZIP和SHA256。独立解包 ZIP，检查 CRC、完整文件清单／哈希、启动器与导入闭包和固定源码身份，归档原始退出码及包身份。此项仅 Linux 制包／解包，不替代 Windows 首装、npm/uv真实兼容与 CLI/Dashboard 交互。
+
+当前不改默认安装清单，不放宽 native baseline，不合入正式集成、不部署旧实例、不变更 release_ready。实际 Windows apply 还须完成适用的独立审查与原生监督验证；不能仅凭用户允许下载/安装而把既有技术门禁算通过。
+
+## 当前未提交开发：P2-09-ENTRY-11（集中验证已通过）
+
+基线 `c1b19f5dbf05de4c8ac08690021e6c8c094d86ee`。lead 独占工作区，保留 ENTRY-10 证据不覆写；本批源码/测试精确overlay和执行记录在 `evidence/p2-entry-diagnostics-11/results.json`。范围为 `control-server.mjs` 原生操作失败投影、`native-entry-adapters.mjs` 固定资产缺失归类、native-entry domain/hook、NativeEntryPanel、SettingsPage、mockData 原生文案及对应回归。不改 native host/Job、实例锁、恢复标记、原生启动命令、依赖、上游或真实配置。
+
+接口增量：仅原生 POST 操作 catch 的 HTTP409 可附加 `X-Native-Entry-Reason`，值来自精确有限白名单；原 JSON `{error:'NATIVE_ENTRY_OPERATION_FAILED'}` 保持不变。客户端不消费错误正文，不显示原始 header/error；未知或非409响应的诊断头丢弃。诊断只解释请求，不授权重试，也不修改 `{kind,state}` 的含义。旧客户端可忽略此头，新客户端遇旧服务器使用固定通用提示。异步 ready 失败原因不在本批新增协议内。
+
+独立静态审查已于2026-10-24回交无可证实阻塞，生产源码未变；三个测试文件随后补充覆盖建议，未独立复审其增量。总监批准后，下列四条命令已在隔离树各执行一次，均退出0：Node105/105、validate18、新构建、浏览器v2共10项且清理确认。下列步骤是本次执行范围记录，不是未来无限重跑或新增实机权限：
+
+1. 在固定 base 加本批全部源码/测试 overlay 的自有 scratch 树中运行 `node --test tests/native-entry-client.test.mjs tests/native-entry-panel.test.mjs tests/native-entry-control.test.mjs tests/native-entry-adapters.test.mjs tests/native-dashboard-health.test.mjs tests/native-entry-session.test.mjs tests/native-entry-manager.test.mjs tests/native-owned-process.test.mjs tests/control-server.test.mjs tests/control-failure.test.mjs tests/merge-handoff.test.mjs tests/native-package-contract.test.mjs tests/package.test.mjs`，cwd 为 workbench。先审阅用例副作用，失败记录原日志，不自动扩大或重复。
+2. 同树执行 `npm run validate`、`npm run build`；已有 manifest/lockfile 相符依赖可复用，不安装。构建失败不得运行旧 dist 的浏览器检查。
+3. 新构建上执行 `node tests/native-entry-browser-check.mjs`（methodVersion=2），使用自有临时 browser profile 和现有 Chrome；真实 loopback HTTP、合成 native adapter，无真实 Hermes/模型/Windows 进程。只清理由本批创建的资源，清理不确认则保留目录并记失败。
+
+本次没有重跑、安装依赖或扩大到全量npm test；源码、日志与构建资产哈希已归档。Windows worker/Job 与真实 Dashboard/CLI 验收仍分列，不将本地合成或未运行断言记通过；不更新真实实例、不正式集成或发布。
+
 ## 当前开发交付：P2-09-DASHBOARD-ENTRY-10
 
 用户要求先推进 Dashboard；lead 独占 dev/lead，实现生产启动就绪及 open 前的页面检查。base=`66a6ebbb62f36e0cadca0b7001b93a736819e6c3`，五文件精确 overlay 和实际命令见仓库根 `evidence/p2-dashboard-entry-10/results.json`，固定提交由 Git 交付回报。新增 `native-dashboard-health.mjs` / `native-dashboard-health.test.mjs`，修改 `native-entry-adapters.mjs`、`package-policy.mjs`、`native-entry-adapters.test.mjs`；不修改上游、UI接口、原host、锁、默认安装清单或依赖。

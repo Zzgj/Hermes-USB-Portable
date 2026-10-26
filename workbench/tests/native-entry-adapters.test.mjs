@@ -50,10 +50,20 @@ test('Dashboard requires reviewed prebuilt assets and disables automatic build/o
 });
 test('missing assets or source env are rejected without spawning',async t=>{
  const f=await fixture(t);await rm(join(f.source,'hermes_cli','web_dist','index.html'));
- await assert.rejects(f.adapters.dashboard.prepare({home:f.home}));
+ await assert.rejects(f.adapters.dashboard.prepare({home:f.home}),{message:'NATIVE_ASSET_INVALID'});
  await writeFile(join(f.source,'.env'),'synthetic fixture, not a credential');
  await assert.rejects(f.adapters.cli.prepare({home:f.home}),/SOURCE_ENV_REQUIRES_REVIEW/);
  assert.equal(f.launches.length,0);
+});
+
+test('missing asset directories and directory-as-page return a fixed reason before spawn',async t=>{
+ for(const scenario of ['missing-directory','directory-as-page']){
+  const f=await fixture(t),dist=join(f.source,'hermes_cli','web_dist');
+  if(scenario==='missing-directory')await rm(dist,{recursive:true});
+  else{await rm(join(dist,'index.html'));await mkdir(join(dist,'index.html'));}
+  await assert.rejects(f.adapters.dashboard.prepare({home:f.home}),{message:'NATIVE_ASSET_INVALID'});
+  assert.equal(f.launches.length,0);assert.deepEqual(f.opened,[]);
+ }
 });
 
 test('healthy RPC alone cannot mark an unavailable Dashboard page ready or open it',async t=>{

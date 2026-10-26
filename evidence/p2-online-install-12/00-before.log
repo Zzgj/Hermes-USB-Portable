@@ -1,0 +1,14 @@
+F
+======================================================================
+FAIL: test_implicit_parent_case_alias_is_rejected (__main__.OnlinePackageTests.test_implicit_parent_case_alias_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<verification-root>/pre-fix/tests/test_online_package.py", line 61, in test_implicit_parent_case_alias_is_rejected
+    with self.assertRaisesRegex(ValueError, 'ARCHIVE_PARENT_ALIAS_OR_TYPE'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)

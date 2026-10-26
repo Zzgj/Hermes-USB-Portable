@@ -18,13 +18,48 @@ test('transport sends fixed bodyless actions and strictly checks acknowledgement
   await assert.rejects(domain(async()=>response).requestNativeEntry('synthetic','stop',signal));
  }
 });
-function harness(){
+test('diagnostics accept only allowlisted conflict headers and never read error bodies',async()=>{
+ const cases=[[403,'INSTANCE_LOCKED','FORBIDDEN'],[404,'INSTANCE_LOCKED','UNAVAILABLE'],
+  [409,'INSTANCE_LOCKED','INSTANCE_LOCKED'],[409,'DASHBOARD_NOT_READY','DASHBOARD_NOT_READY'],
+  [409,'INSTANCE_LOCKED: PRIVATE','CONFLICT'],[409,'toString','CONFLICT'],
+  [409,'INSTANCE_LOCKED, INSTANCE_LOCKED','CONFLICT'],[500,'INSTANCE_LOCKED','TRANSPORT']];
+ for(const [status,header,expected] of cases){
+  let cancelled=false;
+  const body=new ReadableStream({pull(){return new Promise(()=>{});},cancel(){cancelled=true;}});
+  const d=domain(async()=>new Response(body,{status,headers:{'X-Native-Entry-Reason':header}}));
+  await assert.rejects(d.requestNativeEntry('synthetic','dashboard',new AbortController().signal),error=>{
+   assert.equal(error.message,'NATIVE_REQUEST_FAILED');assert.equal(d.nativeFailureReason(error),expected);return true;
+  });
+  assert.equal(cancelled,true);
+ }
+ const d=domain();assert.equal(d.nativeFailureReason(new Error('INSTANCE_LOCKED: PRIVATE')),'TRANSPORT');
+});
+test('complete native reason allowlists agree and success ignores diagnostic headers',async()=>{
+ const source=ts.createSourceFile('control-server.mjs',readFileSync(new URL('../scripts/control-server.mjs',import.meta.url),'utf8'),ts.ScriptTarget.ES2022,true,ts.ScriptKind.JS);
+ const declarations=[];
+ const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(source)==='nativeOperationReasons')declarations.push(node);ts.forEachChild(node,visit);};visit(source);
+ assert.equal(declarations.length,1);const init=declarations[0].initializer;
+ assert.ok(ts.isNewExpression(init));assert.equal(init.expression.getText(source),'Set');
+ assert.equal(init.arguments.length,1);assert.ok(ts.isArrayLiteralExpression(init.arguments[0]));
+ const reasons=init.arguments[0].elements.map(node=>{assert.ok(ts.isStringLiteral(node));return node.text;});
+ const d=domain();assert.deepEqual(reasons,[...d.nativeOperationReasons]);assert.equal(new Set(reasons).size,reasons.length);
+ for(const reason of reasons){
+  const current=domain(async()=>Response.json({}, {status:409,headers:{'X-Native-Entry-Reason':reason}}));
+  await assert.rejects(current.requestNativeEntry('synthetic','open',new AbortController().signal),error=>current.nativeFailureReason(error)===reason);
+ }
+ const success=domain(async()=>Response.json({accepted:true},{status:202,headers:{'X-Native-Entry-Reason':'INSTANCE_LOCKED'}}));
+ assert.equal(await success.requestNativeEntry('synthetic','open',new AbortController().signal),null);
+});
+function harness({manualClock=false}={}){
  const slots=[],calls=[];let cursor=0,writes=0;
+ const timers=new Set();
+ const schedule=manualClock?(fn,ms)=>{const timer={fn,ms};timers.add(timer);return timer;}:setTimeout;
+ const cancel=manualClock?timer=>timers.delete(timer):clearTimeout;
  const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],v=>{writes++;slots[i]=v;}];},useRef(initial){const i=cursor++;return slots[i]??(slots[i]={current:initial});},useCallback(fn){return fn;},useEffect(fn,deps){const i=cursor++;if(!slots[i]||slots[i].identity!==deps[0]){slots[i]?.cleanup?.();slots[i]={identity:deps[0],cleanup:fn()};}}};
- const module={exports:{}};
+ const module={exports:{}},d=domain();
  const requestNativeEntry=(identity,action,signal)=>new Promise((resolve,reject)=>calls.push({identity,action,signal,resolve,reject}));
- new Function('require','module','exports',compile('../src/hooks/useNativeEntry.ts'))(name=>name==='react'?react:{requestNativeEntry},module,module.exports);
- return {calls,get writes(){return writes;},render(identity='synthetic'){cursor=0;return module.exports.useNativeEntry(identity);},close(){for(const slot of slots)slot?.cleanup?.();}};
+ new Function('require','module','exports','setTimeout','clearTimeout',compile('../src/hooks/useNativeEntry.ts'))(name=>name==='react'?react:{...d,requestNativeEntry},module,module.exports,schedule,cancel);
+ return {calls,failure:code=>new d.NativeEntryRequestError(code),fireTimer(){assert.equal(timers.size,1);const [timer]=timers;timers.delete(timer);timer.fn();return timer.ms;},get writes(){return writes;},render(identity='synthetic'){cursor=0;return module.exports.useNativeEntry(identity);},close(){for(const slot of slots)slot?.cleanup?.();}};
 }
 test('unknown cannot start; duplicate action blocked; acknowledgement requires status read',async()=>{
  const h=harness();await h.render().act('cli');assert.equal(h.calls.length,0);
@@ -47,6 +82,38 @@ test('failed mutation leaves unknown and never retries automatically',async()=>{
  const h=harness();let p=h.render().refresh();h.calls[0].resolve({kind:null,state:'idle'});await p;
  p=h.render().act('cli');h.calls[1].reject(new Error('lost acknowledgement'));await p;
  assert.equal(h.render().failed,true);assert.equal(h.render().status.state,'unknown');await h.render().act('cli');assert.equal(h.calls.length,2);h.close();
+});
+test('safe diagnosis does not prove idle; refresh clears it and idle stop is fenced',async()=>{
+ const h=harness();let p=h.render().refresh();h.calls[0].resolve({kind:null,state:'idle'});await p;
+ await h.render().act('stop');assert.equal(h.calls.length,1);
+ p=h.render().act('dashboard');h.calls[1].reject(h.failure('INSTANCE_LOCKED'));await p;
+ assert.equal(h.render().failure,'INSTANCE_LOCKED');assert.equal(h.render().status.state,'unknown');
+ await h.render().act('dashboard');assert.equal(h.calls.length,2);
+ p=h.render().refresh();assert.equal(h.render().failure,null);
+ h.calls[2].resolve({kind:null,state:'idle'});await p;assert.equal(h.render().failure,null);h.close();
+});
+test('late diagnostic failure cannot cross an identity change',async()=>{
+ const h=harness(),p=h.render('old').refresh();h.render('new');
+ h.calls[0].reject(h.failure('INSTANCE_LOCKED'));await p;
+ assert.equal(h.render('new').failure,null);assert.equal(h.render('new').failed,false);h.close();
+});
+for(const outcome of ['resolve','reject'])test('old '+outcome+' cannot clear a new identity request or its pending gate',async()=>{
+ const h=harness(),old=h.render('old').refresh(),next=h.render('new').refresh();
+ assert.equal(h.calls.length,2);assert.equal(h.render('new').pending,true);
+ h.calls[0][outcome](outcome==='resolve'?{kind:'dashboard',state:'running'}:h.failure('INSTANCE_LOCKED'));await old;
+ assert.equal(h.render('new').pending,true);assert.equal(h.render('new').failure,null);assert.equal(h.render('new').failed,false);
+ await h.render('new').refresh();await h.render('new').act('stop');assert.equal(h.calls.length,2);
+ h.calls[1].resolve({kind:null,state:'idle'});await next;
+ assert.equal(h.render('new').pending,false);assert.equal(h.render('new').status.state,'idle');h.close();
+});
+for(const action of ['status','dashboard'])test('hook deadline classifies '+action+' as cancelled without retry',async()=>{
+ const h=harness({manualClock:true});
+ if(action==='dashboard'){const initial=h.render().refresh();h.calls[0].resolve({kind:null,state:'idle'});await initial;}
+ const pending=action==='status'?h.render().refresh():h.render().act(action),call=h.calls.at(-1),count=h.calls.length;
+ assert.equal(h.fireTimer(),action==='status'?20000:130000);assert.equal(call.signal.aborted,true);
+ call.reject(new Error('synthetic cancelled transport'));await pending;
+ assert.equal(h.render().failure,'CANCELLED');assert.equal(h.render().status.state,'unknown');assert.equal(h.render().pending,false);
+ await h.render().act('dashboard');assert.equal(h.calls.length,count);h.close();
 });
 // ---- T1 coverage: bounded body, cancellation, error-body isolation, post-ack status read, identity round trip ----
 const encoder=new TextEncoder();

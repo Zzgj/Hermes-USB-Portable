@@ -23,8 +23,10 @@ export async function executeExperimentCommand(file,args,{python,cwd,env,timeout
   const completion=await new Promise((resolve,reject)=>{
    let host;
    try{
-    host=spawnHost(python,['-I',fileURLToPath(new URL('./native-entry-host.py',import.meta.url)),'dashboard','--',
-     '-I',fileURLToPath(new URL('./experiment-command-worker.py',import.meta.url)),directory,String(outputLimit),'--',file,...args],
+    // -I ignores PYTHONDONTWRITEBYTECODE: use explicit -B for both Python
+    // layers so imports cannot add unmanifested cache files to the package.
+    host=spawnHost(python,['-I','-B',fileURLToPath(new URL('./native-entry-host.py',import.meta.url)),'dashboard','--',
+     '-I','-B',fileURLToPath(new URL('./experiment-command-worker.py',import.meta.url)),directory,String(outputLimit),'--',file,...args],
     {cwd,env:{...env},shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']});
    }catch{treeExited=true;reject(error('EXPERIMENT_COMMAND_SPAWN_FAILED',true));return;}
    let reason,grace,ended=false,settled=false,transportFailed=false,started=false,workerExit;

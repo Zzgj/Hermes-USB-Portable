@@ -1,0 +1,42 @@
+✖ command output is returned only after private close proof, with a clean command directory (10.515469ms)
+✔ nonzero business exit is rejected without exposing output after confirmed teardown (3.283548ms)
+✔ direct host exit and a forged worker receipt cannot replace tree confirmation (2.29364ms)
+✔ transport failure remains latched even after a valid closed frame (1.806879ms)
+✔ timeout requests EOF and rejects only after confirmed cleanup (22.856976ms)
+✔ never-close after timeout is unknown, preserves evidence and only kills its owned host (24.094693ms)
+✔ malformed protocol requests stop and cannot be repaired by a later valid frame (3.835691ms)
+✔ worker failure is confirmed failure, never successful empty output (4.430393ms)
+✔ missing or inconsistent receipts fail closed without leaking filesystem errors (12.880664ms)
+✔ non-Windows or invalid options reject without launching or staging (2.736559ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.951189
+
+✖ failing tests:
+
+test at tests/experiment-command.test.mjs:37:1
+✖ command output is returned only after private close proof, with a clean command directory (10.515469ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      '-I',
+  +   '<verification-root>/before/workbench/scripts/native-entry-host.py'
+  -   '-B'
+    ]
+  
+      at TestContext.<anonymous> (file://<verification-root>/before/workbench/tests/experiment-command.test.mjs:46:9)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ '-I', '<verification-root>/before/workbench/scripts/native-entry-host.py' ],
+    expected: [ '-I', '-B' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

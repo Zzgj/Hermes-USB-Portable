@@ -1,0 +1,183 @@
+{
+  "base": "c1b19f5dbf05de4c8ac08690021e6c8c094d86ee",
+  "sourceFiles": [
+    {
+      "path": "workbench/scripts/build-online-package.py",
+      "sha256": "fa8cc79a66e88efa238da2f7e188cfc2d72f5badcb822cdaf72941061428dfaa"
+    },
+    {
+      "path": "workbench/scripts/control-server.mjs",
+      "sha256": "c579c6e374e803d3f877c32b71fb307854baabea5ee6f2ed2faac21d40e329eb"
+    },
+    {
+      "path": "workbench/scripts/experiment-command.mjs",
+      "sha256": "9c5bd3b49e77f0be9a8bc4c2a205bd23a85c4c9799d3af02eada6fa4ef54b413"
+    },
+    {
+      "path": "workbench/scripts/install-online-experiment.mjs",
+      "sha256": "512bf926d617cfe73b2b03379b492041fcbef56b72083d050e1da1e70e1422c6"
+    },
+    {
+      "path": "workbench/scripts/material-path.mjs",
+      "sha256": "a34c0c874386e6e237c1658d31c53bea6ee1d6cb7ac477647558a9c950e824f4"
+    },
+    {
+      "path": "workbench/scripts/native-entry-adapters.mjs",
+      "sha256": "aaaf6e44738374dca57ae041dc19d6cce6f10cb0df927f1c1b883ad666f6c865"
+    },
+    {
+      "path": "workbench/scripts/prepare-native-experiment.mjs",
+      "sha256": "3b040dabfc1f89b36ac50834b371c3353e2f58871893a87f838e7695e57b7f00"
+    },
+    {
+      "path": "workbench/src/components/NativeEntryPanel.tsx",
+      "sha256": "bcb2ce5a1ada0b8a608a30dc14dc4101b47be56bb1221b20ed12f5d8b35b7ca9"
+    },
+    {
+      "path": "workbench/src/data/mockData.ts",
+      "sha256": "cb88702f2288b7710638e797cb35d70b37f5dc88d24b394b2d5825e9971303c6"
+    },
+    {
+      "path": "workbench/src/domain/native-entry.ts",
+      "sha256": "4540543fb09c3be7d3297b56513cd75ff67987df362d09cb61d8f49cdc870e4e"
+    },
+    {
+      "path": "workbench/src/hooks/useNativeEntry.ts",
+      "sha256": "b2b03dbadf1aa6f6f94913c91e2f63d83e7cd8cae9a368f494978c52c14fe1a9"
+    },
+    {
+      "path": "workbench/src/pages/SettingsPage.tsx",
+      "sha256": "ef8505624150fa8e2143800404606f5f1837616c6cfb3dcc68895efc38ca7a39"
+    },
+    {
+      "path": "workbench/tests/experiment-command.test.mjs",
+      "sha256": "b47d6171fe2f713745b0a60ab79674344c4f0bdabe11c53d9259fba642844688"
+    },
+    {
+      "path": "workbench/tests/native-entry-adapters.test.mjs",
+      "sha256": "0c80e227069478653e00fa832ceb724dbdbcba2b81475a75269972ba93bf2e19"
+    },
+    {
+      "path": "workbench/tests/native-entry-browser-check.mjs",
+      "sha256": "f7227d41c3fb43c942b360b6bed73abbbba47676681c050c88c80c446500d7ec"
+    },
+    {
+      "path": "workbench/tests/native-entry-client.test.mjs",
+      "sha256": "342f3b6797d127ffc668dd9ae8701a5db19d085cd1585ddf77237d823fdb048b"
+    },
+    {
+      "path": "workbench/tests/native-entry-control.test.mjs",
+      "sha256": "a4cf65df8c6891d1712cb47df580e5f6a24f79d9bb0259fefa5a6dd5b2e682b5"
+    },
+    {
+      "path": "workbench/tests/native-entry-panel.test.mjs",
+      "sha256": "f670835bf3410be3bda14701751d6d08f4fcd222ff6995d26a8e0a45654c4c07"
+    },
+    {
+      "path": "workbench/tests/native-experiment.test.mjs",
+      "sha256": "997154ec2d3210315a49e04982e2f38109954d012caf93848bee4e3c87a51aad"
+    },
+    {
+      "path": "workbench/tests/online-install.test.mjs",
+      "sha256": "7c1fd049d61a67f72f292f86a5bbcea4714a82e658601f5253331fb4c468189b"
+    },
+    {
+      "path": "workbench/tests/test_online_package.py",
+      "sha256": "273f0405a47bcf07207f27f5ad8e588a64b87d3f42cdb1a5f8adfbd2afa14259"
+    }
+  ],
+  "results": [
+    {
+      "name": "00-before",
+      "command": [
+        "node",
+        "--test",
+        "tests/experiment-command.test.mjs"
+      ],
+      "tree": "before",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "durationSeconds": 0.295,
+      "log": "00-before.log",
+      "rawLogSha256": "31fd8cca34993a28f38507aae720019825e3e51f2525b2bf8cdc9f58bc9f1b40",
+      "publishedLogSha256": "c36399a72edf7bc2523460b9b50a1b342f3886cd101e9ae2894d12e7ab3ef79a"
+    },
+    {
+      "name": "01-syntax",
+      "command": [
+        "node",
+        "--check",
+        "scripts/experiment-command.mjs"
+      ],
+      "tree": "source",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "durationSeconds": 0.023,
+      "log": "01-syntax.log",
+      "rawLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "02-node",
+      "command": [
+        "node",
+        "--test",
+        "tests/online-install.test.mjs",
+        "tests/native-experiment.test.mjs",
+        "tests/experiment-command.test.mjs",
+        "tests/native-package-contract.test.mjs",
+        "tests/package.test.mjs",
+        "tests/portable-layout.test.mjs"
+      ],
+      "tree": "source",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "durationSeconds": 0.55,
+      "log": "02-node.log",
+      "rawLogSha256": "0fb56b404e2bc48228c29fd0023a6518a67a32d49740561f5b4a9066dc21f490",
+      "publishedLogSha256": "0fb56b404e2bc48228c29fd0023a6518a67a32d49740561f5b4a9066dc21f490"
+    },
+    {
+      "name": "03-python",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_online_package.py",
+        "-v"
+      ],
+      "tree": "source",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "durationSeconds": 0.07,
+      "log": "03-python.log",
+      "rawLogSha256": "15f155c9b047f4786ef083654a9e953f46757361c7adb5a326eb630ce5ba46c9",
+      "publishedLogSha256": "15f155c9b047f4786ef083654a9e953f46757361c7adb5a326eb630ce5ba46c9"
+    }
+  ],
+  "scope": "approved isolated Linux regression; no network, Windows binary, installation or model",
+  "sourceIdentityUnchanged": true,
+  "node": {
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0
+  },
+  "python": {
+    "passed": 13,
+    "failed": 0
+  },
+  "oldExecutorRegression": {
+    "passed": 9,
+    "failed": 1,
+    "expectedFailure": "missing explicit -B at actual spawn boundary"
+  },
+  "staticReview": "deleg_26c38b26: four-file static pass; no dynamic execution",
+  "packageStatus": "not-built",
+  "windowsAcceptance": "not-executed",
+  "release_ready": false
+}
