@@ -1,6 +1,10 @@
 # P2 单分支交接与剩余审查
 
-## 当前开发：P2-09-ONLINE-INSTALL-12（修正版回归通过，待最终制包）
+## 当前交付：P2-09-ONLINE-INSTALL-12（候选包已核验，Windows待验）
+
+本节已批准的修正版回归和制包批次均实际完成，没有扩大到Windows执行。包固定源码为 `837caf5709f62ddfadd904532cbc01443cb0dfb4`；builder退出0，最终ZIP独立核验通过，精确包名/大小/SHA256和检查项见 `evidence/p2-online-install-12/package/verification.json`。后续文档/证据提交不改变包内源码身份。下方待批准/待制包描述均为历史过程，不再重跑。
+
+下一门禁不是继续重复Linux单测，而是取得Windows supervisor/worker原生隔离证据，再安排全新独立目录的真实首次安装及入口交互。公司本次查重502未送达，没有自动重发、更新Hermes或假定对方已执行。候选包可交付审查，实际安装尚未放行；默认setup/旧实例/正式集成不变。
 
 总监已批准本节集中批次。lead在冻结 `online-delivery-fix-k5dm3pmb` 的完整隔离副本实际完成下列第1、2项，各命令一次：语法退出0，Node50/50，Python13/13；旧executor加新断言为预期退出1（9通过/1失败，明确缺少-B）。生产与测试身份前后未变；四文件独立静态复审为 `deleg_26c38b26`。证据见 `evidence/p2-online-install-12/final-fix/results.json`。本段覆盖下方“待批准/未运行”的历史过程记录，不是新增无限重跑许可。下一步仅执行已批准第3项制包与解包核验，失败停批；Windows真实安装未授权于本批、技术门禁未解除。
 

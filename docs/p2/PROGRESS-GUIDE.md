@@ -1,6 +1,10 @@
 # P2 当前进度与任务
 
-## P2-09-ONLINE-INSTALL-12：修正版获批回归通过，最终制包待执行
+## P2-09-ONLINE-INSTALL-12：候选ZIP已制成并核验，Windows执行仍待
+
+当前交付：源码已固定为 `837caf5709f62ddfadd904532cbc01443cb0dfb4`，获批builder执行退出0。`Hermes-Portable-Online-Test-837caf5709f6.zip` 为172289446字节，SHA256 `52cecef1e3bb83d19b6445925f5e9b57ebb4d0038b8ada69daa3038e6877dca5`。独立CRC、路径/类型/大小写、精确清单、解包后6192载荷文件大小与哈希、bootstrap源码/静态导入闭包、批处理CRLF、私人文件策略与供应商原字节投影检查全部通过；ZIP共6193文件含manifest。实际调用完整build并确认省略记录及原归档不变，关闭上一轮完整builder输出证据缺口。证据见 `evidence/p2-online-install-12/package/`。
+
+本段覆盖以下历史“未提交/未制包”记录。包已保存在本机持久交付目录，包内是固定源码说明快照；外围交付状态保留Windows未验门禁。不是离线包，不是正式发布，不把静态闭包或解包通过说成Windows可运行。公司查重未送达；Windows原生监督器、真实uv/npm安装构建及CLI/Dashboard交互尚无本批执行证据，实际安装门禁未解除，release_ready=false。正式集成和真实实例未改。
 
 当前状态覆盖：总监批准后，lead在冻结修正版独立副本完成Node50/50、Python13/13及语法检查，均退出0；旧executor对应新增参数断言如期退出1，证明能检出缺少-B，非Windows缓存实机复现。源码执行前后身份一致，四文件独立静态审查已通过。精确命令、源码及原始/脱敏日志哈希见 `evidence/p2-online-install-12/final-fix/results.json`。未联网安装、未执行Windows二进制或模型。以下为历史发现及修正过程；最终ZIP与Windows验收尚未完成，下一项为同一批准批次内的固定提交制包/解包。
 

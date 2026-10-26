@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "837caf5709f62ddfadd904532cbc01443cb0dfb4",
+  "command": [
+    "python3",
+    "workbench/scripts/build-online-package.py",
+    "--repository",
+    "<fixed-clean-repository>",
+    "--archives",
+    "<verified-runtime-archives>",
+    "--output",
+    "<owned-build-output>"
+  ],
+  "exitCode": 0,
+  "durationSeconds": 14.116,
+  "rawLogSha256": "db16ff61dd91751dd7d472f0f190a0836a2899218b49483062472ed428aa5eae",
+  "publishedLogSha256": "d410ded88dc4dc9279aaeb899fc7dd4f23764f452bf5a4aee0439b235ad1b612"
+}

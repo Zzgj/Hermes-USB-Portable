@@ -1,5 +1,11 @@
 # P2 验证记录
 
+## ONLINE-INSTALL-12 固定提交制包与最终ZIP核验
+
+源码 `837caf5709f62ddfadd904532cbc01443cb0dfb4`（已核对与隔离测试21份变更源码/测试身份一致）在干净dev/lead实际运行builder，退出0。最终ZIP为 `Hermes-Portable-Online-Test-837caf5709f6.zip`，172289446字节，SHA256 `52cecef1e3bb83d19b6445925f5e9b57ebb4d0038b8ada69daa3038e6877dca5`。完整build调用后，独立检查CRC、条目路径/类型/大小写唯一、精确manifest、逐文件大小/哈希并解包回读，6192载荷文件一致；检查bootstrap与固定Git字节/静态导入闭包、根相对启动器和CRLF、私人文件规则、精确空供应商配置省略记录。四份提取供应商归档全文件比对，除记录的空文件外全部一致；Git SFX匹配锁定哈希；原材料归档仍匹配原哈希。
+
+原始/脱敏构建日志身份和机器可读核验见 `evidence/p2-online-install-12/package/`。包已复制到持久交付目录并回读外层哈希；本轮未执行包内Node/Python/Git、真实安装、Windows或模型。宿主Linux静态闭包不是Windows导入运行证据。release_ready维持false；正式集成/旧实例未动，Windows实际安装门禁未解除。
+
 ## ONLINE-INSTALL-12 修正版获批隔离回归
 
 总监批准后，基线c1b19f5加冻结修正版在独立源码树运行，每条一次：`node --check scripts/experiment-command.mjs`退出0；HANDOFF六文件Node命令50通过、0失败/跳过；`python3 -B -m unittest discover -s tests -p test_online_package.py -v`13通过。旧冻结源码仅覆盖更新executor测试，实际10项中9通过/1失败、退出1，失败明确为生产spawn参数未含-B，是预期红灯。源码身份未变。证据与完整命令见 `evidence/p2-online-install-12/final-fix/results.json`，不覆写旧50/10记录。

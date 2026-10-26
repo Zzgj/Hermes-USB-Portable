@@ -1,0 +1,23 @@
+{
+  "sourceCommit": "837caf5709f62ddfadd904532cbc01443cb0dfb4",
+  "archive": "Hermes-Portable-Online-Test-837caf5709f6.zip",
+  "archiveBytes": 172289446,
+  "sha256": "52cecef1e3bb83d19b6445925f5e9b57ebb4d0038b8ada69daa3038e6877dca5",
+  "status": "archive-verified-windows-acceptance-pending",
+  "payloadFiles": 6192,
+  "zipEntries": 6193,
+  "checks": [
+    "zip-crc",
+    "paths-types-casefold-unique",
+    "exact-inventory-sizes-sha256",
+    "independent-extraction-hashes",
+    "bootstrap-source-and-static-import-closure",
+    "root-relative-launcher-crlf",
+    "private-file-policy-and-exact-omission",
+    "all-vendor-bytes-original-except-recorded-empty-file"
+  ],
+  "verification": "Linux archive and static closure; no target runtime executed",
+  "windowsAcceptance": "not-executed",
+  "realInstallation": "not-executed",
+  "release_ready": false
+}
