@@ -51,9 +51,16 @@ export async function installOnlineExperiment({packageRoot,target},{platform=pro
   if(!(await plain(file)).isFile())fail('ONLINE_FILE_REQUIRED');const data=await readFile(file);
   if(data.length!==entry.size||hash(data)!==entry.sha256)fail('ONLINE_PACKAGE_CHANGED');
  }
- for(const path of ['runtime/python/python.exe','runtime/node/node.exe','runtime/uv/uv.exe','runtime/bin/rg.exe','archives/portablegit.exe','runtime-components.windows-x64.json'])if(!names.has(path))fail('ONLINE_PACKAGE_INCOMPLETE');
+ for(const path of ['runtime/python/python.exe','runtime/node/node.exe','runtime/uv/uv.exe','runtime/bin/rg.exe','archives/portablegit.exe','runtime-components.windows-x64.json','manifests/portable-release.json'])if(!names.has(path))fail('ONLINE_PACKAGE_INCOMPLETE');
  const actual=await filesAt(packageRoot);
  if(actual.length!==manifest.files.length+1||actual.some(p=>p!=='online-package.json'&&!names.has(p.toLowerCase())))fail('ONLINE_UNLISTED_PACKAGE_FILE');
+ const releaseBytes=await readFile(join(packageRoot,'manifests','portable-release.json'));
+ const release=JSON.parse(releaseBytes);
+ if(!release||typeof release!=='object'||Array.isArray(release)||release.schema!==1||release.product!=='Hermes-USB-Portable'||
+  typeof release.version!=='string'||!/^[A-Za-z0-9][A-Za-z0-9.-]{0,63}$/.test(release.version)||!safePath(release.version)||
+  manifest.version!==release.version||release.channel!=='test'||release.hermesCommit!==baseline||release.release_ready!==false||
+  release.updateCapability!=='unavailable'||release.distribution?.kind!=='github-releases'||
+  release.distribution?.repository!=='Zzgj/Hermes-USB-Portable'||Object.keys(release.distribution).length!==2)fail('ONLINE_RELEASE_INVALID');
  const identities=new Map(manifest.files.map(f=>[f.path,f]));
  const lockBytes=await readFile(join(packageRoot,'runtime-components.windows-x64.json'));
  const lock=JSON.parse(lockBytes),gitComponent=lock.components?.find(c=>c.id==='portablegit');
@@ -86,6 +93,8 @@ export async function installOnlineExperiment({packageRoot,target},{platform=pro
    if(await call(git,['-C',path,'rev-parse','HEAD'])!==sha)fail('ONLINE_SOURCE_MISMATCH');
   }
   if(!lockBytes.equals(await readFile(join(project,'manifests','runtime-components.windows-x64.json'))))fail('ONLINE_COMPONENT_LOCK_MISMATCH');
+  const sourceRelease=join(project,'manifests','portable-release.json');await plain(sourceRelease);
+  if(!releaseBytes.equals(await readFile(sourceRelease)))fail('ONLINE_RELEASE_SOURCE_MISMATCH');
   const inventory=[];
   for(const path of await filesAt(runtime)){
    if(/(^|\/)(?:\.env(?:\..*)?|\.npmrc|\.gitconfig|auth\.json|credentials?)(?:\/|$)/i.test(path))fail('ONLINE_RUNTIME_PRIVATE_FILE');
@@ -100,6 +109,8 @@ export async function installOnlineExperiment({packageRoot,target},{platform=pro
   const result=JSON.parse(output);
   if(result.status!=='prepared-not-accepted'||result.baseline!==baseline||result.projectCommit!==manifest.projectCommit||result.entryScope!=='cli-and-dashboard')fail('ONLINE_ASSEMBLY_RESULT_INVALID');
   stage='readback';progress(stage);
+  const installedRelease=join(target,'manifests','portable-release.json');await plain(installedRelease);
+  if(!releaseBytes.equals(await readFile(installedRelease)))fail('ONLINE_RELEASE_READBACK_FAILED');
   const finalLockPath=join(target,'manifests','runtime-components.windows-x64.json');await plain(finalLockPath);
   const finalLockBytes=await readFile(finalLockPath),finalLock=JSON.parse(finalLockBytes);
   const readyPath=join(target,'.cache','runtimes','windows-x64','ready.flag');await plain(readyPath);
@@ -111,8 +122,8 @@ export async function installOnlineExperiment({packageRoot,target},{platform=pro
    finalLock.experimental_native?.entryScope!=='cli-and-dashboard'||
    !await absent(join(target,'logs','diagnostics','p2-install-active.json')))fail('ONLINE_READBACK_FAILED');
   for(const path of ['P2-Workbench.bat','scripts/start-p2-workbench.ps1','workbench/dist/index.html','src/hermes-agent/hermes_cli/web_dist/index.html'])if(!(await plain(join(target,path))).isFile())fail('ONLINE_READBACK_FAILED');
-  await writeFile(receipt,JSON.stringify({schema:1,status:'prepared-not-accepted',projectCommit:manifest.projectCommit,baseline,release_ready:false}),{flag:'wx'});
-  progress('prepared-not-accepted');return {status:'prepared-not-accepted',target,work,release_ready:false};
+  await writeFile(receipt,JSON.stringify({schema:1,status:'prepared-not-accepted',version:release.version,projectCommit:manifest.projectCommit,baseline,release_ready:false}),{flag:'wx'});
+  progress('prepared-not-accepted');return {status:'prepared-not-accepted',version:release.version,target,work,release_ready:false};
  }catch(error){
   await writeFile(receipt,JSON.stringify({schema:1,status:'failed-preserved',stage,commandTreeExited:typeof error?.treeExited==='boolean'?error.treeExited:null,release_ready:false}),{flag:'wx'}).catch(()=>{});
   fail('ONLINE_INSTALL_FAILED_'+stage.toUpperCase().replaceAll('-','_'));
@@ -132,6 +143,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const result=await installOnlineExperiment({packageRoot,target},{progress:stage=>console.log('Stage: '+stage)});
   console.log('Prepared, not acceptance-tested. Start P2-Workbench.bat inside the target. Retain the preparation directory until acceptance.');
   console.log('Target: '+result.target);
+  console.log('Version: '+result.version);
  }catch{console.error('Online installation refused or failed. Do not retry over an existing target, remove locks, or delete preparation directories. Preserve the local receipt.');process.exitCode=1;}
  finally{prompt?.close();}
 }

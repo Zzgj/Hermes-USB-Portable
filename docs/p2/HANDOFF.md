@@ -1,5 +1,29 @@
 # P2 单分支交接与剩余审查
 
+## bete0.0.1交付批次：已批准，修正版回归通过，制包待执行
+
+总监已批准本节批次，第1项各执行一次且全部退出0：语法检查、Node53/53、Python20/20，均无跳过/失败，源码身份不变。证据 `evidence/p2-bete001/`。下文“等待批准/未测”是此前记录，不重复申请或重跑；继续原批次第2/3项，非预期失败停批。此批准不延伸为Windows安装或GitHub Release发布。
+
+独立复审 `deleg_73dd8532` 已完成，限定修正增量无静态阻塞；lead核对涉及文件与修正版冻结身份一致。没有执行测试/构建/安装；以下一次批次继续等待总监决定，静态通过不是发布批准。
+
+审查后修正版覆盖初始冻结：identity SHA256 `1fdf474a99ca384eeec0aad18c554f6e4e139ff25bd30f2fc6d579c10ec77788`。恢复旧P2共享白名单，首次安装从tracked manifests传递版本；补native-experiment/package回归及Python bool schema拒绝。原有测试命令已覆盖这些改动，执行仍待批准；初始静态审查发现与处置见进度顶部。禁止对旧冻结直接执行并归因到修正版。
+
+总监确认GitHub Release分发，取消旧U盘安装包获取，要求直接生成 `bete0.0.1.zip`。精确名称保留，不改成beta。基线 `352f279c9d52ead08cfec7f0486976ad8124b946`；冻结identity SHA256 `99b6461e468d3d9d5037bf80e33a2a6cb75078bd99f715efa9479467e043e046`。本机独立子Agent `deleg_2561d6cb` 仅静态审查，不代测；新增版本接线尚未执行验证。
+
+申请一次集中验证/制包批次，各命令一次，非预期失败停批，修正和重跑另报范围：
+
+1. 冻结副本cwd=workbench：`node --check scripts/install-online-experiment.mjs`；`node --test tests/online-install.test.mjs tests/native-experiment.test.mjs tests/experiment-command.test.mjs tests/native-package-contract.test.mjs tests/package.test.mjs tests/portable-layout.test.mjs`；`python3 -B -m unittest discover -s tests -p 'test_online_package*.py' -v`。标准库和现有Node，合成归档/命令替身，不执行Windows程序或联网安装。
+2. 静态审查和回归无阻塞后，将精确源码固定到dev/lead开发提交，按照既有授权同步并回读origin身份；未证实远端可取得提交时不声称在线安装来源可用。新干净提交副本运行 `python3 -B workbench/scripts/build-online-package.py --repository <固定提交目录> --archives /home/zgj/.hermes/profiles/usb-project-lead/cache/scratch/online-runtime-archives-v0mxhh0j --output <新建专用输出目录>`。复用已锁定的五份材料，不重新下载或安装。
+3. 独立检查ZIP CRC、路径/链接/大小写冲突、精确清单/大小/哈希、版本bete0.0.1与源码身份、bootstrap字节/导入闭包、启动器CRLF、供应商投影与空npm配置省略，保存日志与结果；通过后复制到桌面持久交付目录，保留SHA256和明确Windows待验说明。
+
+预计隔离回归数秒、制包核验数分钟，专用磁盘数GB；不碰旧U盘/真实实例/个人配置，不启动服务或模型，不改变release_ready，不发布GitHub Release。此批不实现外壳更新器，版本清单明确updateCapability=unavailable；仅生成新基线不能宣称已解决后续原地升级。总监的生成请求已收到，但新增lead验证仍先报告并等待批准。
+
+## 当前本机工作：P2-ONLINE-BUILD-13（完整builder回归19项通过）
+
+总监要求reviewer不可用期间先推进其他本机开发/测试。暂停远端查重重发，不用Wine替代原生Windows验收。本批基线 `352f279c9d52ead08cfec7f0486976ad8124b946`，新增 `workbench/tests/test_online_package_build.py`，生产实现不变。用实际build调用串起校验/提取/空配置投影/清单/ZIP；仅Git身份读取用严格替身，runtime为合成非可执行文件。详情和状态只在PROGRESS-GUIDE顶部维护。
+
+此批已获总监批准并实际执行：冻结基线+新测试在profile scratch；cwd=workbench；一次 `python3 -B -m unittest discover -s tests -p 'test_online_package*.py' -v`。19通过、0失败/跳过，退出0，源码身份不变；日志及完整记录见 `evidence/p2-online-build-13/`。只用标准库与少量合成临时材料，无依赖安装、网络、Git子进程、供应商程序、Hermes/模型、监听服务或真实实例。未重跑、未重新制包、未推送。新增测试未独立复审；旧候选包的Windows未验状态不变。
+
 ## 当前交付：P2-09-ONLINE-INSTALL-12（候选包已核验，Windows待验）
 
 本节已批准的修正版回归和制包批次均实际完成，没有扩大到Windows执行。包固定源码为 `837caf5709f62ddfadd904532cbc01443cb0dfb4`；builder退出0，最终ZIP独立核验通过，精确包名/大小/SHA256和检查项见 `evidence/p2-online-install-12/package/verification.json`。后续文档/证据提交不改变包内源码身份。下方待批准/待制包描述均为历史过程，不再重跑。

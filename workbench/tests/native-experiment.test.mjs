@@ -17,6 +17,7 @@ const projectCommit='a'.repeat(40);
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const componentLockSha256=hash(readFileSync(join(repo,'manifests/runtime-components.windows-x64.json')));
 const shell=['launch.bat','P2-Workbench.bat','scripts/start-p2-workbench.ps1','scripts/open-hermes.ps1','scripts/start-web-workbench.ps1'];
+const trackedShell=[...shell,'manifests/runtime-components.windows-x64.json','manifests/portable-release.json'];
 const runtimeFiles=['python/python.exe','node/node.exe','node/node_modules/npm/bin/npm-cli.js','uv/uv.exe','git/cmd/git.exe','git/bin/bash.exe'];
 const exists=async p=>{try{await lstat(p);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 function put(path,bytes){mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);}
@@ -34,13 +35,13 @@ async function fixture(t){
   if(args[0]==='-C'){
    if(args[2]==='rev-parse')return args[1]===source||args[1].endsWith('hermes-agent')?NATIVE_BASELINE:projectCommit;
    if(args[2]==='status')return '';
-   if(args[2]==='ls-files')return [...shell,'manifests/runtime-components.windows-x64.json'].join('\0')+'\0';
+   if(args[2]==='ls-files')return trackedShell.join('\0')+'\0';
    if(['checkout','remote'].includes(args[2]))return '';
   }
   if(args[0]==='clone'){
    const destination=args.at(-1);mkdirSync(destination,{recursive:true});
    if(destination.endsWith('project')){
-    for(const p of new Set([...packageFiles,...shell,'manifests/runtime-components.windows-x64.json']))put(join(destination,p),readFileSync(join(repo,p)));
+    for(const p of new Set([...packageFiles,...trackedShell]))put(join(destination,p),readFileSync(join(repo,p)));
    }else put(join(destination,'hermes_cli','main.py'),'# synthetic source');
    return '';
   }
@@ -104,6 +105,8 @@ test('apply wires fixed source, fresh venv, both builds and final readiness with
  const lock=await readFile(join(root,'manifests','runtime-components.windows-x64.json'));
  assert.equal((await readFile(join(runtime,'ready.flag'),'utf8')).trim(),hash(lock));
  assert.equal(JSON.parse(lock).components.find(c=>c.id==='hermes-agent').source.commit,NATIVE_BASELINE);
+ assert.equal(packageFiles.includes('manifests/portable-release.json'),false,'first-install identity is not a legacy P2 payload');
+ assert.deepEqual(await readFile(join(root,'manifests','portable-release.json')),await readFile(join(repo,'manifests','portable-release.json')));
  assert.equal(await exists(join(root,'logs','diagnostics','p2-install-active.json')),false);
  assert.ok(calls.some(c=>c.args[0]==='sync'&&c.args.includes('--locked')));
  assert.equal(calls.filter(c=>c.args[1]==='run'&&c.args[2]==='build').length,2);

@@ -1,0 +1,25 @@
+test_duplicate_case_alias_is_rejected (test_online_package.OnlinePackageTests.test_duplicate_case_alias_is_rejected) ... ok
+test_existing_target_and_wrong_prefix_fail_closed (test_online_package.OnlinePackageTests.test_existing_target_and_wrong_prefix_fail_closed) ... ok
+test_file_cannot_be_reused_as_an_implicit_parent (test_online_package.OnlinePackageTests.test_file_cannot_be_reused_as_an_implicit_parent) ... ok
+test_implicit_parent_case_alias_is_rejected (test_online_package.OnlinePackageTests.test_implicit_parent_case_alias_is_rejected) ... ok
+test_missing_or_linked_vendor_npmrc_is_rejected (test_online_package.OnlinePackageTests.test_missing_or_linked_vendor_npmrc_is_rejected) ... ok
+test_nonempty_vendor_npmrc_is_rejected_and_preserved (test_online_package.OnlinePackageTests.test_nonempty_vendor_npmrc_is_rejected_and_preserved) ... ok
+test_only_empty_vendor_npmrc_is_omitted_from_extracted_copy (test_online_package.OnlinePackageTests.test_only_empty_vendor_npmrc_is_omitted_from_extracted_copy) ... ok
+test_shared_parent_and_later_explicit_directory_are_valid (test_online_package.OnlinePackageTests.test_shared_parent_and_later_explicit_directory_are_valid) ... ok
+test_tar_regular_file_and_link_boundary (test_online_package.OnlinePackageTests.test_tar_regular_file_and_link_boundary) ... ok
+test_traversal_cannot_escape_target (test_online_package.OnlinePackageTests.test_traversal_cannot_escape_target) ... ok
+test_vendor_resource_names_roundtrip_without_renaming (test_online_package.OnlinePackageTests.test_vendor_resource_names_roundtrip_without_renaming) ... ok
+test_windows_aliases_and_invalid_material_names (test_online_package.OnlinePackageTests.test_windows_aliases_and_invalid_material_names) ... ok
+test_zip_link_is_rejected (test_online_package.OnlinePackageTests.test_zip_link_is_rejected) ... ok
+test_build_writes_exact_archive_manifest_projection_and_checksum (test_online_package_build.OnlineBuildContractTests.test_build_writes_exact_archive_manifest_projection_and_checksum) ... ok
+test_dirty_source_rejects_before_archive_extraction (test_online_package_build.OnlineBuildContractTests.test_dirty_source_rejects_before_archive_extraction) ... ok
+test_existing_output_preserves_sentinel_without_git_or_extraction (test_online_package_build.OnlineBuildContractTests.test_existing_output_preserves_sentinel_without_git_or_extraction) ... ok
+test_last_archive_size_or_hash_mismatch_precedes_all_extraction (test_online_package_build.OnlineBuildContractTests.test_last_archive_size_or_hash_mismatch_precedes_all_extraction) ... ok
+test_nonempty_vendor_config_preserves_failed_stage_without_zip (test_online_package_build.OnlineBuildContractTests.test_nonempty_vendor_config_preserves_failed_stage_without_zip) ... ok
+test_output_inside_source_is_rejected_before_git (test_online_package_build.OnlineBuildContractTests.test_output_inside_source_is_rejected_before_git) ... ok
+test_release_identity_rejected_before_extraction (test_online_package_build.OnlineBuildContractTests.test_release_identity_rejected_before_extraction) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.025s
+
+OK

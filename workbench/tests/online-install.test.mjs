@@ -9,6 +9,8 @@ import {isMaterialPath} from '../scripts/material-path.mjs';
 
 const baseline='28044757aabd34010bd9f5f3e3f82b0906b46241',commit='a'.repeat(40);
 const hash=b=>createHash('sha256').update(b).digest('hex');
+const releaseBytes=await readFile(new URL('../../manifests/portable-release.json',import.meta.url));
+const release=JSON.parse(releaseBytes);
 async function put(path,data){await mkdir(dirname(path),{recursive:true});await writeFile(path,data);}
 async function fixture(t){
  const root=await mkdtemp(join(tmpdir(),'online-test-'));t.after(()=>rm(root,{recursive:true,force:true}));
@@ -21,9 +23,10 @@ async function fixture(t){
   ['runtime/node/node_modules/npm/bin/npm-cli.js','synthetic'],['runtime/uv/uv.exe','synthetic'],['runtime/bin/rg.exe','synthetic'],
   ['runtime/python/Lib/site-packages/setuptools/script (dev).tmpl','synthetic resource'],
   ['archives/portablegit.exe',gitArchive],['runtime-components.windows-x64.json',lockBytes],
+  ['manifests/portable-release.json',releaseBytes],
  ]);
  const files=[];for(const [path,value] of payload){const data=Buffer.from(value);await put(join(packageRoot,path),data);files.push({path,size:data.length,sha256:hash(data)});}
- const manifest={schema:1,kind:'online-native-experiment',baseline,projectCommit:commit,release_ready:false,files};
+ const manifest={schema:1,kind:'online-native-experiment',baseline,projectCommit:commit,version:release.version,release_ready:false,files};
  const manifestPath=join(packageRoot,'online-package.json');await writeFile(manifestPath,JSON.stringify(manifest));
  const calls=[];let active=0,maximum=0;
  const run=async(file,args,settings,limits)=>{
@@ -36,7 +39,10 @@ async function fixture(t){
    if(args[0]==='init')return '';
    if(args[0]==='-C'){
     if(args[2]==='rev-parse')return args[1].endsWith('project')?commit:baseline;
-    if(args[2]==='checkout'&&args[1].endsWith('project'))await put(join(args[1],'manifests','runtime-components.windows-x64.json'),lockBytes);
+    if(args[2]==='checkout'&&args[1].endsWith('project')){
+     await put(join(args[1],'manifests','runtime-components.windows-x64.json'),lockBytes);
+     await put(join(args[1],'manifests','portable-release.json'),releaseBytes);
+    }
     return '';
    }
    assert.ok(args[0].endsWith('prepare-native-experiment.mjs'));assert.equal(args[2],'--apply-experimental');
@@ -46,6 +52,7 @@ async function fixture(t){
    const finalLock=Buffer.from(JSON.stringify({experimental_native:{projectCommit:commit,release_ready:false,entryScope:'cli-and-dashboard'}}));
    const result={status:'prepared-not-accepted',baseline,projectCommit:commit,entryScope:'cli-and-dashboard'};
    await put(join(target,'manifests','runtime-components.windows-x64.json'),finalLock);
+   await put(join(target,'manifests','portable-release.json'),releaseBytes);
    await put(join(target,'.cache','runtimes','windows-x64','ready.flag'),hash(finalLock));
    await put(join(target,'logs','diagnostics','native-experiment-preparation.json'),JSON.stringify(result));
    for(const p of ['P2-Workbench.bat','scripts/start-p2-workbench.ps1','workbench/dist/index.html','src/hermes-agent/hermes_cli/web_dist/index.html'])await put(join(target,p),'synthetic');
@@ -59,10 +66,39 @@ async function fixture(t){
 test('online chain uses exact source revisions, owned scratch, fresh assembly and artifact readback',async t=>{
  const f=await fixture(t);const result=await installOnlineExperiment(f.options,f.deps);
  assert.equal(result.status,'prepared-not-accepted');assert.equal(result.release_ready,false);assert.equal(f.maximum(),1);
+ assert.equal(result.version,'bete0.0.1');
  assert.equal(f.calls.filter(c=>c.args.includes('fetch')).length,2);
  assert.ok(f.calls.filter(c=>c.args.includes('fetch')).every(c=>c.args.includes('--depth=1')&&c.args.includes('credential.helper=')));
  for(const c of f.calls){assert.equal(c.settings.env.PRIVATE_TOKEN,undefined);assert.equal(c.limits.scratch,join(result.work,'tmp'));}
  assert.equal(JSON.parse(await readFile(join(result.work,'online-result.json'),'utf8')).status,'prepared-not-accepted');
+ assert.equal(JSON.parse(await readFile(join(result.work,'online-result.json'),'utf8')).version,'bete0.0.1');
+});
+
+test('package version mismatch refuses before staging or commands',async t=>{
+ const f=await fixture(t);f.manifest.version='beta0.0.1';await writeFile(f.manifestPath,JSON.stringify(f.manifest));
+ await assert.rejects(installOnlineExperiment(f.options,f.deps),/ONLINE_RELEASE_INVALID/);
+ assert.equal(f.calls.length,0);assert.deepEqual(await readdir(f.root),['package']);
+});
+
+test('fetched release bytes must match package before dependency commands',async t=>{
+ const f=await fixture(t);
+ await assert.rejects(installOnlineExperiment(f.options,{...f.deps,run:async(...args)=>{
+  const output=await f.run(...args);const a=args[1];
+  if(a[0]==='-C'&&a[2]==='checkout'&&a[1].endsWith('project'))await writeFile(join(a[1],'manifests/portable-release.json'),'{}');
+  return output;
+ }}),/ONLINE_INSTALL_FAILED_SOURCE/);
+ assert.ok(f.calls.every(c=>!c.args[0].endsWith('prepare-native-experiment.mjs')));
+});
+
+test('installed release mismatch cannot publish a successful receipt',async t=>{
+ const f=await fixture(t);
+ await assert.rejects(installOnlineExperiment(f.options,{...f.deps,run:async(...args)=>{
+  const output=await f.run(...args);
+  if(args[1][0].endsWith('prepare-native-experiment.mjs'))await writeFile(join(f.options.target,'manifests/portable-release.json'),'{}');
+  return output;
+ }}),/ONLINE_INSTALL_FAILED_READBACK/);
+ const work=(await readdir(f.root)).find(p=>p.startsWith('.hermes-online-'));
+ assert.equal(JSON.parse(await readFile(join(f.root,work,'online-result.json'),'utf8')).status,'failed-preserved');
 });
 
 test('existing destination preserves sentinel and launches zero commands',async t=>{

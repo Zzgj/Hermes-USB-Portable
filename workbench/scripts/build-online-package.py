@@ -127,6 +127,16 @@ def build(repository, archives, output):
     commit = git('rev-parse', 'HEAD').decode().strip()
     if not re.fullmatch('[a-f0-9]{40}', commit) or git('status', '--porcelain=v1', '--untracked-files=all'):
         raise ValueError('CLEAN_FIXED_SOURCE_REQUIRED')
+    release_bytes = git('show', f'{commit}:manifests/portable-release.json')
+    release = json.loads(release_bytes)
+    version = release.get('version') if isinstance(release, dict) else None
+    if (not isinstance(version, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,63}', version)
+            or not material_path(version) or type(release.get('schema')) is not int or release.get('schema') != 1
+            or release.get('product') != 'Hermes-USB-Portable' or release.get('channel') != 'test'
+            or release.get('hermesCommit') != BASELINE or release.get('release_ready') is not False
+            or release.get('updateCapability') != 'unavailable'
+            or release.get('distribution') != {'kind': 'github-releases', 'repository': 'Zzgj/Hermes-USB-Portable'}):
+        raise ValueError('RELEASE_IDENTITY_INVALID')
     lock_bytes = git('show', f'{commit}:manifests/runtime-components.windows-x64.json')
     lock = json.loads(lock_bytes)
     components = {c['id']: c for c in lock['components']}
@@ -142,7 +152,7 @@ def build(repository, archives, output):
             raise ValueError('ARCHIVE_IDENTITY_MISMATCH')
         identities.append({'id': identifier, 'size': len(data), 'sha256': digest(data), 'source': component['source']['url']})
     output.mkdir()
-    root = output / 'Hermes-Portable-Online-Test'
+    root = output / version
     root.mkdir()
     for identifier, folder, prefix in [
         ('python', 'python', 'python'),
@@ -156,6 +166,8 @@ def build(repository, archives, output):
     (root / 'archives').mkdir()
     shutil.copyfile(archives / 'portablegit.archive', root / 'archives' / 'portablegit.exe')
     (root / 'runtime-components.windows-x64.json').write_bytes(lock_bytes)
+    (root / 'manifests').mkdir()
+    (root / 'manifests/portable-release.json').write_bytes(release_bytes)
     for name in BOOTSTRAP:
         relative = 'workbench/scripts/' + name
         path = root / relative
@@ -173,18 +185,19 @@ def build(repository, archives, output):
             data = path.read_bytes()
             files.append({'path': path.relative_to(root).as_posix(), 'size': len(data), 'sha256': digest(data)})
     manifest = {'schema': 1, 'kind': 'online-native-experiment', 'projectCommit': commit,
+                'version': version,
                 'baseline': BASELINE, 'release_ready': False, 'files': files, 'archives': identities,
                 'requiresNetwork': True, 'windowsAcceptance': 'not-performed-by-builder',
                 'omittedVendorFiles': omitted}
     (root / 'online-package.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-    archive = output / ('Hermes-Portable-Online-Test-' + commit[:12] + '.zip')
+    archive = output / (version + '.zip')
     with zipfile.ZipFile(archive, 'x', zipfile.ZIP_DEFLATED, compresslevel=6) as zipped:
         for path in sorted(root.rglob('*')):
             if path.is_file():
                 zipped.write(path, path.relative_to(output).as_posix())
     checksum = digest(archive.read_bytes())
     (output / (archive.name + '.sha256')).write_text(checksum + '  ' + archive.name + '\n', encoding='ascii')
-    return {'projectCommit': commit, 'archive': str(archive), 'sha256': checksum,
+    return {'projectCommit': commit, 'version': version, 'archive': str(archive), 'sha256': checksum,
             'status': 'built-not-verified', 'release_ready': False}
 
 

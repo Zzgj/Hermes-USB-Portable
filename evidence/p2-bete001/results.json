@@ -1,0 +1,840 @@
+{
+  "base": "352f279c9d52ead08cfec7f0486976ad8124b946",
+  "runs": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "scripts/install-online-experiment.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.038,
+      "log": "1.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/online-install.test.mjs",
+        "tests/native-experiment.test.mjs",
+        "tests/experiment-command.test.mjs",
+        "tests/native-package-contract.test.mjs",
+        "tests/package.test.mjs",
+        "tests/portable-layout.test.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.552,
+      "log": "2.log",
+      "logSha256": "7221991c4e4b7876d0c936f1e66fbde1a55d89efde4a54ca56c2a1f12661cae3",
+      "publishedLogSha256": "7221991c4e4b7876d0c936f1e66fbde1a55d89efde4a54ca56c2a1f12661cae3"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_online_package*.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.11,
+      "log": "3.log",
+      "logSha256": "d2b9e966f2b193b5debc2b16cce410086133f430d1182ae7597a5fe0faf0fe6c",
+      "publishedLogSha256": "d2b9e966f2b193b5debc2b16cce410086133f430d1182ae7597a5fe0faf0fe6c"
+    }
+  ],
+  "version": "bete0.0.1",
+  "sourceIdentitySha256": "1fdf474a99ca384eeec0aad18c554f6e4e139ff25bd30f2fc6d579c10ec77788",
+  "sourceFiles": [
+    {
+      "path": "manifests/log-sources.json",
+      "sha256": "7fe2764bdbd398fe9a5bfbb2b5dc7ca26ff547b7b26b7c2243fbd960081aa946"
+    },
+    {
+      "path": "manifests/portable-release.json",
+      "sha256": "0993017d70c9b933183c317a6151fbf86ad89b8d967d4f51dbfc04e172b69e45"
+    },
+    {
+      "path": "manifests/runtime-components.windows-x64.json",
+      "sha256": "ed591956010ade14356663926463fcf5e19bb1ad539bff91ce47ca81c4c8531b"
+    },
+    {
+      "path": "workbench/.gitignore",
+      "sha256": "ca1b4d94179a0598d1494b599db966280ffbb40101b26558e56bd7cefb5200b8"
+    },
+    {
+      "path": "workbench/.stitch/metadata.json",
+      "sha256": "a75c73b4a4cd4cd3a10902936c9fe101de483e489db108aa50b8657621dc3df0"
+    },
+    {
+      "path": "workbench/README.md",
+      "sha256": "6dad8927963927580a669ea7979ba64ca3227f3136d399030acd0d76ef9f9798"
+    },
+    {
+      "path": "workbench/hermes-compatibility.json",
+      "sha256": "e4c8a4b5bd280e1702d5858aa62b05b5a264e0f7b40a48d4334b8ecf6cb364bd"
+    },
+    {
+      "path": "workbench/index.html",
+      "sha256": "8da2bead9993e018e3c9502e76a55ec1521e77235fa026f90ea19d1db87193d7"
+    },
+    {
+      "path": "workbench/package-lock.json",
+      "sha256": "93f59069b81a9249f53d2b42e1784e9f1ad6a5d52bceec032c9bcb1865404942"
+    },
+    {
+      "path": "workbench/package.json",
+      "sha256": "57e1346cc4d0437a6bdd17036c5cb4bce71c76dc6c7feba5629b0fc10164d3d5"
+    },
+    {
+      "path": "workbench/postcss.config.cjs",
+      "sha256": "a3cd1abc86d9e8ca87de3ec016f21fb0b3dc06bfab79429aed110d6c768698b7"
+    },
+    {
+      "path": "workbench/resources/style-guide.json",
+      "sha256": "3312600a0b17633a3a7a66b56ce6db051a655349c5ec93691b53d578d6eed0e5"
+    },
+    {
+      "path": "workbench/scripts/build-online-package.py",
+      "sha256": "7038b734ce8b524d59ce24a0b0ac5df49f2df1db570ed7c9e7a9e1cacaabeadd"
+    },
+    {
+      "path": "workbench/scripts/build-p2-package.mjs",
+      "sha256": "d84500a4211d831882ca7e521a4fdff99edbfb3a1f52aa12384972b763d07de8"
+    },
+    {
+      "path": "workbench/scripts/check-hermes-baseline.mjs",
+      "sha256": "b4bda0c19dcb6e71bf1ad533fc504a7ed3c68c1210ff116dfe93a86bcd7ddf07"
+    },
+    {
+      "path": "workbench/scripts/control-server.mjs",
+      "sha256": "c579c6e374e803d3f877c32b71fb307854baabea5ee6f2ed2faac21d40e329eb"
+    },
+    {
+      "path": "workbench/scripts/entry-capabilities.mjs",
+      "sha256": "b922017b514b579667eedb2b8448dcc19b51c785f1b843d40200a5c205d5216b"
+    },
+    {
+      "path": "workbench/scripts/entry-detect.mjs",
+      "sha256": "0a7eea70f49a35608693ce64d8524576e26068e3cfb11ef425aab99b2ab7c72b"
+    },
+    {
+      "path": "workbench/scripts/experiment-command-worker.py",
+      "sha256": "26c660eb63e0a836898ff314607d96a57154e0632211530aa9ef94ef2dbedf08"
+    },
+    {
+      "path": "workbench/scripts/experiment-command.mjs",
+      "sha256": "9c5bd3b49e77f0be9a8bc4c2a205bd23a85c4c9799d3af02eada6fa4ef54b413"
+    },
+    {
+      "path": "workbench/scripts/hermes-health.mjs",
+      "sha256": "8056da744e46a3ca9110d6a616f4cf06354b6d7cc7f3e7dd3b2c5e5473503361"
+    },
+    {
+      "path": "workbench/scripts/hermes-instance.mjs",
+      "sha256": "00a5ce5e5fc9a659221a74fb500f95f4352a8222c0a0c7fa4acfc9e33d9ab84b"
+    },
+    {
+      "path": "workbench/scripts/install-online-experiment.mjs",
+      "sha256": "607b5a7e51a580585124a69f7aa709db1fccf5c4f5adc2b495cb82f9b41fe4ed"
+    },
+    {
+      "path": "workbench/scripts/install-p2-package.mjs",
+      "sha256": "bd35419aa5cd1c4dd4ad4dc4a5c4c61941e6f42fee037a223ec1136461dac563"
+    },
+    {
+      "path": "workbench/scripts/instance-lock.mjs",
+      "sha256": "395e71f309caecd8aa134e7bbfc67e629e0e8a10216e9391588b22d288a46e13"
+    },
+    {
+      "path": "workbench/scripts/launch-managed.mjs",
+      "sha256": "3fa42505b994c2cc2022faa1b724c7012f59124dedda355b48cc3e75a28ceb82"
+    },
+    {
+      "path": "workbench/scripts/launcher-ui.mjs",
+      "sha256": "26fb93aaf5cbeb66e8686e5eaa870f3c5da2b293f580cb656871a0ef8d38778c"
+    },
+    {
+      "path": "workbench/scripts/legacy-hermes-entry.mjs",
+      "sha256": "641bc0398e99cb6054fc187aacfdbc5893adb06687a23114cd5563f6b961861f"
+    },
+    {
+      "path": "workbench/scripts/managed-instance.mjs",
+      "sha256": "79884a6b045e473ef2a36dd417f334e6681d86cf1c40454f04bbd261b640e4e1"
+    },
+    {
+      "path": "workbench/scripts/material-path.mjs",
+      "sha256": "a34c0c874386e6e237c1658d31c53bea6ee1d6cb7ac477647558a9c950e824f4"
+    },
+    {
+      "path": "workbench/scripts/native-console-process.mjs",
+      "sha256": "fd9f870d90b1517d04097b0ee1b446108645371076e031b51573fd6c6e4e4c95"
+    },
+    {
+      "path": "workbench/scripts/native-dashboard-health.mjs",
+      "sha256": "d317eeb02a9dcb6e68630eca18df4a6d37daf0999e4e7811a2070dfa733f4957"
+    },
+    {
+      "path": "workbench/scripts/native-entry-adapters.mjs",
+      "sha256": "aaaf6e44738374dca57ae041dc19d6cce6f10cb0df927f1c1b883ad666f6c865"
+    },
+    {
+      "path": "workbench/scripts/native-entry-host.py",
+      "sha256": "4d39fd1f152f62fc7b4a59f1f62df088fc71c01cac07288253f8036291e942f0"
+    },
+    {
+      "path": "workbench/scripts/native-entry-manager.mjs",
+      "sha256": "2a6881e43a5531c07a2303125d805df0267bf9238518436da716ba372ca1fdc7"
+    },
+    {
+      "path": "workbench/scripts/native-entry-session.mjs",
+      "sha256": "14a5426bb4ecba35a5ffb8d00b00b7fb6e28d0a07d1f820165e9ffef9da91740"
+    },
+    {
+      "path": "workbench/scripts/native-owned-process.mjs",
+      "sha256": "89c6eebade20f7527a96bd03206d4a9f2455ba587fe816226e1e8883a2545946"
+    },
+    {
+      "path": "workbench/scripts/native-process-protocol.mjs",
+      "sha256": "2faed708b669ab680fafd71e5190e8f75038f71ee390f7d46bf472b5b0a591fe"
+    },
+    {
+      "path": "workbench/scripts/open-local-browser.mjs",
+      "sha256": "d736dbf88a77497f4b40109421c2ade91f634fe57351d94c10f965c45f1fb597"
+    },
+    {
+      "path": "workbench/scripts/owned-process.mjs",
+      "sha256": "1df03f5fc9c373d0998b57e8aaa1179d302b1657d9f6019f03a8fdadb5e1d3e4"
+    },
+    {
+      "path": "workbench/scripts/package-policy.mjs",
+      "sha256": "a44e9e22c810a3eded9595bf02c36269b091f9d87a8873ab46817e3adbec4a0a"
+    },
+    {
+      "path": "workbench/scripts/portable-entry-guard.json",
+      "sha256": "7fab0a0a8e7312aa340f3a1ba787e75445b525d3637e2af1193045df177998c4"
+    },
+    {
+      "path": "workbench/scripts/portable-entry-guard.mjs",
+      "sha256": "71b9ea5b6bc5607fe59981ddb9b73753b9309457c872e5798447c282f634c294"
+    },
+    {
+      "path": "workbench/scripts/portable-layout.mjs",
+      "sha256": "076abf3a91564a6c06f631bcc13629c9d8424519f7b042253c61c16b4b919bb1"
+    },
+    {
+      "path": "workbench/scripts/portable-native-entries.mjs",
+      "sha256": "66cc9b02b8e195dbfecd2dd08dfb7413d118da931cdf07c0a8d3d81853f9b32f"
+    },
+    {
+      "path": "workbench/scripts/prepare-capability.mjs",
+      "sha256": "25bd3d075bfa45275a89d1ffa16d576987ac2697ac3059aa19515f5b29be3236"
+    },
+    {
+      "path": "workbench/scripts/prepare-learn.mjs",
+      "sha256": "c8b72736875426d4e8e1a007f659cff65a0d6d93be27c186a203693771d188a7"
+    },
+    {
+      "path": "workbench/scripts/prepare-learn.py",
+      "sha256": "2dd6c025978e259348433b068a3fc4ab04e9e3edbf0abf56b314cd102b3b784f"
+    },
+    {
+      "path": "workbench/scripts/prepare-native-experiment.mjs",
+      "sha256": "3b040dabfc1f89b36ac50834b371c3353e2f58871893a87f838e7695e57b7f00"
+    },
+    {
+      "path": "workbench/scripts/probe-hermes-isolated.sh",
+      "sha256": "988f4ef9626d583711ecf9b5b401fa3bd8ca87ebe28f2ea074ee80f94d4a89f5"
+    },
+    {
+      "path": "workbench/scripts/probe-hermes-protocol.py",
+      "sha256": "4e785c8f1c128cfec832d7b04f8ee76812f82820821e1784b538d0fc6c372ac4"
+    },
+    {
+      "path": "workbench/scripts/probe-managed-isolated.sh",
+      "sha256": "fa840565a8413ce0d2f62d7488c2787b760fe69345caba91bf5d00447c7ca92f"
+    },
+    {
+      "path": "workbench/scripts/probe-managed.mjs",
+      "sha256": "a928f59d51401f9d0e1cb06e0a7bb63eee7f5b19778aed5b0336bff4490ac922"
+    },
+    {
+      "path": "workbench/scripts/probe-websocket-origin.py",
+      "sha256": "d289c5a5880c4a245278ffecbdba62eee442127fc770854df621cf2cd642535c"
+    },
+    {
+      "path": "workbench/scripts/skill-catalog.mjs",
+      "sha256": "b9e7c8848f2d67924bed627c87d777059487f8bb4c07b364029b20d70d764876"
+    },
+    {
+      "path": "workbench/scripts/validate.mjs",
+      "sha256": "4fd64020277757d2a4139662230cd9abc01bb42299275bb134f08c161121c350"
+    },
+    {
+      "path": "workbench/scripts/windows-job-host.py",
+      "sha256": "4add8114d01e859ab9331bc0fdfeae0b7f9241dd887bc7eba6428b14947b1f2b"
+    },
+    {
+      "path": "workbench/src/App.tsx",
+      "sha256": "6c5dd0146ea9fb1a3430622fb5936c91d6fadd08fe3592a74c6c71f8e2cb2689"
+    },
+    {
+      "path": "workbench/src/components/EntryCapabilitiesPanel.tsx",
+      "sha256": "8c12ade6d36f40c864009efb1128bc4f01cbc4cd01958dda644e4c58357b06de"
+    },
+    {
+      "path": "workbench/src/components/LiveTurn.tsx",
+      "sha256": "f0f42c5c1e578b0950d3a5d85be66e84176888c5572569e5519fbc6686bf802f"
+    },
+    {
+      "path": "workbench/src/components/NativeEntryPanel.tsx",
+      "sha256": "bcb2ce5a1ada0b8a608a30dc14dc4101b47be56bb1221b20ed12f5d8b35b7ca9"
+    },
+    {
+      "path": "workbench/src/components/Panel.tsx",
+      "sha256": "dd4001ef89c95d7c565d098150ec07ace769f4956efdeb82eefe5cd7641f69c9"
+    },
+    {
+      "path": "workbench/src/components/ServiceControls.tsx",
+      "sha256": "7ac14df655c4c291d89bb5c3a32568bff57119fbb54986b0a33cf2834a9b8d49"
+    },
+    {
+      "path": "workbench/src/components/Shell.tsx",
+      "sha256": "46cd3fc5e6649a20b95a541ee78cc91f092275b564331e67516c23d6e3b37de2"
+    },
+    {
+      "path": "workbench/src/components/ShortcutCard.tsx",
+      "sha256": "4021b2155c8f7ddbf34894e865ed81d779e796b2ca3c34d4479d2d9316e19443"
+    },
+    {
+      "path": "workbench/src/components/StatusBadge.tsx",
+      "sha256": "a66f09702f129319d536082b104e44b9cedef7e1394268bb4f625b178f5b6ad3"
+    },
+    {
+      "path": "workbench/src/components/WorkflowInputs.tsx",
+      "sha256": "bf73b90dccd4e40e4c47a292e4f5016c926b3b2367283526ee7e63de9a5d6b1d"
+    },
+    {
+      "path": "workbench/src/data/mockData.ts",
+      "sha256": "cb88702f2288b7710638e797cb35d70b37f5dc88d24b394b2d5825e9971303c6"
+    },
+    {
+      "path": "workbench/src/domain/approval.ts",
+      "sha256": "92a9859b634383229def4df7610dc9a84fb090687017de0830e14ff5b54d80ae"
+    },
+    {
+      "path": "workbench/src/domain/bootstrap.ts",
+      "sha256": "15a9c87a8edb0c914f2a4ec81761101d09cee43c5bd3d0fd6b65bd25be55d86d"
+    },
+    {
+      "path": "workbench/src/domain/capability-execution.ts",
+      "sha256": "d3886558858aa9e4dbf47f8210b4d2aa98e523a2b64caf070e7d56c663eda352"
+    },
+    {
+      "path": "workbench/src/domain/capability-run.ts",
+      "sha256": "b380bc894ebee7a2438abe1fe89484110ebc84f332db2bf529171ceb2c260cdd"
+    },
+    {
+      "path": "workbench/src/domain/capability-storage.ts",
+      "sha256": "a29f6f6c684282c689596bbd4aa97f8d509a213a8fcc26d55bba7b9684abb58e"
+    },
+    {
+      "path": "workbench/src/domain/capability.ts",
+      "sha256": "117da947b53bd14226556957eb3f3e37e67c63cdca499dfa3784a10f00f6d769"
+    },
+    {
+      "path": "workbench/src/domain/chat-events.ts",
+      "sha256": "af75b2d2d5aa58af42eca7eb6d65d43396c23fba67a2e21907042c7faa99811f"
+    },
+    {
+      "path": "workbench/src/domain/control.ts",
+      "sha256": "cd134522e71bc9ca081caa4efeaa3e7071b0741a10f76b78c97c845a8dc00108"
+    },
+    {
+      "path": "workbench/src/domain/entry-capabilities.ts",
+      "sha256": "b25b6651aa30ff618a8a48398cfc67ec2dade940ff5279d3906edc8db3cbc95b"
+    },
+    {
+      "path": "workbench/src/domain/entry-detect.ts",
+      "sha256": "117e7b84425f466e7550365a63cbe70e05baafa2e266eefae640bc49514efca5"
+    },
+    {
+      "path": "workbench/src/domain/learn.ts",
+      "sha256": "35772f1b57ec500edefa8016d56c9627d2e38a1437d6a4991c30297b7c835764"
+    },
+    {
+      "path": "workbench/src/domain/learning-source.ts",
+      "sha256": "f3571aea845ea054cab7012a2695247c781408d59eb196edf6ef31c1af73332d"
+    },
+    {
+      "path": "workbench/src/domain/native-entry.ts",
+      "sha256": "4540543fb09c3be7d3297b56513cd75ff67987df362d09cb61d8f49cdc870e4e"
+    },
+    {
+      "path": "workbench/src/domain/profiles.ts",
+      "sha256": "947e2f0e3c73bfa69d3ad40eff812f9a40cba76788978dcb4cf6653216f45e8a"
+    },
+    {
+      "path": "workbench/src/domain/resume-safety.ts",
+      "sha256": "53c9c63e62a8cc5928b06561aa899eb528ef450f297e2e67e2528bcab8eddb8d"
+    },
+    {
+      "path": "workbench/src/domain/rpc.ts",
+      "sha256": "76f3c157cf0ffc977639a9f2af4e194a76a8646f11f1a7fdf970c128f3ab7a65"
+    },
+    {
+      "path": "workbench/src/domain/session-history.ts",
+      "sha256": "b7646118c3b89aea0e25795779cbb524a0079df96b7259a89868c227521055cb"
+    },
+    {
+      "path": "workbench/src/domain/session-list.ts",
+      "sha256": "14a98a3e96c71fc7db263fc78d7945071bdf1688c77cdc85c9265411b7469c70"
+    },
+    {
+      "path": "workbench/src/domain/skills.ts",
+      "sha256": "79f60f6c96a5af07e5f24d4605a7682da597578cdf1f3280a7fea53a533769b7"
+    },
+    {
+      "path": "workbench/src/domain/task-summary.ts",
+      "sha256": "7cc24f80fa4ec2092a7f8c59d1075f568659d4c779e9997a44e1bdcf203bdfd9"
+    },
+    {
+      "path": "workbench/src/domain/update-check.ts",
+      "sha256": "f53e30d49e2f9cd421ef9247c534d8408fa67de4319a0eb664543caa5a4db323"
+    },
+    {
+      "path": "workbench/src/domain/workflow.ts",
+      "sha256": "5277ff1360bfb65aacb7aed0d8f35e258a136bcc757fa38120c5d4ae558ffbe6"
+    },
+    {
+      "path": "workbench/src/hooks/useEntryCapabilities.ts",
+      "sha256": "a02460bbe52706251ee981fa962bd76e1f72b477c5656aee289a367fa79e4182"
+    },
+    {
+      "path": "workbench/src/hooks/useEntryDetect.ts",
+      "sha256": "b913cd249ec2bb65270f64a9b223e0384387e83176364cf8365e37951ae26740"
+    },
+    {
+      "path": "workbench/src/hooks/useLiveChat.ts",
+      "sha256": "7f18188e39a4a0551ee36761472f1cbec36b44e7a736f18b28e0978a62c15f2a"
+    },
+    {
+      "path": "workbench/src/hooks/useNativeEntry.ts",
+      "sha256": "b2b03dbadf1aa6f6f94913c91e2f63d83e7cd8cae9a368f494978c52c14fe1a9"
+    },
+    {
+      "path": "workbench/src/hooks/useWorkbench.ts",
+      "sha256": "515f4d9d23410080ab60e28ec8787d032721fb214d60e46a1177805cd2dfa582"
+    },
+    {
+      "path": "workbench/src/main.tsx",
+      "sha256": "db82a1c0dd3f2e486dedd3a0106c6db488b95096425af17d763640a8e64101d4"
+    },
+    {
+      "path": "workbench/src/pages/CapabilitiesPage.tsx",
+      "sha256": "58cdd594bcff615915b2caca2691d1644bc5c70379b920aeb64ef14c597637b8"
+    },
+    {
+      "path": "workbench/src/pages/CatalogPage.tsx",
+      "sha256": "fc111eeb5dd04db98000a569b3b12958f5e2bf1bfc2c8ef8afc0a6f002d8a5ac"
+    },
+    {
+      "path": "workbench/src/pages/ChatPage.tsx",
+      "sha256": "e3e5f32bccfb6c181cb911c8bb979a4a405cc6ddaaf80ee658277a67d28e1e38"
+    },
+    {
+      "path": "workbench/src/pages/HomePage.tsx",
+      "sha256": "7234ed8cbf484ea52fc2dd604fb7b9dbd5cb9eb0e385918ec1c019d6bf54f620"
+    },
+    {
+      "path": "workbench/src/pages/LiveChatPage.tsx",
+      "sha256": "12b7a49ae37f0caf8faa06174314c571e591f266735660d04822ff206e8400a5"
+    },
+    {
+      "path": "workbench/src/pages/LiveTasksPage.tsx",
+      "sha256": "4db66149a139d89aecee9af2f7e699d32a4054c4b06e89f1bb1c47376bbd70e2"
+    },
+    {
+      "path": "workbench/src/pages/OnboardingPage.tsx",
+      "sha256": "3a65e20ac7f729db6d5fdee02c7150e30f2e30ac24495a86378e4f19b9d26684"
+    },
+    {
+      "path": "workbench/src/pages/SettingsPage.tsx",
+      "sha256": "ef8505624150fa8e2143800404606f5f1837616c6cfb3dcc68895efc38ca7a39"
+    },
+    {
+      "path": "workbench/src/pages/TasksPage.tsx",
+      "sha256": "32f47f7a084d50eba4aa9c8269b7b1553568edf7150387d187c1ccf960ed4198"
+    },
+    {
+      "path": "workbench/src/styles.css",
+      "sha256": "bb63725fd64b191310d02bf044eadb331d5e403dcbc5a3bf820612236c177095"
+    },
+    {
+      "path": "workbench/tailwind.config.cjs",
+      "sha256": "fdb123ce012c27abbc6509cb2ec0f7933c9011e0637218918097c7b6235fee18"
+    },
+    {
+      "path": "workbench/tests/approval.test.mjs",
+      "sha256": "2b485b766765853ec440d1f19fc7762068de3add6dc8d629c2efdb9e486a960c"
+    },
+    {
+      "path": "workbench/tests/baseline.test.mjs",
+      "sha256": "4321ffb93140d6428205d17c1346015b524221c2f3159090b4e680cb315cc5e6"
+    },
+    {
+      "path": "workbench/tests/bootstrap.test.mjs",
+      "sha256": "59422f993ab0bfcdb4739ae0c1496f4ec480fed97d0a6abf5df2cce800ba38cb"
+    },
+    {
+      "path": "workbench/tests/browser-control-fixture.mjs",
+      "sha256": "a7c211ead373dcc9450ae2d44597ebf38fee81b6ad5760468c987bab8b66f3b0"
+    },
+    {
+      "path": "workbench/tests/browser-fixture.test.mjs",
+      "sha256": "f498fcd0f8deb6bbca0047793fbe0eceaf7161ee10d2ba0d141ba91a104e6f6c"
+    },
+    {
+      "path": "workbench/tests/browser-rpc-fixture.js",
+      "sha256": "ffcbde125b999ae2110d43e90aaa024e0702ed349fe162ffe53f3dc99424a57f"
+    },
+    {
+      "path": "workbench/tests/capability-browser-fixture.json",
+      "sha256": "5101d5cf942cf68ffded61088436058b1e2687054b61de4e0fbad8a2a2b2ceed"
+    },
+    {
+      "path": "workbench/tests/capability-execution.test.mjs",
+      "sha256": "ccc43063cd3bba67bc0e720fdd6bd86ca586af3aa4ea819e395c36e966675720"
+    },
+    {
+      "path": "workbench/tests/capability-integration.test.mjs",
+      "sha256": "29a4549a4a7512a2f69f8f8049e4de69976b125213561ac626fb5344d2bf96f9"
+    },
+    {
+      "path": "workbench/tests/capability-run.test.mjs",
+      "sha256": "4e60461a492cc04718501343c06d6cfa2b397d10ca4f7cea3c577f73cfce3866"
+    },
+    {
+      "path": "workbench/tests/capability-storage.test.mjs",
+      "sha256": "5839ef1f99e289cc6c65ee886e0da5abd972769d8bb81708ec5874e1cc64ae84"
+    },
+    {
+      "path": "workbench/tests/capability.test.mjs",
+      "sha256": "26dd42b2ab6173703308a1b6cbbfed0710d62730fe916dc0618785d4905e2708"
+    },
+    {
+      "path": "workbench/tests/chat-events.test.mjs",
+      "sha256": "d455b28856605b9158a1704526e4b4a51a364ce68cc3d43ca3544a7961fb1625"
+    },
+    {
+      "path": "workbench/tests/control-client.test.mjs",
+      "sha256": "9762ae030baeb84e0c5446299e6e9f328e8d1f1c127691dfff8d3b8df7d8b979"
+    },
+    {
+      "path": "workbench/tests/control-failure.test.mjs",
+      "sha256": "3c5d831545531ba4e4ffb8a3aef92f70654c1fa35c4846f3a1a7863457468aff"
+    },
+    {
+      "path": "workbench/tests/control-server.test.mjs",
+      "sha256": "f136d4e23588a9cbf512029f9364f5eedbdb1534a05d8c3d533d896110c422e4"
+    },
+    {
+      "path": "workbench/tests/entry-capabilities-client.test.mjs",
+      "sha256": "ec0e4bc692857b138beb27ff8d84ec7bcb655b625cfb126f8d989d75d9034a61"
+    },
+    {
+      "path": "workbench/tests/entry-capabilities-panel.test.mjs",
+      "sha256": "5b1eb293e47cb26a3772c71ac71ba5614dfd3d5e5e129f78b2e067b0af062fba"
+    },
+    {
+      "path": "workbench/tests/entry-capabilities.test.mjs",
+      "sha256": "95eb5c23a9e796d626df496eb906d3fde846a7297f520c6d19763a4e0db10dca"
+    },
+    {
+      "path": "workbench/tests/entry-control-browser-check.mjs",
+      "sha256": "800f23b3399da6bac50a4ccba8272116511801a31f435f688427113b236e7ca3"
+    },
+    {
+      "path": "workbench/tests/entry-detect.test.mjs",
+      "sha256": "5d2bf36b8aeed2da7c94336adc09f168f59a59b7c6ea156a31de01d40e1bce3d"
+    },
+    {
+      "path": "workbench/tests/entry-lock-concurrency.test.mjs",
+      "sha256": "4d1a51ac564d2c8b5bfb60ae799be39c4d6b6f8fcd44d52ee0ae8be4fef0b1ec"
+    },
+    {
+      "path": "workbench/tests/entry-regressions.test.mjs",
+      "sha256": "d82cc844527121426d548d4928959e7211602b5f29ab51abfba2ee7e375a1a8f"
+    },
+    {
+      "path": "workbench/tests/experiment-command.test.mjs",
+      "sha256": "b47d6171fe2f713745b0a60ab79674344c4f0bdabe11c53d9259fba642844688"
+    },
+    {
+      "path": "workbench/tests/hermes-health.test.mjs",
+      "sha256": "17c0b001c48b02b80350d52a502f41dce37c547bcdb5664ccc1b66c450c86241"
+    },
+    {
+      "path": "workbench/tests/history-boundaries.test.mjs",
+      "sha256": "d0c89d14115475c346e26375ae7b8c9587d497723883782d8e99565a26262a95"
+    },
+    {
+      "path": "workbench/tests/history-hook.test.mjs",
+      "sha256": "d43c9edb31fbc5290989d3a41355aebd2029b27d9cefd6c65eeef223c7adcebb"
+    },
+    {
+      "path": "workbench/tests/history-proxy.test.mjs",
+      "sha256": "8229557069cdca7aaac1d14fd6eee4133bfd0db60ab09ed10e7fade8df212116"
+    },
+    {
+      "path": "workbench/tests/installer.test.mjs",
+      "sha256": "1903a412f8107d39b6131964576af4d3288ad42ffc73eff0b754489a43e908d6"
+    },
+    {
+      "path": "workbench/tests/instance-lock-recovery.test.mjs",
+      "sha256": "7f9ebc159e800087992a6cd97bd0f2f3ec5454e60f02852bd64badf82ff9d56b"
+    },
+    {
+      "path": "workbench/tests/instance-lock.test.mjs",
+      "sha256": "1df09236a39b85927c26ae158d1c8cb98906b4adb19653cf0162b272d6d946f6"
+    },
+    {
+      "path": "workbench/tests/launcher-zh.test.mjs",
+      "sha256": "432514d9ed4d3d4ca06f2007aa75783da1800c3120bf44a3901f56e45b05725e"
+    },
+    {
+      "path": "workbench/tests/learn.test.mjs",
+      "sha256": "51b6592ee6b0871fa5cae8ef196f841dc9d487e3fca2224b5ea3362d94339eaa"
+    },
+    {
+      "path": "workbench/tests/legacy-entry.test.mjs",
+      "sha256": "2dae73e12a42567c5709154bec437275712b9b629a26a0522211bc3142a215fa"
+    },
+    {
+      "path": "workbench/tests/legacy-managed-guard-order.test.mjs",
+      "sha256": "ecd05e77c59615ebcfc3428dfcba0cea7cb5a0ce9543cbdb1f7ebabe6558ba8a"
+    },
+    {
+      "path": "workbench/tests/lifecycle-boundaries.test.mjs",
+      "sha256": "5083a44f1df29dead5f15d9655f5f1dd3e3831e282657fed17312d247c1fac5b"
+    },
+    {
+      "path": "workbench/tests/managed-native.test.mjs",
+      "sha256": "21c2d7509c428c9208ffe158f57d55f5f3b74c8f6f19d0ed6f4f8e84503c5bc1"
+    },
+    {
+      "path": "workbench/tests/merge-handoff.test.mjs",
+      "sha256": "6d60ed1dde2448641a72a9f3ea0f1734140db51b3461e09ec96311b22e5ec39a"
+    },
+    {
+      "path": "workbench/tests/native-dashboard-health.test.mjs",
+      "sha256": "f21660a05c2e6c80c16625f9a63d51a27bfb8b868fae38be984550e29a76cdaa"
+    },
+    {
+      "path": "workbench/tests/native-entry-adapters.test.mjs",
+      "sha256": "0c80e227069478653e00fa832ceb724dbdbcba2b81475a75269972ba93bf2e19"
+    },
+    {
+      "path": "workbench/tests/native-entry-browser-check.mjs",
+      "sha256": "f7227d41c3fb43c942b360b6bed73abbbba47676681c050c88c80c446500d7ec"
+    },
+    {
+      "path": "workbench/tests/native-entry-client.test.mjs",
+      "sha256": "342f3b6797d127ffc668dd9ae8701a5db19d085cd1585ddf77237d823fdb048b"
+    },
+    {
+      "path": "workbench/tests/native-entry-control.test.mjs",
+      "sha256": "a4cf65df8c6891d1712cb47df580e5f6a24f79d9bb0259fefa5a6dd5b2e682b5"
+    },
+    {
+      "path": "workbench/tests/native-entry-manager.test.mjs",
+      "sha256": "e338a8194a10b1118d1c2c4896e69e2c37adcf4107ed95218d9daac6cec4b1e1"
+    },
+    {
+      "path": "workbench/tests/native-entry-panel.test.mjs",
+      "sha256": "f670835bf3410be3bda14701751d6d08f4fcd222ff6995d26a8e0a45654c4c07"
+    },
+    {
+      "path": "workbench/tests/native-entry-session.test.mjs",
+      "sha256": "4a512bcc7af9b40a17d3db8c5074146e45bfe4ec8c15cc0772d0a828d7686165"
+    },
+    {
+      "path": "workbench/tests/native-experiment.test.mjs",
+      "sha256": "aafaa2092753856d7cb5435e14abbb7695583553ddecdc41d0e0319587887d95"
+    },
+    {
+      "path": "workbench/tests/native-owned-process.test.mjs",
+      "sha256": "c8a6dcef7e6e4e010d9de707de8f3cb28fc3efeacaee05f51ab25d179e3b18a2"
+    },
+    {
+      "path": "workbench/tests/native-package-contract.test.mjs",
+      "sha256": "114c6c68c50a8a9adf80959353130c5025e21166f2df6208402cf60140e122c9"
+    },
+    {
+      "path": "workbench/tests/native-process-protocol.test.mjs",
+      "sha256": "cb128b729ca7624f9dcc5f36ebc3873cf12b6888598a9b014731d7dcfa34042a"
+    },
+    {
+      "path": "workbench/tests/online-install.test.mjs",
+      "sha256": "5e1dd49503b4e9b2eb365d5532836c23d67c0c820305d426714f899ecc706875"
+    },
+    {
+      "path": "workbench/tests/open-local-browser.test.mjs",
+      "sha256": "019693a9d5692fe94a8f1b3862f427a9af44436004832c28e87ce67443fd6d4d"
+    },
+    {
+      "path": "workbench/tests/owned-process-tree.test.mjs",
+      "sha256": "c4a2a1d1168a3ae404d21267221650692854ab643256ce895fec445bdb4ac1eb"
+    },
+    {
+      "path": "workbench/tests/owned-process.test.mjs",
+      "sha256": "09735ae039dcc56c252e32fe877e073e609581d802ace33ee36b504b07911a45"
+    },
+    {
+      "path": "workbench/tests/package.test.mjs",
+      "sha256": "668ee439b3e2772f774a1ce89535829ce567f5a7b76580346d3d3128c5781e03"
+    },
+    {
+      "path": "workbench/tests/portable-guard-order.test.mjs",
+      "sha256": "f05d7582ddd86546e9bab964968f4b619b9c330c0a3b08946558b595f95bf0dd"
+    },
+    {
+      "path": "workbench/tests/portable-layout.test.mjs",
+      "sha256": "829a265839f46b75b726c626d8fd3aaa5f65eed2b6e772aae0cd64187c9d7900"
+    },
+    {
+      "path": "workbench/tests/portable-native-entries.test.mjs",
+      "sha256": "464f163c8c666fc0f0f4694d0f6b0e6dd9150b7d1d3c3cbe599346b6f38ed16f"
+    },
+    {
+      "path": "workbench/tests/prepare-capability.test.mjs",
+      "sha256": "89afb50dd97a9127e505510c213773c3bad10f5b608b811e2606200069d78ccd"
+    },
+    {
+      "path": "workbench/tests/profiles.test.mjs",
+      "sha256": "4ebb089d4c292026ac0fb64473e9f8a09fab9c8bd6ec3fb09a390f9f2f7f51ff"
+    },
+    {
+      "path": "workbench/tests/rpc.test.mjs",
+      "sha256": "30eaf18226633692f4ecdb521f290b3f64e27c7217cb349235825c4e3cdf8129"
+    },
+    {
+      "path": "workbench/tests/s1-browser-check.mjs",
+      "sha256": "2348577c35555bb466235500eaaf180de092d7f97f6b34cb1e9c1a89a6b6dc6f"
+    },
+    {
+      "path": "workbench/tests/s1-browser-driver.mjs",
+      "sha256": "8fd7a4992ae9a8785be441ff4a3f0defe25b73311ef3467563e824bdaf7702de"
+    },
+    {
+      "path": "workbench/tests/s1-browser-driver.test.mjs",
+      "sha256": "9c15114225227648ea5a95354ea6cd1e550b79260b7e659cc3f62e492584b2ce"
+    },
+    {
+      "path": "workbench/tests/s1-browser-launch.mjs",
+      "sha256": "295b8962f9bc3b969d6de7e6ffacfea716a6bfb7b931977b34c71f9466744737"
+    },
+    {
+      "path": "workbench/tests/s1-capability-chain.test.mjs",
+      "sha256": "1d578f6bc17c1cf98e62362a102d9fb7e9a064e5ddd745376e7e8557f43d8345"
+    },
+    {
+      "path": "workbench/tests/s1-control-server.mjs",
+      "sha256": "0c758fb7464d6b96baa35d799c0126aa4de2bfc03590d89c378a81d2004a4f0e"
+    },
+    {
+      "path": "workbench/tests/s1-http-harness.test.mjs",
+      "sha256": "f61cde22f0405d2cb333349914cf1b261f407cf39c6004d0e4d17cac13446462"
+    },
+    {
+      "path": "workbench/tests/s1-rpc-only-fixture.js",
+      "sha256": "4f26f9ace82d02da759ea519bd410d4bbbcf9d53c15fbf2874ee9e7bd1644c00"
+    },
+    {
+      "path": "workbench/tests/session-history-lifecycle.test.mjs",
+      "sha256": "f42cc6a99a581a0137cfbfe038638656e4b2138d2cebb6cdfb19600182187f67"
+    },
+    {
+      "path": "workbench/tests/session-history.test.mjs",
+      "sha256": "975a93602425c039f0a368d57216131fa4f62367db5fe3f5f4a5939e57e60a47"
+    },
+    {
+      "path": "workbench/tests/session-list.test.mjs",
+      "sha256": "09089e32c1b88dfe0f04fc7fa48c6bbe36617ae88bf56b1c6d265dab5d1a8d26"
+    },
+    {
+      "path": "workbench/tests/skill-catalog.test.mjs",
+      "sha256": "7ba3bf54a477bdd30b874236de970b47c880de632c16718c307a8b3ea78d1db4"
+    },
+    {
+      "path": "workbench/tests/skills.test.mjs",
+      "sha256": "141ce060c1360b86d3cb5c5d6549bbba75303979b1c3c4d31d96e0573f94d669"
+    },
+    {
+      "path": "workbench/tests/task-summary.test.mjs",
+      "sha256": "5243ced357afc8291a99db174030e839fb8cfda9e579d32bbe6cc4149a1e6631"
+    },
+    {
+      "path": "workbench/tests/test_experiment_command_worker.py",
+      "sha256": "59e63f9b0be1f02ad445720bce16b34bcef68b286e82c7f61406f78cfffd1c57"
+    },
+    {
+      "path": "workbench/tests/test_native_entry_host.py",
+      "sha256": "5f06140a9c1634d52b62bf14317cec10acd1607e5861bf16011ee2a532950222"
+    },
+    {
+      "path": "workbench/tests/test_online_package.py",
+      "sha256": "273f0405a47bcf07207f27f5ad8e588a64b87d3f42cdb1a5f8adfbd2afa14259"
+    },
+    {
+      "path": "workbench/tests/test_online_package_build.py",
+      "sha256": "a93743377dae9d7fdc7f3c9efe337a8b3b4752679fac589d5b43b031f093c805"
+    },
+    {
+      "path": "workbench/tests/test_windows_job_host.py",
+      "sha256": "ce60d6b12fcf5ff29c7e6487bd1cda3559b4166f3f3db356dd3749c52c10da20"
+    },
+    {
+      "path": "workbench/tests/update-check.test.mjs",
+      "sha256": "f1400ca429176bd0f2f403ad97808d3b297d8e5ad2c4e8c4a33eb86ab361db57"
+    },
+    {
+      "path": "workbench/tests/workflow.test.mjs",
+      "sha256": "68deb521f2e9cb0b67563f23bde9f32fcc611eab25abb80599ca1d457ec72b0c"
+    },
+    {
+      "path": "workbench/tsconfig.json",
+      "sha256": "4f01ac5b2dde00b566f8203f0d016c4eb79f56e28e9a85118e20bded89372927"
+    },
+    {
+      "path": "workbench/vite.config.ts",
+      "sha256": "bf42f8780555ddf49e60049bb3fcfb92a10ee1dc972f39b128b0bdda20d98e9a"
+    }
+  ],
+  "node": {
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0
+  },
+  "python": {
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sourceIdentityUnchanged": true,
+  "review": {
+    "initial": "deleg_2561d6cb",
+    "repair": "deleg_73dd8532",
+    "verdict": "repair-increment-static-pass"
+  },
+  "windowsAcceptance": "not-executed",
+  "updateCapability": "unavailable",
+  "release_ready": false
+}

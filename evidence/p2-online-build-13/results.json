@@ -1,0 +1,72 @@
+{
+  "base": "352f279c9d52ead08cfec7f0486976ad8124b946",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_online_package*.py",
+    "-v"
+  ],
+  "cwd": "source/workbench",
+  "exitCode": 0,
+  "durationSeconds": 0.117,
+  "sourceFiles": [
+    {
+      "path": "workbench/scripts/build-online-package.py",
+      "sha256": "fa8cc79a66e88efa238da2f7e188cfc2d72f5badcb822cdaf72941061428dfaa"
+    },
+    {
+      "path": "workbench/scripts/experiment-command-worker.py",
+      "sha256": "26c660eb63e0a836898ff314607d96a57154e0632211530aa9ef94ef2dbedf08"
+    },
+    {
+      "path": "workbench/scripts/experiment-command.mjs",
+      "sha256": "9c5bd3b49e77f0be9a8bc4c2a205bd23a85c4c9799d3af02eada6fa4ef54b413"
+    },
+    {
+      "path": "workbench/scripts/install-online-experiment.mjs",
+      "sha256": "512bf926d617cfe73b2b03379b492041fcbef56b72083d050e1da1e70e1422c6"
+    },
+    {
+      "path": "workbench/scripts/material-path.mjs",
+      "sha256": "a34c0c874386e6e237c1658d31c53bea6ee1d6cb7ac477647558a9c950e824f4"
+    },
+    {
+      "path": "workbench/scripts/native-entry-host.py",
+      "sha256": "4d39fd1f152f62fc7b4a59f1f62df088fc71c01cac07288253f8036291e942f0"
+    },
+    {
+      "path": "workbench/scripts/native-process-protocol.mjs",
+      "sha256": "2faed708b669ab680fafd71e5190e8f75038f71ee390f7d46bf472b5b0a591fe"
+    },
+    {
+      "path": "workbench/scripts/windows-job-host.py",
+      "sha256": "4add8114d01e859ab9331bc0fdfeae0b7f9241dd887bc7eba6428b14947b1f2b"
+    },
+    {
+      "path": "workbench/tests/test_online_package.py",
+      "sha256": "273f0405a47bcf07207f27f5ad8e588a64b87d3f42cdb1a5f8adfbd2afa14259"
+    },
+    {
+      "path": "workbench/tests/test_online_package_build.py",
+      "sha256": "6804b5ef9630c81d2dcb4794aa25676d2aa03bb11d91ae00bdeb329e4f7907be"
+    }
+  ],
+  "sourceIdentityUnchanged": true,
+  "scope": "synthetic archives and strict Git double; no network, Git subprocess, vendor executable, model or real instance",
+  "rawLogSha256": "90591b1ba303456426af1fbedf85b299400ca8caa194cdaa206cebf53acdcd62",
+  "publishedLogSha256": "90591b1ba303456426af1fbedf85b299400ca8caa194cdaa206cebf53acdcd62",
+  "tests": 19,
+  "passed": 19,
+  "failed": 0,
+  "skipped": 0,
+  "independentReview": "not-performed-for-this-increment",
+  "productionChanged": false,
+  "packageRebuilt": false,
+  "windowsAcceptance": "not-executed"
+}

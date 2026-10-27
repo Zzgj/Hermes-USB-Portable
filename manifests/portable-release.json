@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "product": "Hermes-USB-Portable",
+  "version": "bete0.0.1",
+  "channel": "test",
+  "distribution": {
+    "kind": "github-releases",
+    "repository": "Zzgj/Hermes-USB-Portable"
+  },
+  "hermesCommit": "28044757aabd34010bd9f5f3e3f82b0906b46241",
+  "updateCapability": "unavailable",
+  "release_ready": false
+}
