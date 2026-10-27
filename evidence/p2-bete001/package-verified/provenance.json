@@ -1,0 +1,11 @@
+{
+  "originalFailurePreserved": "../package-attempt/",
+  "verifiedArchiveSha256": "6dc89e319fb74a7ccad806d11e5889a80982a791b9a43d8bbbec570b895245c5",
+  "rawLogSha256": "4d0c72aa04212b0b9e7e070add3f2ea2059f0b9bf8dd9b028c33489e89cb4c15",
+  "publishedLogSha256": "4d0c72aa04212b0b9e7e070add3f2ea2059f0b9bf8dd9b028c33489e89cb4c15",
+  "packageChangedSinceFirstVerification": false,
+  "retryApproved": true,
+  "retryCount": 1,
+  "deliveryFile": "bete0.0.1.zip",
+  "persistentCopyHashVerified": true
+}

@@ -1,6 +1,10 @@
 # P2 单分支交接与剩余审查
 
-## bete0.0.1交付批次：已批准，修正版回归通过，制包待执行
+## bete0.0.1交付批次：回归/制包/获批重核完成，Windows待验
+
+总监批准单次修正版核验后，原ZIP完整核验实际退出0。包字节/源码未改、未重建，最终持久副本回读哈希一致；产物身份、路径、6194/6193文件计数及检查项以PROGRESS-GUIDE顶部和 `evidence/p2-bete001/package-verified/` 为准。初次失败归因于核验器过宽缓存禁入，原日志仍在package-attempt；下面失败停批/待批准段落均为历史。当前候选可作制品审查，不据此放行Windows真实安装；updateCapability=unavailable，release_ready=false，没有创建Release或更新旧盘。
+
+第2项已完成：固定源码 `f44dc1d271527eda8c53aa5dbee30444b0cde1e0`、dev/lead推送及远端回读、真实builder退出0。第3项独立核验退出1，原因是核验器错误地全面禁止官方Python归档预置缓存；首个拒绝文件已只读确认来自匹配锁定身份的原归档。已保留原脚本/日志和ZIP，没有重跑或改包。详情及精确身份见进度顶部与 `evidence/p2-bete001/package-attempt/`。等待修正版核验单次重跑批准，原批次不能用来无限重跑；Windows门禁不变。
 
 总监已批准本节批次，第1项各执行一次且全部退出0：语法检查、Node53/53、Python20/20，均无跳过/失败，源码身份不变。证据 `evidence/p2-bete001/`。下文“等待批准/未测”是此前记录，不重复申请或重跑；继续原批次第2/3项，非预期失败停批。此批准不延伸为Windows安装或GitHub Release发布。
 

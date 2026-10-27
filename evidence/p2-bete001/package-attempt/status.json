@@ -1,0 +1,21 @@
+{
+  "version": "bete0.0.1",
+  "projectCommit": "f44dc1d271527eda8c53aa5dbee30444b0cde1e0",
+  "archive": "bete0.0.1.zip",
+  "sha256": "6dc89e319fb74a7ccad806d11e5889a80982a791b9a43d8bbbec570b895245c5",
+  "buildExitCode": 0,
+  "verificationExitCode": 1,
+  "status": "built-verification-incomplete",
+  "failure": "Overbroad cache exclusion rejected a cache shipped in the locked vendor archive",
+  "observedPackageCacheMembers": 871,
+  "firstRejectedMember": "bete0.0.1/runtime/python/Lib/__pycache__/__future__.cpython-311.pyc",
+  "firstRejectedMemberMatchesVendorBytes": true,
+  "allVendorBytesVerified": false,
+  "originalVerifierSha256": "4abc78affcc12bd9a69afc4fbfba202d510a110fa52de6de377c4a24f9e9f650",
+  "revisedVerifierSha256": "a85a1747d7a8ac724e253e801b6c1f3df11aefdfce43e8122dfbe94a618408b4",
+  "revisedVerifierExecuted": false,
+  "retryPerformed": false,
+  "release_ready": false,
+  "updateCapability": "unavailable",
+  "windowsAcceptance": "not-executed"
+}

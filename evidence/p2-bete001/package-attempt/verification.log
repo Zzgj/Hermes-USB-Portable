@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "<package-workspace>/verify_archive.py", line 162, in <module>
+    main()
+    ~~~~^^
+  File "<package-workspace>/verify_archive.py", line 54, in main
+    assert '__pycache__' not in parts and not relative.endswith(('.pyc', '.pyo'))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

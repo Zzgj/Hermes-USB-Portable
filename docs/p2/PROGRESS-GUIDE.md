@@ -1,6 +1,18 @@
 # P2 当前进度与任务
 
-## 当前交付请求：bete0.0.1新安装基线（获批回归通过，待制包）
+## 当前交付请求：bete0.0.1制包与独立核验完成，Windows仍待验
+
+总监批准后，修正版核验器对原ZIP实际执行一次，退出0；没有重建或修改包。6194个ZIP文件（含清单）、6193个载荷文件，CRC、路径/类型/大小写、精确清单/逐文件大小与哈希、版本/源码原字节、bootstrap相对导入闭包、CRLF启动器、私密文件策略、五份锁定供应商材料逐字节投影与精确空npm配置省略全部通过。官方Python缓存同样按原归档字节校验，没有放宽多余文件/变化字节拒绝。
+
+持久交付：桌面 `Hermes-Portable-Deliveries/bete0.0.1/bete0.0.1.zip`，172067660字节，SHA256 `6dc89e319fb74a7ccad806d11e5889a80982a791b9a43d8bbbec570b895245c5`；复制后已回读哈希一致。同目录有校验文件、verification.json和交付状态说明。源码仍为 `f44dc1d271527eda8c53aa5dbee30444b0cde1e0`。证据 `evidence/p2-bete001/package-verified/`；初次核验失败记录保留，不覆写。本段覆盖下方失败停批/待重跑历史状态。
+
+这是首次联网安装候选，不是旧实例更新包；Windows监督器/真实安装与交互仍未验，暂不要运行Install-Online.bat。外壳更新器未实现（updateCapability=unavailable），release_ready=false；未创建GitHub Release、未更新真实实例或旧U盘。
+
+源码提交 `f44dc1d271527eda8c53aa5dbee30444b0cde1e0` 已推送origin/dev/lead并远端回读一致。干净独立worktree的真实builder执行退出0，生成 `bete0.0.1.zip`，SHA256 `6dc89e319fb74a7ccad806d11e5889a80982a791b9a43d8bbbec570b895245c5`。但独立ZIP核验退出1：核验脚本一律拒绝__pycache__/pyc，首个拒绝项是runtime/python/Lib/__pycache__/__future__.cpython-311.pyc。后续只读核对确认Python原归档仍匹配锁定size/hash，首个拒绝项与原归档原字节一致；不能把官方预置缓存误判成bootstrap运行污染。
+
+已按失败停批约定停止，无重跑、无改包。日志/退出码/源码及核验脚本身份见 `evidence/p2-bete001/package-attempt/`。修正版独立核验脚本已写好但未执行：仅允许runtime/python下的官方缓存经过后续完整vendor逐字节投影校验，bootstrap缓存仍拒绝；精确清单仍拒绝多余文件。此前未执行到的完整清单/供应商等检查不得记通过。包仅已生成，不是已验证交付或Windows可用包。
+
+追加待批准范围：同一固定ZIP、不重建、不改生产源码，执行一次 `python3 -B <原制包目录>/verify_archive_v2.py`，使用新的extracted-v2目录，保存独立日志及退出码；通过才复制到桌面持久交付目录。仍不联网安装、不运行Windows程序/模型、不更新真实实例或发布Release。若再次失败继续停批。
 
 总监已批准集中验证与制包批次。修正版冻结上三条命令各一次实际完成：Node语法检查退出0，六文件Node回归53/53、Python helper/caller20/20，均无失败或跳过、退出0，源码前后身份不变。证据见 `evidence/p2-bete001/results.json` 与对应日志；此段覆盖以下本批“待批准/未执行回归”历史状态。仅Linux隔离、合成命令/归档，不是Windows或真实依赖安装。下一步为同批已批准的固定干净提交、dev/lead同步、真实制包及独立ZIP核验；包尚未生成，不宣称完成。
 

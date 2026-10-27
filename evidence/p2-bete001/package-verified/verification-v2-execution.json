@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "<package-workspace>/verify_archive_v2.py"
+  ],
+  "exitCode": 0,
+  "durationSeconds": 8.093,
+  "scriptSha256": "a85a1747d7a8ac724e253e801b6c1f3df11aefdfce43e8122dfbe94a618408b4",
+  "archiveSha256": "6dc89e319fb74a7ccad806d11e5889a80982a791b9a43d8bbbec570b895245c5"
+}
